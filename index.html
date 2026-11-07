@@ -364,7 +364,9 @@ function makeShowCard(show,showId){
  const performerButton=document.createElement("a");
  performerButton.className="show-button";
  performerButton.textContent="REGISTER AS PERFORMER";
- performerButton.href="join-auditorium.html?showId="+encodeURIComponent(showId);
+
+ // UPDATED: Open the actual singer registration page.
+ performerButton.href="singer-registration.html?showId="+encodeURIComponent(showId);
 
  const audienceButton=document.createElement("a");
  audienceButton.className="show-button secondary";
