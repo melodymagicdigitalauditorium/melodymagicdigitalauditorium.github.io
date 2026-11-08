@@ -1,0 +1,424 @@
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1">  
+<title>Melody Magic - Singer Registration</title>  <style>  
+*{box-sizing:border-box}  
+body{  
+  margin:0;padding:20px;  
+  background:#090807;color:white;  
+  font-family:Arial,sans-serif;  
+}  
+.container{max-width:600px;margin:25px auto}  
+h1,h2{color:#e7bd68}  
+.card{  
+  background:#191510;  
+  border:1px solid #705322;  
+  border-radius:12px;  
+  padding:22px;margin:18px 0;  
+}  
+label{  
+  display:block;color:#e7bd68;  
+  margin-top:15px;font-size:14px;  
+}  
+input,select{  
+  width:100%;padding:13px;margin-top:7px;  
+  background:#0d0b08;color:white;  
+  border:1px solid #57452c;  
+  border-radius:6px;font-size:16px;  
+}  
+button{  
+  width:100%;padding:14px;margin-top:22px;  
+  background:#e7bd68;color:#171009;  
+  border:0;border-radius:7px;  
+  font-size:16px;font-weight:bold;  
+  cursor:pointer;  
+}  
+button:disabled{opacity:.5;cursor:wait}  
+.muted{color:#c2b7a6;line-height:1.6}  
+.success{color:#8ee29a;line-height:1.6}  
+.error{color:#ff9999;line-height:1.6}  
+.payment-box{  
+  background:#0d0b08;  
+  border:1px solid #705322;  
+  border-radius:8px;  
+  padding:15px;margin-top:18px;  
+}  
+.contact-link{  
+  display:block;padding:14px;margin-top:15px;  
+  background:#e7bd68;color:#171009;  
+  border-radius:7px;text-align:center;  
+  text-decoration:none;font-weight:bold;  
+}  
+.location-note{  
+  font-size:12px;color:#aaa;  
+  margin-top:10px;line-height:1.5;  
+}  
+.hidden{display:none!important}  
+</style>  </head>  <body>  
+<div class="container">    <h1>MELODY MAGIC</h1>  
+  <p class="muted">DIGITAL AUDITORIUM</p>    <div class="card">  
+    <h2>Selected Show</h2>  
+    <div id="showDetails" class="muted">  
+      Loading show details...  
+    </div>  
+  </div>    <div class="card">  
+    <h2>Singer Registration</h2>  <div id="paymentArea" class="payment-box hidden">  
+  <strong style="color:#e7bd68">PAID PERFORMER REGISTRATION</strong>  
+  <p class="muted">  
+    Contact the host using the WhatsApp button below to confirm payment details. After making payment, enter your transaction ID / UTR number in the form.  
+  </p>  
+  <a id="hostContact" class="contact-link hidden"  
+     target="_blank" rel="noopener">  
+    CONTACT HOST ON WHATSAPP  
+  </a>  
+  <p class="location-note">  
+    Your registration will remain pending until the host verifies your payment. Submitting a transaction reference does not confirm payment.  
+  </p>  
+</div>  
+
+<form id="registrationForm">  
+
+  <label for="singerName">Full Name</label>  
+  <input id="singerName" type="text"  
+    placeholder="Enter your name" maxlength="80" required>  
+
+  <label for="mobile">Mobile Number</label>  
+  <input id="mobile" type="tel"  
+    placeholder="Enter mobile number"  
+    pattern="[0-9+ -]{8,15}" required>  
+
+  <label for="songName">Song Name</label>  
+  <input id="songName" type="text"  
+    placeholder="Which song will you sing?" maxlength="120" required>  
+
+  <label for="language">Language</label>  
+  <select id="language" required>  
+    <option value="Hindi">Hindi</option>  
+    <option value="Marathi">Marathi</option>  
+    <option value="English">English</option>  
+    <option value="Other">Other</option>  
+  </select>  
+
+  <label for="performance">Performance Type</label>  
+  <select id="performance" required>  
+    <option value="Solo">Solo</option>  
+    <option value="Duet">Duet</option>  
+    <option value="Group">Group</option>  
+  </select>  
+
+  <div id="paymentReferenceArea" class="hidden">  
+    <label for="paymentReference">  
+      Payment Transaction ID / UTR Number  
+    </label>  
+    <input id="paymentReference" type="text"  
+      maxlength="100"  
+      placeholder="Enter your payment transaction ID / UTR number">  
+    <p class="location-note">  
+      Enter the reference number shown in your payment app. Never enter your UPI PIN, password or bank details.  
+    </p>  
+  </div>  
+
+  <button id="submitButton" type="submit">  
+    SUBMIT REGISTRATION  
+  </button>  
+
+</form>  
+
+<div id="message" aria-live="polite"></div>
+
+  </div>  
+</div>  <script type="module">  
+  
+import { db, auth } from "./firebase.js";  
+  
+import {  
+  ref, get, push, set  
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";  
+  
+import {  
+  signInAnonymously  
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";  
+  
+const showId =  
+  new URLSearchParams(window.location.search).get("showId");  
+  
+const showDetails = document.getElementById("showDetails");  
+const message = document.getElementById("message");  
+const form = document.getElementById("registrationForm");  
+const submitButton = document.getElementById("submitButton");  
+  
+const paymentArea = document.getElementById("paymentArea");  
+const paymentReferenceArea = document.getElementById("paymentReferenceArea");  
+const paymentReference = document.getElementById("paymentReference");  
+const hostContact = document.getElementById("hostContact");  
+  
+let selectedShow = null;  
+let isPaidPerformer = false;  
+let submitting = false;  
+  
+// PERFORMER FEE HELPERS  
+// Old shows without separate fields remain compatible.  
+function getPerformerEntryType(show) {  
+  return String(  
+    show.performerEntryType || "free"  
+  ).toLowerCase();  
+}  
+  
+function getPerformerEntryFee(show) {  
+  return Number(show.performerEntryFee ?? 0);  
+}  
+  
+function cleanPhone(value) {  
+  return String(value || "").replace(/\D/g, "");  
+}  
+  
+function showMessage(text, type) {  
+  message.textContent = text;  
+  message.className = type;  
+}  
+  
+// LOAD SELECTED SHOW  
+async function loadShow() {  
+  try {  
+    if (!showId) {  
+      throw new Error("No show ID found. Please select a show from the homepage.");  
+    }  
+  
+    const snapshot = await get(ref(db, "shows/" + showId));  
+  
+    if (!snapshot.exists()) {  
+      throw new Error("This show does not exist in Firebase.");  
+    }  
+  
+    selectedShow = snapshot.val();  
+  
+    if (selectedShow.status !== "Published") {  
+      throw new Error("This show is not currently available.");  
+    }  
+  
+    // USE PERFORMER FEE, NOT AUDIENCE FEE  
+    isPaidPerformer =  
+      getPerformerEntryType(selectedShow) === "paid";  
+  
+    const title = document.createElement("h3");  
+    title.textContent = selectedShow.title || "Singing Show";  
+  
+    const date = document.createElement("p");  
+    date.textContent = "Date: " +  
+      (selectedShow.date || "To be announced");  
+  
+    const time = document.createElement("p");  
+    time.textContent = "Time: " +  
+      (selectedShow.time || "To be announced");  
+  
+    const host = document.createElement("p");  
+    host.textContent = "Host: " +  
+      (selectedShow.hostName || "Host");  
+  
+    const performerFee = document.createElement("p");  
+    performerFee.textContent = isPaidPerformer  
+      ? "Performer Registration Fee: ₹" +  
+        getPerformerEntryFee(selectedShow)  
+      : "Performer Entry: FREE";  
+  
+    showDetails.replaceChildren(  
+      title, date, time, host, performerFee  
+    );  
+  
+    if (isPaidPerformer) {  
+      paymentArea.classList.remove("hidden");  
+      paymentReferenceArea.classList.remove("hidden");  
+      paymentReference.required = true;  
+  
+      submitButton.textContent =  
+        "SUBMIT PAID PERFORMER APPLICATION";  
+  
+      const phone = cleanPhone(  
+        selectedShow.hostMobile ||  
+        selectedShow.hostWhatsApp ||  
+        selectedShow.hostWhatsapp ||  
+        selectedShow.contactWhatsApp ||  
+        selectedShow.whatsappNumber ||  
+        selectedShow.mobile ||  
+        selectedShow.hostPhone  
+      );  
+  
+      if (phone) {  
+        hostContact.href =  
+          "https://wa.me/" +  
+          (phone.length === 10 ? "91" + phone : phone);  
+  
+        hostContact.classList.remove("hidden");  
+      } else {  
+        const note = document.createElement("p");  
+        note.className = "error";  
+        note.textContent =  
+          "The host has not added a WhatsApp contact number. Please contact the show organiser.";  
+        paymentArea.appendChild(note);  
+      }  
+    } else {  
+      submitButton.textContent = "SUBMIT FREE REGISTRATION";  
+    }  
+  
+  } catch (error) {  
+    showDetails.textContent = error.message;  
+    showDetails.className = "error";  
+    form.style.display = "none";  
+    console.error("Show loading error:", error);  
+  }  
+}  
+  
+// SUBMIT SINGER REGISTRATION  
+form.addEventListener("submit", async (event) => {  
+  event.preventDefault();  
+  
+  if (submitting) return;  
+  
+  if (!selectedShow) {  
+    showMessage(  
+      "Show details are not available. Please refresh the page.",  
+      "error"  
+    );  
+    return;  
+  }  
+  
+  const name =  
+    document.getElementById("singerName").value.trim();  
+  
+  const mobile =  
+    document.getElementById("mobile").value.trim();  
+  
+  const song =  
+    document.getElementById("songName").value.trim();  
+  
+  const language =  
+    document.getElementById("language").value;  
+  
+  const performance =  
+    document.getElementById("performance").value;  
+  
+  const reference = paymentReference.value.trim();  
+  
+  if (!name || !mobile || !song) {  
+    showMessage("Please complete all fields.", "error");  
+    return;  
+  }  
+  
+  if (isPaidPerformer && !reference) {  
+    showMessage(  
+      "Please enter your payment transaction ID / UTR number.",  
+      "error"  
+    );  
+    return;  
+  }  
+  
+  submitting = true;  
+  submitButton.disabled = true;  
+  submitButton.textContent = "PLEASE WAIT...";  
+  
+  showMessage("Checking show details...", "muted");  
+  
+  try {  
+    let user = auth.currentUser;  
+  
+    if (!user) {  
+      const result = await signInAnonymously(auth);  
+      user = result.user;  
+    }  
+  
+    // RECHECK SHOW AND PERFORMER FEE  
+    const latestSnapshot = await get(  
+      ref(db, "shows/" + showId)  
+    );  
+  
+    if (!latestSnapshot.exists()) {  
+      throw new Error("This show is no longer available.");  
+    }  
+  
+    const latestShow = latestSnapshot.val();  
+  
+    if (latestShow.status !== "Published") {  
+      throw new Error("This show is no longer open for registration.");  
+    }  
+  
+    const latestIsPaid =  
+      getPerformerEntryType(latestShow) === "paid";  
+  
+    if (latestIsPaid !== isPaidPerformer) {  
+      throw new Error(  
+        "The performer entry type has changed. Please refresh this page and try again."  
+      );  
+    }  
+  
+    const performerFee =  
+      getPerformerEntryFee(latestShow);  
+  
+    const registrationRef = push(  
+      ref(db, "showRegistrations/" + showId)  
+    );  
+  
+    const registration = {  
+      singerUid: user.uid,  
+      name: name,  
+      mobile: mobile,  
+      song: song,  
+      language: language,  
+      performance: performance,  
+      showId: showId,  
+      showTitle: latestShow.title || "",  
+      hostUid: latestShow.hostUid || "",  
+  
+      performerEntryType: isPaidPerformer ? "paid" : "free",  
+      performerEntryFee: isPaidPerformer ? performerFee : 0,  
+  
+      status: isPaidPerformer ? "Pending" : "Waiting",  
+      createdAt: Date.now()  
+    };  
+  
+    if (isPaidPerformer) {  
+      registration.paymentReference = reference;  
+      registration.paymentStatus =  
+        "Submitted for host verification";  
+    }  
+  
+    await set(registrationRef, registration);  
+  
+    if (isPaidPerformer) {  
+      showMessage(  
+        "Your paid performer application has been submitted successfully. Your registration is PENDING until the host verifies your payment.",  
+        "success"  
+      );  
+    } else {  
+      showMessage(  
+        "Your free performer registration is successful! Your registration ID: " +  
+        registrationRef.key,  
+        "success"  
+      );  
+    }  
+  
+    form.reset();  
+    form.style.display = "none";  
+  
+  } catch (error) {  
+    console.error("Firebase registration error:", error);  
+  
+    showMessage(  
+      "Registration failed: " + error.message,  
+      "error"  
+    );  
+  
+  } finally {  
+    submitting = false;  
+    submitButton.disabled = false;  
+  
+    submitButton.textContent = isPaidPerformer  
+      ? "SUBMIT PAID PERFORMER APPLICATION"  
+      : "SUBMIT FREE REGISTRATION";  
+  }  
+});  
+  
+loadShow();  
+  
+</script>  </body>  
+  </html>
