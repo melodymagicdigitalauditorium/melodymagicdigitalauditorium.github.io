@@ -36,6 +36,7 @@ a{color:#f5bd43;overflow-wrap:anywhere}
 .badge.pending{background:#8a6415}
 .badge.approved{background:#176b42}
 .badge.rejected{background:#8b2929}
+.fee-group{border:1px solid #39445e;border-radius:8px;padding:12px;margin:12px 0}
 footer{text-align:center;padding:25px;color:#aab4c8}
 @media(max-width:600px){
 .container{padding:10px}.card{padding:15px}
@@ -82,11 +83,20 @@ button{width:100%;margin:5px 0}
 <input id="hostWhatsApp" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit Indian mobile number" required>
 <p class="small">Performers and paid audience members will contact you on this number.</p>
 
-<label>Performer Entry Fee (₹)</label>
-<input id="performerFee" type="number" min="0" value="0">
+<div class="fee-group">
+<h3>Performer Entry Fees</h3>
+
+<label>Solo Entry Fee (₹)</label>
+<input id="soloEntryFee" type="number" min="0" step="1" placeholder="Enter solo entry fee">
+
+<label>Duet Entry Fee (₹)</label>
+<input id="duetEntryFee" type="number" min="0" step="1" placeholder="Enter duet entry fee">
+
+<p class="small">Leave blank if you have not decided the fee. Enter 0 for FREE.</p>
+</div>
 
 <label>Audience Entry Fee (₹)</label>
-<input id="audienceFee" type="number" min="0" value="0">
+<input id="audienceFee" type="number" min="0" step="1" value="0">
 
 <label>Show Type</label>
 <select id="showType">
@@ -204,6 +214,29 @@ function formatDate(value) {
     : value;
 }
 
+function formatFee(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Not set";
+  }
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "Not set";
+  return amount === 0 ? "FREE" : "₹" + amount;
+}
+
+function readOptionalFee(id) {
+  const raw = document.getElementById(id).value.trim();
+
+  if (raw === "") return null;
+
+  const amount = Number(raw);
+
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error("Please enter valid, non-negative fees.");
+  }
+
+  return amount;
+}
+
 function showPosterStatus(status) {
   const value = String(status || "").toLowerCase();
   if (value === "approved") return '<span class="badge approved">Approved</span>';
@@ -291,11 +324,12 @@ document.getElementById("createShowBtn").addEventListener("click", async () => {
   const description = document.getElementById("showDescription").value.trim();
   const date = document.getElementById("showDate").value;
   const time = document.getElementById("showTime").value;
-  const performerFee = Number(document.getElementById("performerFee").value || 0);
   const audienceFee = Number(document.getElementById("audienceFee").value || 0);
   const type = document.getElementById("showType").value;
 
   let hostWhatsApp;
+  let soloEntryFee;
+  let duetEntryFee;
 
   try {
     if (!currentUser || !currentHost) {
@@ -310,10 +344,13 @@ document.getElementById("createShowBtn").addEventListener("click", async () => {
       document.getElementById("hostWhatsApp").value
     );
 
-    if (performerFee < 0 || audienceFee < 0 ||
-        !Number.isFinite(performerFee) || !Number.isFinite(audienceFee)) {
-      throw new Error("Please enter valid, non-negative fees.");
+    soloEntryFee = readOptionalFee("soloEntryFee");
+    duetEntryFee = readOptionalFee("duetEntryFee");
+
+    if (!Number.isFinite(audienceFee) || audienceFee < 0) {
+      throw new Error("Please enter a valid audience entry fee.");
     }
+
   } catch (error) {
     alert(error.message);
     return;
@@ -337,7 +374,8 @@ document.getElementById("createShowBtn").addEventListener("click", async () => {
       time,
       timeZone: "Asia/Kolkata",
       timeZoneLabel: "IST",
-      performerFee,
+      soloEntryFee,
+      duetEntryFee,
       audienceFee,
       type,
       status: "Published",
@@ -351,6 +389,9 @@ document.getElementById("createShowBtn").addEventListener("click", async () => {
     document.getElementById("showDate").value = "";
     document.getElementById("showTime").value = "";
     document.getElementById("hostWhatsApp").value = "";
+    document.getElementById("soloEntryFee").value = "";
+    document.getElementById("duetEntryFee").value = "";
+    document.getElementById("audienceFee").value = "0";
 
     await loadShows();
 
@@ -419,7 +460,8 @@ async function loadShows() {
       const performerMessage =
         "Hello " + (show.hostName || "Host") +
         ", I am interested in performing in your show: " +
-        (show.name || "Music Show") + ". Please share the registration details.";
+        (show.name || "Music Show") +
+        ". Please share the solo/duet registration details and payment information.";
 
       const audienceMessage =
         "Hello, I am interested in attending your show: " +
@@ -441,8 +483,11 @@ async function loadShows() {
         </p>
 
         <p><strong>Type:</strong> ${escapeHTML(show.type || "")}</p>
-        <p><strong>Performer entry:</strong> ${Number(show.performerFee || 0) === 0 ? "FREE" : "₹" + escapeHTML(show.performerFee)}</p>
-        <p><strong>Audience entry:</strong> ${Number(show.audienceFee || 0) === 0 ? "FREE" : "₹" + escapeHTML(show.audienceFee)}</p>
+
+        <p><strong>Solo entry fee:</strong> ${escapeHTML(formatFee(show.soloEntryFee))}</p>
+        <p><strong>Duet entry fee:</strong> ${escapeHTML(formatFee(show.duetEntryFee))}</p>
+        <p><strong>Audience entry:</strong> ${escapeHTML(formatFee(show.audienceFee))}</p>
+
         <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber || "Not available")}</p>
         <p><strong>Status:</strong> ${escapeHTML(show.status || "Published")}</p>
 
@@ -459,9 +504,10 @@ async function loadShows() {
           <p><strong>Show name:</strong> ${escapeHTML(show.name || "")}</p>
           <p><strong>Date:</strong> ${escapeHTML(formatDate(show.date))}</p>
           <p><strong>Time:</strong> ${escapeHTML(formatTime12Hour(show.time))} IST</p>
-          <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber)}</p>
-          <p><strong>Performer fee:</strong> ₹${escapeHTML(show.performerFee ?? 0)}</p>
-          <p><strong>Audience fee:</strong> ₹${escapeHTML(show.audienceFee ?? 0)}</p>
+          <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber || "Not available")}</p>
+          <p><strong>Solo entry fee:</strong> ${escapeHTML(formatFee(show.soloEntryFee))}</p>
+          <p><strong>Duet entry fee:</strong> ${escapeHTML(formatFee(show.duetEntryFee))}</p>
+          <p><strong>Audience fee:</strong> ${escapeHTML(formatFee(show.audienceFee))}</p>
           <p><strong>Audience registration link:</strong><br>
           <a href="${escapeHTML(audienceLink)}" target="_blank" rel="noopener">${escapeHTML(audienceLink)}</a></p>
         </div>
@@ -542,6 +588,9 @@ async function loadShows() {
               "Join my show: " + (show.name || "Music Show") +
               "\nDate: " + formatDate(show.date) +
               "\nTime: " + formatTime12Hour(show.time) + " IST" +
+              "\nSolo entry: " + formatFee(show.soloEntryFee) +
+              "\nDuet entry: " + formatFee(show.duetEntryFee) +
+              "\nAudience entry: " + formatFee(show.audienceFee) +
               "\nAudience registration: " + audienceLink +
               (hostNumber ? "\nHost WhatsApp: https://wa.me/" + hostNumber : "");
 
@@ -708,46 +757,38 @@ async function createPosterBlob(show, link) {
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 62px Arial";
-    drawWrappedText(ctx, show.name || "Music Show", 540, 405, 900, 78);
+    drawWrappedText(ctx, show.name || "Music Show", 540, 385, 900, 78);
 
     ctx.fillStyle = "#f5bd43";
     ctx.font = "bold 38px Arial";
-    ctx.fillText("SHOW DETAILS", 540, 620);
+    ctx.fillText("SHOW DETAILS", 540, 555);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "36px Arial";
-    ctx.fillText(formatDate(show.date), 540, 690);
-    ctx.fillText(formatTime12Hour(show.time) + " IST", 540, 755);
+    ctx.font = "34px Arial";
+    ctx.fillText(formatDate(show.date), 540, 615);
+    ctx.fillText(formatTime12Hour(show.time) + " IST", 540, 675);
 
     ctx.font = "30px Arial";
-    ctx.fillText(
-      "Performer Entry: " +
-      (Number(show.performerFee || 0) === 0 ? "FREE" : "Rs. " + Number(show.performerFee)),
-      540, 830
-    );
-
-    ctx.fillText(
-      "Audience Entry: " +
-      (Number(show.audienceFee || 0) === 0 ? "FREE" : "Rs. " + Number(show.audienceFee)),
-      540, 890
-    );
+    ctx.fillText("Solo Entry: " + formatFee(show.soloEntryFee).replace("₹","Rs. "), 540, 745);
+    ctx.fillText("Duet Entry: " + formatFee(show.duetEntryFee).replace("₹","Rs. "), 540, 800);
+    ctx.fillText("Audience Entry: " + formatFee(show.audienceFee).replace("₹","Rs. "), 540, 855);
 
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(420, 930, 240, 240);
-    ctx.drawImage(qrCanvas, 430, 940, 220, 220);
+    ctx.fillRect(420, 890, 240, 240);
+    ctx.drawImage(qrCanvas, 430, 900, 220, 220);
 
     ctx.fillStyle = "#f5bd43";
     ctx.font = "bold 28px Arial";
-    ctx.fillText("SCAN TO JOIN THE SHOW", 540, 1200);
+    ctx.fillText("SCAN TO JOIN THE SHOW", 540, 1175);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "25px Arial";
-    ctx.fillText("Contact host for paid entry", 540, 1245);
+    ctx.fillText("Contact host for paid entry", 540, 1220);
 
     const number = String(show.hostWhatsApp || "").replace(/\D/g, "");
     if (number) {
       ctx.font = "23px Arial";
-      ctx.fillText("WhatsApp: +" + number, 540, 1285);
+      ctx.fillText("WhatsApp: +" + number, 540, 1265);
     }
 
     return await new Promise((resolve, reject) => {
