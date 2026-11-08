@@ -10,41 +10,37 @@
 *{box-sizing:border-box}
 body{margin:0;background:#090d18;color:#fff;font-family:Arial,sans-serif}
 header{background:#151d32;padding:20px;text-align:center;border-bottom:2px solid #e5ad35}
-h1{color:#f5bd43;margin:0}
+h1,h2{color:#f5bd43}
+h1{margin:0}
 .container{max-width:1000px;margin:25px auto;padding:15px}
-.card{background:#151d32;padding:20px;border-radius:12px;margin-bottom:20px}
-h2{color:#f5bd43;margin-top:0}
+.card,.show{background:#151d32;padding:20px;border-radius:12px;margin-bottom:20px}
+.show{border:1px solid #39445e;margin:12px 0}
 input,textarea,select{width:100%;padding:12px;margin:7px 0 14px;border:1px solid #39445e;border-radius:7px;background:#0c1426;color:white}
 button{padding:12px 18px;border:0;border-radius:7px;background:#e5ad35;color:#111;font-weight:bold;cursor:pointer;margin:5px 3px}
-button:disabled{opacity:.5;cursor:not-allowed}
+button:disabled{opacity:.5}
 button.secondary{background:#35415d;color:white}
-button.danger{background:#b83232;color:white}
 button.green{background:#16834a;color:white}
-button.live-button{background:#16834a;color:white}
+button.danger{background:#b83232;color:white}
+label{display:block;color:#dbe2ef}
 .small{color:#b9c4d8;font-size:13px}
 .status{padding:12px;background:#26344d;border-radius:7px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.show{border:1px solid #39445e;padding:15px;border-radius:9px;margin:12px 0}
-a{color:#f5bd43;overflow-wrap:anywhere}
 .hidden{display:none}
-label{display:block;color:#dbe2ef}
-.poster-preview{display:block;max-width:280px;width:100%;height:auto;margin:12px 0;border-radius:9px;border:1px solid #53617c}
-.upload-status{color:#f5bd43;font-size:13px;margin:8px 0;white-space:pre-wrap}
+a{color:#f5bd43;overflow-wrap:anywhere}
 .button-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
 .button-row button{flex:1 1 145px}
 .show-details{background:#0c1426;border:1px solid #39445e;border-radius:8px;padding:12px;margin-top:12px}
+.poster-preview{display:block;max-width:280px;width:100%;height:auto;margin:12px 0;border-radius:9px}
+.upload-status{color:#f5bd43;font-size:13px;white-space:pre-wrap}
 .time-note{color:#f5bd43;font-size:13px;margin-top:-8px;margin-bottom:12px}
-.badge{display:inline-block;padding:5px 9px;border-radius:5px;background:#35415d;color:white;font-size:12px}
+.badge{display:inline-block;padding:5px 9px;border-radius:5px;background:#35415d;font-size:12px}
 .badge.pending{background:#8a6415}
 .badge.approved{background:#176b42}
 .badge.rejected{background:#8b2929}
-.performer-record{background:#0c1426;border:1px solid #39445e;border-radius:8px;padding:13px;margin:10px 0}
-.performer-record button{font-size:13px}
 footer{text-align:center;padding:25px;color:#aab4c8}
 @media(max-width:600px){
- .container{padding:10px}
- .card{padding:15px}
- button{width:100%;margin:5px 0}
- .button-row button{width:auto}
+.container{padding:10px}.card{padding:15px}
+button{width:100%;margin:5px 0}
+.button-row button{width:auto}
 }
 </style>
 </head>
@@ -82,6 +78,10 @@ footer{text-align:center;padding:25px;color:#aab4c8}
 <input id="showTime" type="time" required>
 <div class="time-note">All show timings are in IST (UTC+5:30).</div>
 
+<label>Host WhatsApp Number</label>
+<input id="hostWhatsApp" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit Indian mobile number" required>
+<p class="small">Performers and paid audience members will contact you on this number.</p>
+
 <label>Performer Entry Fee (₹)</label>
 <input id="performerFee" type="number" min="0" value="0">
 
@@ -99,34 +99,6 @@ footer{text-align:center;padding:25px;color:#aab4c8}
 
 <button id="createShowBtn">Create Show</button>
 <div id="createMessage" class="small"></div>
-</div>
-
-<div class="card">
-<h2>Offline Performer Registration</h2>
-<p>Register performers who have booked their place offline. Each performer receives a separate private entry link.</p>
-
-<label>Select Show</label>
-<select id="offlineShowSelect">
-<option value="">Loading your shows...</option>
-</select>
-
-<label>Performer Name</label>
-<input id="offlineName" placeholder="Enter performer's name">
-
-<label>Registered Mobile Number</label>
-<input id="offlineMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit Indian mobile number">
-
-<button id="generateOfflineLinkBtn">Generate Private Performer Link</button>
-
-<div id="offlineLinkResult" class="status hidden"></div>
-<button id="copyOfflineLinkBtn" class="green hidden">Copy Private Link</button>
-
-<p class="small">
-The performer must verify the registered mobile number through OTP on the private entry page.
-The link should be shared privately with that performer.
-</p>
-
-<div id="offlineMessage" class="status">Select a show to manage offline performers.</div>
 </div>
 
 <div class="card">
@@ -151,11 +123,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
-  ref,
-  get,
-  push,
-  set,
-  update
+  ref, get, push, set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const CLOUD_NAME = "quqojlew";
@@ -167,11 +135,9 @@ const dashboard = document.getElementById("dashboard");
 const hostInfo = document.getElementById("hostInfo");
 const showsList = document.getElementById("showsList");
 const createMessage = document.getElementById("createMessage");
-const offlineMessage = document.getElementById("offlineMessage");
 
 let currentUser = null;
 let currentHost = null;
-let lastGeneratedLink = "";
 
 function showMessage(text) {
   message.textContent = text;
@@ -199,6 +165,18 @@ function withTimeout(promise, milliseconds = 20000) {
   ]);
 }
 
+function normaliseWhatsApp(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!/^[6-9]\d{9}$/.test(digits)) {
+    throw new Error("Enter a valid 10-digit Indian WhatsApp number.");
+  }
+  return "91" + digits;
+}
+
+function whatsappURL(number, text) {
+  return "https://wa.me/" + number + "?text=" + encodeURIComponent(text);
+}
+
 function validCloudinaryURL(url) {
   try {
     const parsed = new URL(url);
@@ -209,23 +187,21 @@ function validCloudinaryURL(url) {
   }
 }
 
-function formatTime12Hour(timeValue) {
-  if (!timeValue || !/^\d{2}:\d{2}$/.test(timeValue)) return "Time not set";
-  const [hourText, minuteText] = timeValue.split(":");
-  let hour = Number(hourText);
-  const minute = Number(minuteText);
-  if (hour > 23 || minute > 59) return "Invalid time";
-  const suffix = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12 || 12;
-  return String(hour).padStart(2, "0") + ":" +
-    String(minute).padStart(2, "0") + " " + suffix;
+function formatTime12Hour(value) {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) return "Time not set";
+  const [h,m] = value.split(":").map(Number);
+  if (h > 23 || m > 59) return "Invalid time";
+  const suffix = h >= 12 ? "PM" : "AM";
+  return String(h % 12 || 12).padStart(2,"0") + ":" +
+    String(m).padStart(2,"0") + " " + suffix;
 }
 
-function formatDate(dateValue) {
-  if (!dateValue) return "Date not set";
-  const parts = dateValue.split("-");
-  if (parts.length !== 3) return dateValue;
-  return parts[2] + "/" + parts[1] + "/" + parts[0];
+function formatDate(value) {
+  if (!value) return "Date not set";
+  const parts = value.split("-");
+  return parts.length === 3
+    ? parts[2] + "/" + parts[1] + "/" + parts[0]
+    : value;
 }
 
 function showPosterStatus(status) {
@@ -236,24 +212,13 @@ function showPosterStatus(status) {
   return '<span class="badge">No custom poster submitted</span>';
 }
 
-function normaliseMobile(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (!/^[6-9]\d{9}$/.test(digits)) {
-    throw new Error("Enter a valid 10-digit Indian mobile number.");
-  }
-  return "+91" + digits;
+function showPosterStatusHTML(status) {
+  return "<p>Custom poster status: " + showPosterStatus(status) + "</p>";
 }
 
-function generateSecureToken() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-}
-
-function offlineEntryURL(showId, token) {
+function audienceEntryURL(showId) {
   return new URL(
-    "offline-performers.html?showId=" + encodeURIComponent(showId) +
-    "&token=" + encodeURIComponent(token),
+    "audience-entry.html?showId=" + encodeURIComponent(showId),
     location.href
   ).href;
 }
@@ -264,6 +229,8 @@ function liveStageURL(showId) {
     location.href
   ).href;
 }
+
+/* HOST ACCOUNT VERIFICATION */
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
@@ -310,7 +277,6 @@ onAuthStateChanged(auth, async user => {
     hideMessage();
 
     await loadShows();
-    await loadOfflineShowOptions();
 
   } catch (error) {
     console.error(error);
@@ -318,7 +284,87 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-/* ---------------- SHOW LIST ---------------- */
+/* CREATE SHOW */
+
+document.getElementById("createShowBtn").addEventListener("click", async () => {
+  const name = document.getElementById("showName").value.trim();
+  const description = document.getElementById("showDescription").value.trim();
+  const date = document.getElementById("showDate").value;
+  const time = document.getElementById("showTime").value;
+  const performerFee = Number(document.getElementById("performerFee").value || 0);
+  const audienceFee = Number(document.getElementById("audienceFee").value || 0);
+  const type = document.getElementById("showType").value;
+
+  let hostWhatsApp;
+
+  try {
+    if (!currentUser || !currentHost) {
+      throw new Error("Your host account is not ready. Please log in again.");
+    }
+
+    if (!name || !date || !time) {
+      throw new Error("Please enter show name, date and time.");
+    }
+
+    hostWhatsApp = normaliseWhatsApp(
+      document.getElementById("hostWhatsApp").value
+    );
+
+    if (performerFee < 0 || audienceFee < 0 ||
+        !Number.isFinite(performerFee) || !Number.isFinite(audienceFee)) {
+      throw new Error("Please enter valid, non-negative fees.");
+    }
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  const button = document.getElementById("createShowBtn");
+  button.disabled = true;
+  button.textContent = "Creating...";
+  createMessage.textContent = "";
+
+  try {
+    const newShow = push(ref(db, "shows"));
+
+    await withTimeout(set(newShow, {
+      hostUid: currentUser.uid,
+      hostName: currentHost.name || currentUser.email,
+      hostWhatsApp,
+      name,
+      description,
+      date,
+      time,
+      timeZone: "Asia/Kolkata",
+      timeZoneLabel: "IST",
+      performerFee,
+      audienceFee,
+      type,
+      status: "Published",
+      createdAt: Date.now()
+    }));
+
+    alert("Your show has been created successfully.");
+
+    document.getElementById("showName").value = "";
+    document.getElementById("showDescription").value = "";
+    document.getElementById("showDate").value = "";
+    document.getElementById("showTime").value = "";
+    document.getElementById("hostWhatsApp").value = "";
+
+    await loadShows();
+
+  } catch (error) {
+    console.error("Show creation error:", error);
+    createMessage.textContent = "Error: " + error.message;
+    alert("Could not create show: " + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Create Show";
+  }
+});
+
+/* LOAD HOST SHOWS */
 
 async function loadShows() {
   showsList.textContent = "Loading your shows...";
@@ -332,7 +378,9 @@ async function loadShows() {
     }
 
     const myShows = Object.entries(snapshot.val())
-      .filter(([id, show]) => show && show.hostUid === currentUser.uid);
+      .filter(([id, show]) =>
+        show && show.hostUid === currentUser.uid
+      );
 
     showsList.innerHTML = "";
 
@@ -345,22 +393,19 @@ async function loadShows() {
       const entry = document.createElement("div");
       entry.className = "show";
 
-      // Preserved for promotional poster QR and sharing.
-      const audienceLink = new URL(
-        "audience-entry.html?showId=" + encodeURIComponent(id),
-        location.href
-      ).href;
-
+      const audienceLink = audienceEntryURL(id);
       const liveLink = liveStageURL(id);
+      const hostNumber = String(show.hostWhatsApp || "").replace(/\D/g, "");
 
       let posterRecord = null;
+
       try {
         const posterSnapshot = await withTimeout(
           get(ref(db, "showPosters/" + id))
         );
         if (posterSnapshot.exists()) posterRecord = posterSnapshot.val();
-      } catch (posterError) {
-        console.warn("Could not read poster status:", posterError);
+      } catch (error) {
+        console.warn("Could not read poster status:", error);
       }
 
       const customPosterURL =
@@ -368,25 +413,44 @@ async function loadShows() {
           ? posterRecord.imageUrl : "";
 
       const posterStatus = posterRecord ? posterRecord.status : "";
-      const posterUploadAllowed = !posterRecord || posterStatus === "Rejected";
+      const posterUploadAllowed =
+        !posterRecord || posterStatus === "Rejected";
+
+      const performerMessage =
+        "Hello " + (show.hostName || "Host") +
+        ", I am interested in performing in your show: " +
+        (show.name || "Music Show") + ". Please share the registration details.";
+
+      const audienceMessage =
+        "Hello, I am interested in attending your show: " +
+        (show.name || "Music Show") + ". Please share the entry details.";
+
+      const performerWhatsAppURL = hostNumber
+        ? whatsappURL(hostNumber, performerMessage) : "";
+
+      const audienceWhatsAppURL = hostNumber
+        ? whatsappURL(hostNumber, audienceMessage) : "";
 
       entry.innerHTML = `
         <h3>${escapeHTML(show.name || "Untitled Show")}</h3>
         <p>${escapeHTML(show.description || "")}</p>
+
         <p>
           <strong>Date:</strong> ${escapeHTML(formatDate(show.date))}<br>
-          <strong>Time:</strong> ${escapeHTML(formatTime12Hour(show.time))}
-          <br><span class="small">India Standard Time (IST, UTC+5:30)</span>
+          <strong>Time:</strong> ${escapeHTML(formatTime12Hour(show.time))} IST
         </p>
-        <p>Type: ${escapeHTML(show.type || "")}</p>
-        <p>Performer fee: ₹${escapeHTML(show.performerFee ?? 0)}</p>
-        <p>Audience fee: ₹${escapeHTML(show.audienceFee ?? 0)}</p>
-        <p>Status: ${escapeHTML(show.status || "Published")}</p>
+
+        <p><strong>Type:</strong> ${escapeHTML(show.type || "")}</p>
+        <p><strong>Performer entry:</strong> ${Number(show.performerFee || 0) === 0 ? "FREE" : "₹" + escapeHTML(show.performerFee)}</p>
+        <p><strong>Audience entry:</strong> ${Number(show.audienceFee || 0) === 0 ? "FREE" : "₹" + escapeHTML(show.audienceFee)}</p>
+        <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber || "Not available")}</p>
+        <p><strong>Status:</strong> ${escapeHTML(show.status || "Published")}</p>
 
         <div class="button-row">
-          <button class="liveBtn live-button">▶ Go Live</button>
+          <button class="liveBtn green">▶ Go Live</button>
           <button class="detailsBtn secondary">Show Details</button>
-          <button class="offlineManageBtn green">Offline Performers</button>
+          ${performerWhatsAppURL ? '<button class="performerBtn secondary">Performer WhatsApp</button>' : ''}
+          ${Number(show.audienceFee || 0) > 0 && audienceWhatsAppURL ? '<button class="paidAudienceBtn green">Paid Audience WhatsApp</button>' : ''}
         </div>
 
         <div class="show-details hidden">
@@ -395,32 +459,29 @@ async function loadShows() {
           <p><strong>Show name:</strong> ${escapeHTML(show.name || "")}</p>
           <p><strong>Date:</strong> ${escapeHTML(formatDate(show.date))}</p>
           <p><strong>Time:</strong> ${escapeHTML(formatTime12Hour(show.time))} IST</p>
-          <p><strong>Performer entry:</strong> ₹${escapeHTML(show.performerFee ?? 0)}</p>
-          <p><strong>Audience entry:</strong> ₹${escapeHTML(show.audienceFee ?? 0)}</p>
+          <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber)}</p>
+          <p><strong>Performer fee:</strong> ₹${escapeHTML(show.performerFee ?? 0)}</p>
+          <p><strong>Audience fee:</strong> ₹${escapeHTML(show.audienceFee ?? 0)}</p>
+          <p><strong>Audience registration link:</strong><br>
+          <a href="${escapeHTML(audienceLink)}" target="_blank" rel="noopener">${escapeHTML(audienceLink)}</a></p>
         </div>
 
         <hr style="border-color:#39445e;margin:18px 0">
         <h4>Promotional Show Poster</h4>
-        <p class="small">Generate a poster with your show information and a QR code for audience registration.</p>
+        <p class="small">Generate a poster with your show details and a QR code for audience registration.</p>
         <button class="posterBtn secondary">Generate Promotional Poster</button>
         <button class="sharePosterBtn green">Share Poster</button>
 
         <div class="upload-section">
           <h4>Custom Poster Upload</h4>
-          <p>Upload JPG or PNG. Your custom poster will be submitted to the administrator for approval.</p>
+          <p class="small">Upload JPG or PNG. Your custom poster will be submitted to the administrator for approval.</p>
           ${showPosterStatusHTML(posterStatus)}
-          ${customPosterURL ? `
-            <img class="poster-preview" src="${escapeHTML(customPosterURL)}" alt="Uploaded custom poster">
-          ` : ""}
-          ${posterRecord && posterStatus === "Rejected" ? `
-            <p class="small">Your previous poster was rejected. You can upload a new one.</p>
-          ` : ""}
+          ${customPosterURL ? `<img class="poster-preview" src="${escapeHTML(customPosterURL)}" alt="Uploaded custom poster">` : ""}
+          ${posterRecord && posterStatus === "Rejected" ? '<p class="small">Your previous poster was rejected. You can upload a new one.</p>' : ""}
           ${posterUploadAllowed ? `
             <input type="file" class="posterFile" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
             <button class="uploadBtn">Submit Custom Poster for Approval</button>
-          ` : `
-            <p class="small">A poster submission already exists. You cannot upload another until the administrator rejects the current submission.</p>
-          `}
+          ` : '<p class="small">A poster submission already exists. You cannot upload another until the administrator rejects the current submission.</p>'}
           <div class="upload-status"></div>
         </div>
       `;
@@ -429,18 +490,26 @@ async function loadShows() {
         window.open(liveLink, "_blank", "noopener");
       });
 
-      entry.querySelector(".offlineManageBtn").addEventListener("click", () => {
-        document.getElementById("offlineShowSelect").value = id;
-        document.getElementById("offlineShowSelect").scrollIntoView({behavior:"smooth"});
-        loadOfflinePerformers(id);
-      });
-
       entry.querySelector(".detailsBtn").addEventListener("click", event => {
         const details = entry.querySelector(".show-details");
         details.classList.toggle("hidden");
-        event.currentTarget.textContent = details.classList.contains("hidden")
-          ? "Show Details" : "Hide Details";
+        event.currentTarget.textContent =
+          details.classList.contains("hidden") ? "Show Details" : "Hide Details";
       });
+
+      const performerBtn = entry.querySelector(".performerBtn");
+      if (performerBtn) {
+        performerBtn.addEventListener("click", () => {
+          window.open(performerWhatsAppURL, "_blank", "noopener");
+        });
+      }
+
+      const paidAudienceBtn = entry.querySelector(".paidAudienceBtn");
+      if (paidAudienceBtn) {
+        paidAudienceBtn.addEventListener("click", () => {
+          window.open(audienceWhatsAppURL, "_blank", "noopener");
+        });
+      }
 
       entry.querySelector(".posterBtn").addEventListener("click", async () => {
         try {
@@ -456,24 +525,28 @@ async function loadShows() {
       entry.querySelector(".sharePosterBtn").addEventListener("click", async () => {
         try {
           const blob = await createPosterBlob(show, audienceLink);
-          const file = new File([blob], "Melody-Magic-Show-Poster.png", {type:"image/png"});
+          const file = new File([blob], "Melody-Magic-Show-Poster.png", {
+            type: "image/png"
+          });
 
           if (navigator.canShare && navigator.canShare({files:[file]}) && navigator.share) {
             await navigator.share({
               title: show.name || "Melody Magic Show",
               text: "Join my show on Melody Magic Digital Auditorium.",
-              files:[file]
+              files: [file]
             });
           } else {
             downloadBlob(blob, "Melody-Magic-Show-Poster.png");
+
             const shareText =
               "Join my show: " + (show.name || "Music Show") +
               "\nDate: " + formatDate(show.date) +
               "\nTime: " + formatTime12Hour(show.time) + " IST" +
-              "\nAudience registration: " + audienceLink;
+              "\nAudience registration: " + audienceLink +
+              (hostNumber ? "\nHost WhatsApp: https://wa.me/" + hostNumber : "");
 
             window.open("https://wa.me/?text=" + encodeURIComponent(shareText), "_blank", "noopener");
-            alert("Poster downloaded. Attach the downloaded image to your social media post.");
+            alert("Poster downloaded. Attach the image to your social media post.");
           }
         } catch (error) {
           if (error.name !== "AbortError") {
@@ -514,11 +587,10 @@ async function loadShows() {
             const formData = new FormData();
             formData.append("file", file);
             formData.append("upload_preset", UPLOAD_PRESET);
-          
 
             const response = await fetch(
               `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-              {method:"POST",body:formData}
+              {method:"POST", body:formData}
             );
 
             const result = await response.json();
@@ -531,22 +603,20 @@ async function loadShows() {
               throw new Error("Cloudinary returned an invalid image URL.");
             }
 
-            await withTimeout(set(ref(db,"showPosters/"+id),{
-              hostUid:currentUser.uid,
-              showId:id,
-              imageUrl:result.secure_url,
-              publicId:result.public_id || "",
-              status:"Pending",
-              submittedAt:Date.now()
+            await withTimeout(set(ref(db, "showPosters/" + id), {
+              hostUid: currentUser.uid,
+              showId: id,
+              imageUrl: result.secure_url,
+              publicId: result.public_id || "",
+              status: "Pending",
+              submittedAt: Date.now()
             }));
 
-            uploadStatus.textContent = "Poster uploaded successfully and submitted for admin approval.";
             alert("Your custom poster has been submitted for approval.");
             await loadShows();
-            return;
 
           } catch (error) {
-            console.error("Poster upload error:",error);
+            console.error("Poster upload error:", error);
             uploadStatus.textContent = "Upload failed: " + error.message;
             alert("Could not upload poster: " + error.message);
           } finally {
@@ -558,332 +628,16 @@ async function loadShows() {
 
       showsList.appendChild(entry);
     }
+
   } catch (error) {
     console.error(error);
     showsList.textContent = "Could not load shows: " + error.message;
   }
 }
 
-function showPosterStatusHTML(status) {
-  return "<p>Custom poster status: " + showPosterStatus(status) + "</p>";
-}
+/* POSTER GENERATION */
 
-/* ---------------- CREATE SHOW ---------------- */
-
-document.getElementById("createShowBtn").addEventListener("click", async () => {
-  const name = document.getElementById("showName").value.trim();
-  const description = document.getElementById("showDescription").value.trim();
-  const date = document.getElementById("showDate").value;
-  const time = document.getElementById("showTime").value;
-  const performerFee = Number(document.getElementById("performerFee").value || 0);
-  const audienceFee = Number(document.getElementById("audienceFee").value || 0);
-  const type = document.getElementById("showType").value;
-
-  if (!currentUser || !currentHost) {
-    alert("Your host account is not ready. Please refresh and log in again.");
-    return;
-  }
-
-  if (!name || !date || !time) {
-    alert("Please enter show name, date and time.");
-    return;
-  }
-
-  if (performerFee < 0 || audienceFee < 0 ||
-      !Number.isFinite(performerFee) || !Number.isFinite(audienceFee)) {
-    alert("Please enter valid, non-negative fees.");
-    return;
-  }
-
-  const button = document.getElementById("createShowBtn");
-  button.disabled = true;
-  button.textContent = "Creating...";
-  createMessage.textContent = "";
-
-  try {
-    const newShow = push(ref(db,"shows"));
-
-    await withTimeout(set(newShow,{
-      hostUid:currentUser.uid,
-      hostName:currentHost.name || currentUser.email,
-      name,
-      description,
-      date,
-      time,
-      timeZone:"Asia/Kolkata",
-      timeZoneLabel:"IST",
-      performerFee,
-      audienceFee,
-      type,
-      status:"Published",
-      createdAt:Date.now()
-    }));
-
-    alert("Your show has been created.");
-    document.getElementById("showName").value = "";
-    document.getElementById("showDescription").value = "";
-    document.getElementById("showDate").value = "";
-    document.getElementById("showTime").value = "";
-
-    await loadShows();
-    await loadOfflineShowOptions();
-
-  } catch (error) {
-    console.error("Show creation error:",error);
-    createMessage.textContent = "Error: " + error.message;
-    alert("Could not create show: " + error.message);
-  } finally {
-    button.disabled = false;
-    button.textContent = "Create Show";
-  }
-});
-
-/* ---------------- OFFLINE PERFORMERS ---------------- */
-
-async function loadOfflineShowOptions() {
-  const select = document.getElementById("offlineShowSelect");
-  select.innerHTML = '<option value="">Select your show</option>';
-
-  const snapshot = await withTimeout(get(ref(db,"shows")));
-  if (!snapshot.exists()) return;
-
-  snapshot.forEach(child => {
-    const show = child.val();
-    if (!show || show.hostUid !== currentUser.uid) return;
-
-    const option = document.createElement("option");
-    option.value = child.key;
-    option.textContent = (show.name || "Untitled Show") +
-      " — " + formatDate(show.date);
-    select.appendChild(option);
-  });
-}
-
-document.getElementById("offlineShowSelect").addEventListener("change", event => {
-  const id = event.target.value;
-  if (id) loadOfflinePerformers(id);
-  else {
-    offlineMessage.textContent = "Select a show to manage offline performers.";
-  }
-});
-
-document.getElementById("generateOfflineLinkBtn").addEventListener("click", async () => {
-  const button = document.getElementById("generateOfflineLinkBtn");
-  const showId = document.getElementById("offlineShowSelect").value;
-  const name = document.getElementById("offlineName").value.trim();
-
-  try {
-    if (!showId) throw new Error("Please select a show.");
-    if (!name) throw new Error("Please enter the performer's name.");
-
-    const mobile = normaliseMobile(document.getElementById("offlineMobile").value);
-
-    button.disabled = true;
-    button.textContent = "Generating link...";
-    offlineMessage.textContent = "Checking show and creating private link...";
-
-    const showSnapshot = await withTimeout(get(ref(db,"shows/"+showId)));
-    if (!showSnapshot.exists()) throw new Error("Show not found.");
-
-    const show = showSnapshot.val();
-
-    if (show.hostUid !== currentUser.uid || show.status !== "Published") {
-      throw new Error("You cannot register an offline performer for this show.");
-    }
-
-    const token = generateSecureToken();
-    const record = {
-      hostUid:currentUser.uid,
-      showId,
-      showName:show.name || "Untitled Show",
-      performerName:name,
-      mobile,
-      status:"Unused",
-      claimedUid:"",
-      claimedAt:0,
-      createdAt:Date.now(),
-      revokedAt:0
-    };
-
-    await withTimeout(set(
-      ref(db,`offlinePerformerLinks/${showId}/${token}`),
-      record
-    ));
-
-    lastGeneratedLink = offlineEntryURL(showId,token);
-
-    const result = document.getElementById("offlineLinkResult");
-    result.textContent =
-      "Private link generated for " + name + ":\n\n" + lastGeneratedLink +
-      "\n\nLink status: Unused — awaiting OTP verification.";
-
-    result.classList.remove("hidden");
-    document.getElementById("copyOfflineLinkBtn").classList.remove("hidden");
-
-    document.getElementById("offlineName").value = "";
-    document.getElementById("offlineMobile").value = "";
-
-    offlineMessage.textContent = "Private entry link created. Share it only with the registered performer.";
-
-    await loadOfflinePerformers(showId);
-
-  } catch (error) {
-    console.error(error);
-    offlineMessage.textContent = "Could not create link: " + error.message;
-  } finally {
-    button.disabled = false;
-    button.textContent = "Generate Private Performer Link";
-  }
-});
-
-document.getElementById("copyOfflineLinkBtn").addEventListener("click", async () => {
-  try {
-    if (!lastGeneratedLink) throw new Error("Generate a link first.");
-    await navigator.clipboard.writeText(lastGeneratedLink);
-    offlineMessage.textContent = "Private performer link copied successfully.";
-  } catch (error) {
-    offlineMessage.textContent = "Copy failed. You can select and copy the link manually.";
-  }
-});
-
-async function loadOfflinePerformers(showId) {
-  const container = offlineMessage;
-  container.textContent = "Loading offline performer records...";
-
-  try {
-    const showSnapshot = await withTimeout(get(ref(db,"shows/"+showId)));
-    if (!showSnapshot.exists() || showSnapshot.val().hostUid !== currentUser.uid) {
-      throw new Error("You do not have access to this show.");
-    }
-
-    const snapshot = await withTimeout(
-      get(ref(db,"offlinePerformerLinks/"+showId))
-    );
-
-    if (!snapshot.exists()) {
-      container.textContent = "No offline performers have been registered for this show yet.";
-      return;
-    }
-
-    const records = [];
-    snapshot.forEach(child => {
-      records.push({token:child.key,...child.val()});
-    });
-
-    records.sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-
-    container.innerHTML = "<strong>Offline performer links</strong>";
-
-    for (const performer of records) {
-      const row = document.createElement("div");
-      row.className = "performer-record";
-
-      const status = String(performer.status || "Unknown");
-      const link = offlineEntryURL(showId,performer.token);
-
-      row.innerHTML = `
-        <strong>${escapeHTML(performer.performerName || "Performer")}</strong><br>
-        <span class="small">Mobile: ${escapeHTML(performer.mobile || "")}</span><br>
-        <span class="small">Status: ${escapeHTML(status)}</span><br>
-        <span class="small">Registered: ${escapeHTML(new Date(Number(performer.createdAt || 0)).toLocaleString("en-IN"))}</span>
-        <div class="button-row">
-          <button class="copyThisBtn secondary">Copy Link</button>
-          <button class="reissueBtn green">Generate Fresh Link</button>
-          <button class="revokeBtn danger">Revoke Link</button>
-        </div>
-      `;
-
-      row.querySelector(".copyThisBtn").addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(link);
-          offlineMessage.textContent = "Link copied for " + performer.performerName + ".";
-        } catch {
-          offlineMessage.textContent = "Could not copy the link. Open the record and copy it manually.";
-        }
-      });
-
-      row.querySelector(".reissueBtn").addEventListener("click", async () => {
-        const confirmed = confirm(
-          "Generate a fresh link for " + performer.performerName +
-          "? The old link will be revoked."
-        );
-        if (!confirmed) return;
-
-        try {
-          await createReplacementLink(showId,performer);
-          await loadOfflinePerformers(showId);
-          offlineMessage.textContent = "Fresh link generated. Copy and share the new link with the performer.";
-        } catch (error) {
-          offlineMessage.textContent = "Could not reissue link: " + error.message;
-        }
-      });
-
-      row.querySelector(".revokeBtn").addEventListener("click", async () => {
-        const confirmed = confirm(
-          "Revoke the private link for " + performer.performerName + "?"
-        );
-        if (!confirmed) return;
-
-        try {
-          await update(ref(db,`offlinePerformerLinks/${showId}/${performer.token}`),{
-            status:"Revoked",
-            revokedAt:Date.now()
-          });
-          await loadOfflinePerformers(showId);
-          offlineMessage.textContent = "Link revoked.";
-        } catch (error) {
-          offlineMessage.textContent = "Could not revoke link: " + error.message;
-        }
-      });
-
-      container.appendChild(row);
-    }
-  } catch (error) {
-    console.error(error);
-    container.textContent = "Could not load offline performers: " + error.message;
-  }
-}
-
-async function createReplacementLink(showId,oldRecord) {
-  const token = generateSecureToken();
-
-  const replacement = {
-    hostUid:currentUser.uid,
-    showId,
-    showName:oldRecord.showName || "Show",
-    performerName:oldRecord.performerName || "",
-    mobile:oldRecord.mobile || "",
-    status:"Unused",
-    claimedUid:"",
-    claimedAt:0,
-    createdAt:Date.now(),
-    revokedAt:0,
-    reissuedFrom:oldRecord.token || ""
-  };
-
-  await withTimeout(update(
-    ref(db,`offlinePerformerLinks/${showId}/${oldRecord.token}`),
-    {status:"Revoked",revokedAt:Date.now()}
-  ));
-
-  await withTimeout(set(
-    ref(db,`offlinePerformerLinks/${showId}/${token}`),
-    replacement
-  ));
-
-  lastGeneratedLink = offlineEntryURL(showId,token);
-
-  const result = document.getElementById("offlineLinkResult");
-  result.textContent =
-    "Fresh private link for " + replacement.performerName +
-    ":\n\n" + lastGeneratedLink;
-  result.classList.remove("hidden");
-  document.getElementById("copyOfflineLinkBtn").classList.remove("hidden");
-}
-
-/* ---------------- POSTER GENERATION ---------------- */
-
-async function createPosterBlob(show,link) {
+async function createPosterBlob(show, link) {
   if (typeof QRCode === "undefined") {
     throw new Error("QR code library did not load. Check your internet connection.");
   }
@@ -891,28 +645,27 @@ async function createPosterBlob(show,link) {
   const qrHolder = document.createElement("div");
   qrHolder.style.position = "fixed";
   qrHolder.style.left = "-10000px";
-  qrHolder.style.top = "0";
   document.body.appendChild(qrHolder);
 
   try {
-    new QRCode(qrHolder,{
-      text:link,
-      width:220,
-      height:220,
-      colorDark:"#000000",
-      colorLight:"#ffffff",
-      correctLevel:QRCode.CorrectLevel.H
+    new QRCode(qrHolder, {
+      text: link,
+      width: 220,
+      height: 220,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
     });
 
-    await new Promise(resolve => setTimeout(resolve,300));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     let qrCanvas = qrHolder.querySelector("canvas");
 
     if (!qrCanvas) {
       const qrImage = qrHolder.querySelector("img");
-      if (!qrImage) throw new Error("Could not create the QR code.");
+      if (!qrImage) throw new Error("Could not create QR code.");
 
-      await new Promise((resolve,reject) => {
+      await new Promise((resolve, reject) => {
         if (qrImage.complete) return resolve();
         qrImage.onload = resolve;
         qrImage.onerror = reject;
@@ -921,7 +674,7 @@ async function createPosterBlob(show,link) {
       qrCanvas = document.createElement("canvas");
       qrCanvas.width = 220;
       qrCanvas.height = 220;
-      qrCanvas.getContext("2d").drawImage(qrImage,0,0,220,220);
+      qrCanvas.getContext("2d").drawImage(qrImage, 0, 0, 220, 220);
     }
 
     const canvas = document.createElement("canvas");
@@ -929,91 +682,87 @@ async function createPosterBlob(show,link) {
     canvas.height = 1350;
 
     const ctx = canvas.getContext("2d");
-    const gradient = ctx.createLinearGradient(0,0,1080,1350);
-    gradient.addColorStop(0,"#111a35");
-    gradient.addColorStop(1,"#401b45");
+    const gradient = ctx.createLinearGradient(0, 0, 1080, 1350);
+    gradient.addColorStop(0, "#111a35");
+    gradient.addColorStop(1, "#401b45");
 
     ctx.fillStyle = gradient;
-    ctx.fillRect(0,0,1080,1350);
+    ctx.fillRect(0, 0, 1080, 1350);
 
     ctx.strokeStyle = "#f5bd43";
     ctx.lineWidth = 8;
-    ctx.strokeRect(35,35,1010,1280);
+    ctx.strokeRect(35, 35, 1010, 1280);
 
     ctx.textAlign = "center";
     ctx.fillStyle = "#f5bd43";
     ctx.font = "bold 58px Arial";
-    ctx.fillText("MELODY MAGIC",540,135);
+    ctx.fillText("MELODY MAGIC", 540, 135);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 42px Arial";
-    ctx.fillText("DIGITAL AUDITORIUM",540,200);
+    ctx.fillText("DIGITAL AUDITORIUM", 540, 200);
 
     ctx.fillStyle = "#f5bd43";
     ctx.font = "bold 35px Arial";
-    ctx.fillText("PRESENTS",540,280);
+    ctx.fillText("PRESENTS", 540, 280);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 62px Arial";
-    drawWrappedText(ctx,show.name || "Music Show",540,405,900,78);
+    drawWrappedText(ctx, show.name || "Music Show", 540, 405, 900, 78);
 
     ctx.fillStyle = "#f5bd43";
     ctx.font = "bold 38px Arial";
-    ctx.fillText("SHOW DETAILS",540,620);
+    ctx.fillText("SHOW DETAILS", 540, 620);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "36px Arial";
-    ctx.fillText(formatDate(show.date),540,690);
-    ctx.fillText(formatTime12Hour(show.time) + " IST",540,755);
+    ctx.fillText(formatDate(show.date), 540, 690);
+    ctx.fillText(formatTime12Hour(show.time) + " IST", 540, 755);
 
     ctx.font = "30px Arial";
     ctx.fillText(
       "Performer Entry: " +
       (Number(show.performerFee || 0) === 0 ? "FREE" : "Rs. " + Number(show.performerFee)),
-      540,840
+      540, 830
     );
 
     ctx.fillText(
       "Audience Entry: " +
       (Number(show.audienceFee || 0) === 0 ? "FREE" : "Rs. " + Number(show.audienceFee)),
-      540,900
+      540, 890
     );
 
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(420,950,240,240);
-    ctx.drawImage(qrCanvas,430,960,220,220);
+    ctx.fillRect(420, 930, 240, 240);
+    ctx.drawImage(qrCanvas, 430, 940, 220, 220);
 
     ctx.fillStyle = "#f5bd43";
     ctx.font = "bold 28px Arial";
-    ctx.fillText("SCAN TO JOIN THE SHOW",540,1230);
+    ctx.fillText("SCAN TO JOIN THE SHOW", 540, 1200);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "22px Arial";
-    ctx.fillText("All timings in Indian Standard Time (IST)",540,1275);
+    ctx.font = "25px Arial";
+    ctx.fillText("Contact host for paid entry", 540, 1245);
 
-    return await new Promise((resolve,reject) => {
+    const number = String(show.hostWhatsApp || "").replace(/\D/g, "");
+    if (number) {
+      ctx.font = "23px Arial";
+      ctx.fillText("WhatsApp: +" + number, 540, 1285);
+    }
+
+    return await new Promise((resolve, reject) => {
       canvas.toBlob(blob => {
         if (blob) resolve(blob);
         else reject(new Error("Could not create poster image."));
-      },"image/png");
+      }, "image/png");
     });
+
   } finally {
     qrHolder.remove();
   }
 }
 
-function downloadBlob(blob,filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url),2000);
-}
-
-function drawWrappedText(ctx,text,x,y,maxWidth,lineHeight) {
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
   const words = String(text).split(/\s+/);
   let line = "";
   let currentY = y;
@@ -1021,7 +770,7 @@ function drawWrappedText(ctx,text,x,y,maxWidth,lineHeight) {
   for (const word of words) {
     const test = line ? line + " " + word : word;
     if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line,x,currentY);
+      ctx.fillText(line, x, currentY);
       line = word;
       currentY += lineHeight;
     } else {
@@ -1029,12 +778,23 @@ function drawWrappedText(ctx,text,x,y,maxWidth,lineHeight) {
     }
   }
 
-  if (line) ctx.fillText(line,x,currentY);
+  if (line) ctx.fillText(line, x, currentY);
 }
 
-/* ---------------- LOGOUT ---------------- */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
 
-document.getElementById("logoutBtn").addEventListener("click",async () => {
+/* LOGOUT */
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
   try {
     await signOut(auth);
     location.href = "host-login.html";
