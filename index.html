@@ -1,27 +1,451 @@
-const audienceButton=document.createElement("a");
-audienceButton.className="show-button secondary";
 
-if(!audiencePaid){
-  audienceButton.textContent="JOIN FREE AS AUDIENCE";
-  audienceButton.href="audience-entry.html?showId="+encodeURIComponent(showId);
-}else{
-  const hostNumber=getHostWhatsApp(show);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melody Magic Digital Auditorium</title>
+<meta name="description" content="A multilingual online music platform for singers, performers, audiences and hosts. All languages and music genres welcome.">
 
-  if(hostNumber){
-   audienceButton.textContent="PAY & JOIN SHOW";
+<style>
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#080808;color:#fff;font-family:Arial,Helvetica,sans-serif}
+:root{--gold:#e8c36c;--gold2:#b88a36;--muted:#c9c2b4}
 
-   const message="Hello, I want to join your paid show: "+
-    (show.name||show.title||"Singing Show")+
-    ". Please share payment details and audience entry instructions.";
+header{padding:19px 15px;text-align:center;border-bottom:1px solid #705726;background:#090909}
+.logo{color:var(--gold);font-size:27px;font-weight:900;letter-spacing:3px}
+.tagline{color:#c9b98f;font-size:12px;margin-top:7px;letter-spacing:2px}
 
-   audienceButton.href="https://wa.me/"+hostNumber+
-    "?text="+encodeURIComponent(message);
-
-   audienceButton.target="_blank";
-   audienceButton.rel="noopener noreferrer";
-  }else{
-   audienceButton.textContent="CONTACT HOST FOR ENTRY";
-   audienceButton.classList.add("disabled");
-   audienceButton.removeAttribute("href");
-  }
+nav{
+ display:flex;justify-content:center;align-items:center;
+ flex-wrap:wrap;gap:18px;padding:15px;background:#111;
+ position:sticky;top:0;z-index:20;border-bottom:1px solid #493a20
 }
+nav a{color:var(--gold);text-decoration:none;font-size:13px}
+nav a:hover{color:white}
+
+.hero{
+ min-height:540px;display:flex;align-items:center;
+ justify-content:center;text-align:center;padding:65px 20px;
+ background:
+ linear-gradient(90deg,rgba(0,0,0,.91),rgba(0,0,0,.55),rgba(0,0,0,.88)),
+ url("https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1800&q=85");
+ background-size:cover;background-position:center;
+ border-bottom:1px solid #80612b
+}
+.hero-content{max-width:850px}
+.hero-tag{color:var(--gold);letter-spacing:4px;font-size:12px;margin-bottom:18px;font-weight:bold}
+.hero h1{font-size:clamp(34px,7vw,65px);line-height:1.12;color:#f4d78e;margin:0 0 20px;text-shadow:0 3px 15px #000}
+.hero p{max-width:680px;margin:0 auto 28px;color:#eee;font-size:17px;line-height:1.8}
+
+.btn{
+ display:inline-block;background:linear-gradient(135deg,#f3d78c,#bd8c36);
+ color:#171006;padding:14px 22px;border-radius:7px;
+ text-decoration:none;font-weight:bold;margin:6px;
+ transition:.2s;border:1px solid #e8c36c
+}
+.btn:hover{transform:translateY(-3px);box-shadow:0 7px 20px #9c792e55}
+.btn.outline{background:transparent;color:var(--gold)}
+
+section{padding:55px 18px;text-align:center}
+.section-tag{color:#b88a36;letter-spacing:3px;font-size:11px;font-weight:bold}
+h2{color:var(--gold);font-size:clamp(24px,4vw,34px);margin:12px 0}
+.section-intro{color:var(--muted);line-height:1.8;max-width:700px;margin:0 auto 25px;font-size:14px}
+
+.roles{background:linear-gradient(180deg,#100e0a,#080808)}
+.role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px;max-width:1050px;margin:32px auto 0}
+.role-card{
+ position:relative;overflow:hidden;border:1px solid #765a29;
+ border-radius:14px;min-height:300px;text-align:left;
+ display:flex;align-items:flex-end;background-size:cover;
+ background-position:center;transition:.25s
+}
+.role-card:hover{transform:translateY(-5px);border-color:#f1d28a}
+.role-card:before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.96),rgba(0,0,0,.15))}
+.performer{background-image:url("https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=800&q=85")}
+.audience{background-image:url("https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=800&q=85")}
+.host{background-image:url("https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=800&q=85")}
+.role-content{position:relative;z-index:1;padding:24px;width:100%}
+.role-number{color:var(--gold);font-size:12px;letter-spacing:2px}
+.role-card h3{font-size:23px;margin:10px 0;color:#f4d78e}
+.role-card p{color:#eee;font-size:13px;line-height:1.6}
+.role-card .btn{margin:8px 0 0}
+
+.shows-section{background:linear-gradient(180deg,#080808,#15110a,#080808)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,320px));justify-content:center;gap:22px;margin:30px auto;max-width:1100px}
+.show-card{background:#151515;border:1px solid #80612b;border-radius:13px;overflow:hidden;text-align:left;transition:.2s}
+.show-card:hover{transform:translateY(-4px);box-shadow:0 8px 25px #000}
+.show-image{width:100%;height:185px;object-fit:cover;display:block;background:#211b10}
+.show-info{padding:19px}
+.show-label{display:inline-block;background:#30240d;color:#f0ce78;border-radius:20px;padding:6px 11px;font-size:10px;letter-spacing:1px}
+.show-card h3{color:var(--gold);font-size:21px;margin:13px 0}
+.show-card p{color:#c9c2b4;font-size:13px;line-height:1.65;margin:8px 0}
+.show-entry{color:#f0ce78!important;font-weight:bold;font-size:15px!important}
+.performer-entry{color:#9fe5c0!important;font-weight:bold;font-size:15px!important}
+.show-button{
+ display:block;text-align:center;
+ background:linear-gradient(135deg,#f3d78c,#bd8c36);
+ color:#171006;padding:12px 10px;border-radius:6px;
+ text-decoration:none;font-weight:bold;margin-top:11px;font-size:12px
+}
+.show-button.secondary{background:transparent;border:1px solid var(--gold);color:var(--gold)}
+.show-button.disabled{opacity:.55;pointer-events:none}
+.show-message{color:#c9c2b4;line-height:1.7;padding:25px}
+
+.features{background:#100e0a}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));max-width:1000px;margin:30px auto;gap:15px}
+.feature{background:#191714;border:1px solid #493a20;padding:22px 15px;border-radius:10px}
+.feature .symbol{font-size:30px}
+.feature h3{color:var(--gold);font-size:16px}
+.feature p{color:var(--muted);font-size:13px;line-height:1.6}
+
+.about{max-width:850px;margin:auto;color:var(--muted);line-height:1.9;font-size:15px}
+.about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;max-width:1000px;margin:30px auto}
+.about-item{background:#191714;border:1px solid #493a20;border-radius:10px;padding:20px}
+.about-item h3{color:var(--gold);font-size:16px}
+.about-item p{color:var(--muted);font-size:13px;line-height:1.7}
+
+.contact-strip{background:linear-gradient(120deg,#30220d,#100e0a);border-top:1px solid #765a29;border-bottom:1px solid #765a29}
+footer{text-align:center;padding:27px 15px;color:#aaa;border-top:1px solid #493a20;font-size:12px;line-height:2}
+footer a{color:var(--gold);text-decoration:none}
+
+@media(max-width:600px){
+ nav{gap:13px}
+ nav a{font-size:12px}
+ .hero{min-height:470px;padding:50px 15px}
+ .hero p{font-size:14px}
+ .role-card{min-height:270px}
+ section{padding:43px 14px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+ <div class="logo">MELODY MAGIC</div>
+ <div class="tagline">DIGITAL AUDITORIUM • SING • CONNECT • CELEBRATE</div>
+</header>
+
+<nav>
+ <a href="#home">HOME</a>
+ <a href="#about">ABOUT US</a>
+ <a href="#join">JOIN US</a>
+ <a href="#shows">UPCOMING LIVE SHOWS</a>
+ <a href="host-login.html">HOST LOGIN</a>
+ <a href="host-signup.html">HOST SIGN UP</a>
+ <a href="admin-poster-review.html" id="adminLink" style="display:none">ADMIN PANEL</a>
+</nav>
+
+<div class="hero" id="home">
+ <div class="hero-content">
+  <div class="hero-tag">WELCOME TO YOUR MUSICAL WORLD</div>
+  <h1>YOUR STAGE.<br>YOUR VOICE.<br>YOUR AUDITORIUM.</h1>
+  <p>Experience the magic of live music. Perform your favourite songs, enjoy amazing singers and connect with music lovers from anywhere.</p>
+  <a class="btn" href="#join">EXPLORE & JOIN</a>
+  <a class="btn outline" href="#shows">EXPLORE SHOWS</a>
+ </div>
+</div>
+
+<section class="roles" id="join">
+ <div class="section-tag">CHOOSE YOUR EXPERIENCE</div>
+ <h2>HOW WOULD YOU LIKE TO JOIN?</h2>
+ <p class="section-intro">Whether you love singing, enjoy listening or want to host your own show, there is a place for you at Melody Magic.</p>
+
+ <div class="role-grid">
+  <div class="role-card performer">
+   <div class="role-content">
+    <div class="role-number">01 • SING YOUR HEART OUT</div>
+    <h3>JOIN AS PERFORMER</h3>
+    <p>Show your talent, register for singing shows and perform before a live audience.</p>
+    <a class="btn" href="#shows">FIND A SHOW</a>
+   </div>
+  </div>
+
+  <div class="role-card audience">
+   <div class="role-content">
+    <div class="role-number">02 • ENJOY THE MUSIC</div>
+    <h3>JOIN AS AUDIENCE</h3>
+    <p>Register for free or paid shows through one simple audience registration form.</p>
+    <a class="btn" href="#shows">EXPLORE SHOWS</a>
+   </div>
+  </div>
+
+  <div class="role-card host">
+   <div class="role-content">
+    <div class="role-number">03 • CREATE YOUR EVENT</div>
+    <h3>JOIN AS HOST</h3>
+    <p>Apply to become a host, create your own digital auditorium, organise shows and bring performers together.</p>
+    <a class="btn" href="host-signup.html">SIGN UP FOR HOST</a>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section class="shows-section" id="shows">
+ <div class="section-tag">DISCOVER THE MUSIC</div>
+ <h2>UPCOMING LIVE SINGING SHOWS</h2>
+ <p class="section-intro">Choose your favourite show. Register for free shows directly or submit your payment reference for paid shows. The host will verify paid registrations.</p>
+
+ <div class="cards" id="publishedShows">
+  <div class="show-message">Loading published shows...</div>
+ </div>
+</section>
+
+<section class="features">
+ <div class="section-tag">THE DIGITAL MUSIC EXPERIENCE</div>
+ <h2>MORE THAN JUST A SHOW</h2>
+
+ <div class="feature-grid">
+  <div class="feature"><div class="symbol">🎤</div><h3>Live Performances</h3><p>Give singers an opportunity to showcase their talent.</p></div>
+  <div class="feature"><div class="symbol">🎧</div><h3>Watch & Listen</h3><p>Enjoy performances from the comfort of your home.</p></div>
+  <div class="feature"><div class="symbol">👏</div><h3>Live Reactions</h3><p>Share emojis and reactions with your favourite singers.</p></div>
+  <div class="feature"><div class="symbol">🎁</div><h3>Virtual Gifts</h3><p>Show appreciation for the performers you love.</p></div>
+  <div class="feature"><div class="symbol">💬</div><h3>Host Moderated Chat</h3><p>Enjoy a respectful environment with host-controlled comments.</p></div>
+ </div>
+</section>
+
+<section id="about">
+ <div class="section-tag">OUR MUSICAL COMMUNITY</div>
+ <h2>ABOUT MELODY MAGIC DIGITAL AUDITORIUM</h2>
+
+ <p class="about">
+  Melody Magic Digital Auditorium is an online platform created to bring singers, performers, music lovers and hosts together in one virtual auditorium.
+  Our vision is to make music accessible to everyone, everywhere, without any language, regional or cultural limitations. Whether you sing in Hindi, Marathi, English, Tamil, Telugu, Bengali, Gujarati, Punjabi or any other language, you are welcome here.
+  Performers can discover singing shows, register and showcase their talent. Audiences can join available events, enjoy performances, interact through reactions and support their favourite artists. Approved hosts can create and manage their own digital shows, connect with performers and build their musical communities.
+  From Bollywood retro, regional music and karaoke to classical, devotional, independent music, folk, fusion and open-mic sessions, every genre and every voice has a place here.
+  No language barriers. No boundaries. Just music, talent and togetherness.
+  Join us to share your talent, enjoy music and connect with a growing global musical community. Every voice deserves a stage!
+ </p>
+
+ <div class="about-grid">
+  <div class="about-item"><h3>🎤 For Performers</h3><p>Discover upcoming singing shows and register to perform your favourite songs in any language or musical style.</p></div>
+  <div class="about-item"><h3>🎧 For Audiences</h3><p>Explore musical events, enjoy performances from different cultures and join available free or paid audience sessions.</p></div>
+  <div class="about-item"><h3>🎙️ For Hosts</h3><p>Apply for host access and, once approved, create and manage your own digital shows for performers and audiences.</p></div>
+  <div class="about-item"><h3>🌟 Our Mission</h3><p>Build an inclusive musical community without language or regional boundaries, where everyone can share their passion for music.</p></div>
+ </div>
+
+ <p class="about">
+  <strong style="color:var(--gold)">Created by Amol Kamble</strong><br>
+  Melody Magic Music Studio
+ </p>
+</section>
+
+<section class="contact-strip" id="contact">
+ <div class="section-tag">WE ARE HERE TO HELP</div>
+ <h2>CONTACT MELODY MAGIC</h2>
+ <p class="section-intro">For general enquiries, technical support or questions about hosting, contact our administrator directly on WhatsApp.</p>
+
+ <a class="btn" href="https://wa.me/919920360237?text=Hello%2C%20I%20have%20an%20enquiry%20about%20Melody%20Magic%20Digital%20Auditorium." target="_blank" rel="noopener noreferrer">
+  CONTACT US ON WHATSAPP
+ </a>
+
+ <p class="section-intro" style="margin-top:18px">
+  Want to become a host?
+  <a href="host-signup.html" style="color:var(--gold)">Apply for Host Sign Up</a>
+ </p>
+</section>
+
+<footer>
+ © 2026 Melody Magic Digital Auditorium<br>
+ Sing Together. Shine Together.<br>
+ <a href="#contact">Contact Us</a> |
+ <a href="host-login.html">Host Login</a> |
+ <a href="host-signup.html">Host Sign Up</a>
+</footer>
+
+<script type="module">
+import {auth,db} from "./firebase.js";
+
+import {
+ ref,onValue
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+import {
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+const ADMIN_UID="PI8sswS9a3ZBU001D3SBejMBJyO2";
+const showsContainer=document.getElementById("publishedShows");
+const adminLink=document.getElementById("adminLink");
+
+onAuthStateChanged(auth,user=>{
+ adminLink.style.display=user&&user.uid===ADMIN_UID?"inline":"none";
+});
+
+let publishedShows={};
+let approvedPosters={};
+
+function normaliseWhatsApp(number){
+ if(!number)return "";
+ let digits=String(number).replace(/\D/g,"");
+
+ if(digits.length===10)digits="91"+digits;
+ else if(digits.length===11&&digits.startsWith("0"))
+  digits="91"+digits.substring(1);
+
+ return digits;
+}
+
+function getHostWhatsApp(show){
+ return normaliseWhatsApp(
+  show.hostWhatsApp||
+  show.hostWhatsapp||
+  show.contactWhatsApp||
+  show.whatsappNumber||
+  show.hostPhone||
+  show.hostMobile||
+  show.mobile||
+  ""
+ );
+}
+
+function safePosterUrl(url){
+ if(typeof url!=="string")return "";
+ try{
+  const parsed=new URL(url);
+  if(parsed.protocol==="https:" &&
+     parsed.hostname==="res.cloudinary.com"){
+   return url;
+  }
+ }catch(error){}
+ return "";
+}
+
+function makeShowCard(show,showId){
+ const card=document.createElement("article");
+ card.className="show-card";
+
+ const poster=approvedPosters[showId];
+ const image=document.createElement("img");
+ image.className="show-image";
+ image.alt=(show.name||"Singing show")+" poster";
+ image.loading="lazy";
+
+ const approvedImage=safePosterUrl(poster&&poster.imageUrl);
+
+ image.src=approvedImage||
+  "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=800&q=85";
+
+ image.onerror=()=>{
+  image.onerror=null;
+  image.src="https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=80";
+ };
+
+ const info=document.createElement("div");
+ info.className="show-info";
+
+ // Audience fee and performer fee are separate.
+ const audienceFee=Number(
+  show.audienceFee??show.audienceEntryFee??show.entryFee??0
+ );
+
+ const performerFee=Number(
+  show.performerFee??show.performerEntryFee??0
+ );
+
+ const audiencePaid=Number.isFinite(audienceFee)&&audienceFee>0;
+ const performerPaid=Number.isFinite(performerFee)&&performerFee>0;
+
+ const label=document.createElement("span");
+ label.className="show-label";
+ label.textContent=audiencePaid?"PAID ENTRY SHOW":"FREE ENTRY SHOW";
+
+ const title=document.createElement("h3");
+ title.textContent=show.name||show.title||"Untitled Show";
+
+ const host=document.createElement("p");
+ host.textContent="Host: "+(show.hostName||"Approved Host");
+
+ const dateTime=document.createElement("p");
+ dateTime.textContent="Date: "+(show.date||"Not specified")+
+  " | Time: "+(show.time||"Not specified");
+
+ const description=document.createElement("p");
+ description.textContent=show.description||"Join this live musical experience.";
+
+ const entry=document.createElement("p");
+ entry.className="show-entry";
+ entry.textContent=audiencePaid
+  ?"Audience Entry Fee: ₹"+audienceFee
+  :"Audience Entry: FREE";
+
+ const performerEntry=document.createElement("p");
+ performerEntry.className="performer-entry";
+ performerEntry.textContent=performerPaid
+  ?"Performer Registration Fee: ₹"+performerFee
+  :"Performer Registration: FREE";
+
+ const performerButton=document.createElement("a");
+ performerButton.className="show-button";
+ performerButton.textContent="REGISTER AS PERFORMER";
+ performerButton.href="singer-registration.html?showId="+encodeURIComponent(showId);
+
+ // One audience registration page for both free and paid shows.
+ const audienceButton=document.createElement("a");
+ audienceButton.className="show-button secondary";
+ audienceButton.textContent="REGISTER AS AUDIENCE";
+ audienceButton.href=
+  "audience-entry.html?showId="+encodeURIComponent(showId);
+
+ info.append(
+  label,
+  title,
+  host,
+  dateTime,
+  description,
+  entry,
+  performerEntry,
+  performerButton,
+  audienceButton
+ );
+
+ card.append(image,info);
+ return card;
+}
+
+function renderShows(){
+ showsContainer.replaceChildren();
+
+ const shows=Object.entries(publishedShows)
+  .filter(([id,show])=>show&&show.status==="Published")
+  .map(([id,show])=>({id,...show}));
+
+ shows.sort((a,b)=>{
+  const dateA=new Date((a.date||"")+"T"+(a.time||"00:00"));
+  const dateB=new Date((b.date||"")+"T"+(b.time||"00:00"));
+  return dateA-dateB;
+ });
+
+ if(shows.length===0){
+  const empty=document.createElement("div");
+  empty.className="show-message";
+  empty.textContent="No published shows yet. Please check again soon.";
+  showsContainer.appendChild(empty);
+  return;
+ }
+
+ shows.forEach(show=>{
+  showsContainer.appendChild(makeShowCard(show,show.id));
+ });
+}
+
+onValue(ref(db,"shows"),snapshot=>{
+ publishedShows=snapshot.val()||{};
+ renderShows();
+},error=>{
+ console.error("Show loading error:",error);
+ showsContainer.textContent="Unable to load shows: "+error.message;
+});
+
+onValue(ref(db,"approvedPosters"),snapshot=>{
+ approvedPosters=snapshot.val()||{};
+ renderShows();
+},error=>{
+ console.error("Poster loading error:",error);
+});
+</script>
+
+</body>
+</html>
