@@ -44,7 +44,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div class="card">
 <h2 id="formHeading">Audience Registration</h2>
 <p id="formIntroduction" class="muted">
-Enter your name to register for this show.
+Enter your details to register for this show.
 </p>
 
 <div id="paymentArea" class="payment-box hidden">
@@ -52,7 +52,12 @@ Enter your name to register for this show.
 <p class="muted">
 Contact the host using the button below to confirm payment details. After making payment, enter your UPI transaction ID / UTR number below and submit your application.
 </p>
-<a id="hostContact" class="contact-link hidden" target="_blank" rel="noopener">CONTACT HOST ON WHATSAPP</a>
+
+<a id="hostContact" class="contact-link hidden"
+target="_blank" rel="noopener">
+CONTACT HOST ON WHATSAPP
+</a>
+
 <p class="location-note">
 Your application remains pending until the host verifies your payment and approves your entry. Submitting a transaction reference does not confirm payment.
 </p>
@@ -61,9 +66,35 @@ Your application remains pending until the host verifies your payment and approv
 <form id="entryForm">
 
 <label for="audienceName">Full Name</label>
-<input id="audienceName" type="text" placeholder="Enter your full name" maxlength="80" autocomplete="name" required>
+<input
+id="audienceName"
+type="text"
+placeholder="Enter your full name"
+maxlength="80"
+autocomplete="name"
+required
+>
 
-<h3 style="color:#e7bd68;margin-top:25px">Your Location <span style="color:#aaa;font-size:12px;font-weight:normal">(Optional)</span></h3>
+<div id="audienceMobileArea" class="hidden">
+<label for="audienceMobile">Mobile Number (Required for Paid Shows)</label>
+<input
+id="audienceMobile"
+type="tel"
+placeholder="Enter 10-digit mobile number"
+maxlength="10"
+minlength="10"
+pattern="[6-9][0-9]{9}"
+inputmode="numeric"
+autocomplete="tel"
+>
+<p class="location-note">
+Your mobile number will be shared with the host for registration and payment-related communication.
+</p>
+</div>
+
+<h3 style="color:#e7bd68;margin-top:25px">
+Your Location <span style="color:#aaa;font-size:12px;font-weight:normal">(Optional)</span>
+</h3>
 
 <label for="audienceCountry">Country (Optional)</label>
 <select id="audienceCountry">
@@ -86,7 +117,12 @@ Select your country, state and city if you wish. Location is optional. GPS permi
 
 <div id="paymentReferenceArea" class="hidden">
 <label for="paymentReference">Payment Transaction ID / UTR Number</label>
-<input id="paymentReference" type="text" maxlength="100" placeholder="Enter your UPI transaction ID / UTR number">
+<input
+id="paymentReference"
+type="text"
+maxlength="100"
+placeholder="Enter your UPI transaction ID / UTR number"
+>
 <p class="location-note">
 Enter the reference number shown in your payment app. Never enter your UPI PIN, password or bank details.
 </p>
@@ -111,6 +147,7 @@ Enter the reference number shown in your payment app. Never enter your UPI PIN, 
 </label>
 
 <button id="submitButton" type="submit">SUBMIT REGISTRATION</button>
+
 </form>
 
 <div id="message" aria-live="polite"></div>
@@ -118,6 +155,7 @@ Enter the reference number shown in your payment app. Never enter your UPI PIN, 
 </div>
 
 <script type="module">
+
 import {db,auth} from "./firebase.js";
 
 import {
@@ -136,15 +174,20 @@ const showDetails=document.getElementById("showDetails");
 const form=document.getElementById("entryForm");
 const message=document.getElementById("message");
 const button=document.getElementById("submitButton");
+
 const paymentArea=document.getElementById("paymentArea");
 const paymentReferenceArea=document.getElementById("paymentReferenceArea");
 const paymentReference=document.getElementById("paymentReference");
 const hostContact=document.getElementById("hostContact");
 
 const nameInput=document.getElementById("audienceName");
+const mobileInput=document.getElementById("audienceMobile");
+const mobileArea=document.getElementById("audienceMobileArea");
+
 const countryInput=document.getElementById("audienceCountry");
 const stateInput=document.getElementById("audienceState");
 const cityInput=document.getElementById("audienceCity");
+
 const acceptRules=document.getElementById("acceptRules");
 const locationStatus=document.getElementById("locationStatus");
 
@@ -153,14 +196,19 @@ let isPaidShow=false;
 let submitting=false;
 
 // MESSAGE
+
 function showMessage(text,type){
  message.textContent=text;
  message.className=type;
 }
 
+// PHONE CLEANING
+
 function cleanPhone(value){
  return String(value||"").replace(/\D/g,"");
 }
+
+// LOCATION API
 
 async function apiRequest(url,options={}){
  const response=await fetch(url,options);
@@ -195,6 +243,7 @@ function setOptions(select,placeholder,items){
 }
 
 // LOAD COUNTRIES
+
 async function loadCountries(){
  try{
   countryInput.disabled=true;
@@ -223,8 +272,10 @@ async function loadCountries(){
  }
 }
 
-// LOAD STATES WHEN COUNTRY CHANGES
+// LOAD STATES
+
 countryInput.addEventListener("change",async()=>{
+
  const country=countryInput.value;
 
  setOptions(stateInput,"Select state / province",[]);
@@ -238,6 +289,7 @@ countryInput.addEventListener("change",async()=>{
  locationStatus.textContent="Loading states...";
 
  try{
+
   const data=await apiRequest(
    API+"/countries/states/q?country="+encodeURIComponent(country)
   );
@@ -255,14 +307,18 @@ countryInput.addEventListener("change",async()=>{
    :"No state list available for this country. Location remains optional.";
 
  }catch(error){
+
   console.error("State loading error:",error);
+
   locationStatus.textContent=
    "Could not load states. You can continue registration without location.";
  }
 });
 
-// LOAD CITIES WHEN STATE CHANGES
+// LOAD CITIES
+
 stateInput.addEventListener("change",async()=>{
+
  const country=countryInput.value;
  const state=stateInput.value;
 
@@ -274,12 +330,16 @@ stateInput.addEventListener("change",async()=>{
  locationStatus.textContent="Loading cities...";
 
  try{
+
   const data=await apiRequest(
    API+"/countries/state/cities",
    {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({country:country,state:state})
+    body:JSON.stringify({
+     country:country,
+     state:state
+    })
    }
   );
 
@@ -295,14 +355,18 @@ stateInput.addEventListener("change",async()=>{
    :"No city list available for this state. Location remains optional.";
 
  }catch(error){
+
   console.error("City loading error:",error);
+
   locationStatus.textContent=
    "Could not load cities. You can continue registration without location.";
  }
 });
 
 // AUDIENCE FEE
+
 function getAudienceEntryFee(show){
+
  return Number(
   show.audienceFee??
   show.audienceEntryFee??
@@ -312,12 +376,16 @@ function getAudienceEntryFee(show){
 }
 
 function getAudienceEntryType(show){
+
  return getAudienceEntryFee(show)>0?"paid":"free";
 }
 
 // LOAD SELECTED SHOW
+
 async function loadShow(){
+
  try{
+
   if(!showId){
    throw new Error("No show selected. Please return to the homepage.");
   }
@@ -335,6 +403,12 @@ async function loadShow(){
   }
 
   isPaidShow=getAudienceEntryType(selectedShow)==="paid";
+
+  // MOBILE REQUIRED ONLY FOR PAID SHOWS
+
+  mobileArea.classList.toggle("hidden",!isPaidShow);
+  mobileInput.required=isPaidShow;
+  mobileInput.value="";
 
   const title=document.createElement("h3");
   title.textContent=selectedShow.name||selectedShow.title||"Live Show";
@@ -356,10 +430,12 @@ async function loadShow(){
   showDetails.replaceChildren(title,date,time,host,fee);
 
   if(isPaidShow){
-   document.getElementById("formHeading").textContent="Paid Audience Registration";
+
+   document.getElementById("formHeading").textContent=
+    "Audience Registration";
 
    document.getElementById("formIntroduction").textContent=
-    "Complete your details and payment reference to apply for audience entry.";
+    "Enter your name, mobile number and payment reference to apply for this paid show.";
 
    paymentArea.classList.remove("hidden");
    paymentReferenceArea.classList.remove("hidden");
@@ -378,34 +454,55 @@ async function loadShow(){
    );
 
    if(phone){
-    hostContact.href="https://wa.me/"+(phone.length===10?"91"+phone:phone);
+
+    hostContact.href="https://wa.me/"+
+     (phone.length===10?"91"+phone:phone);
+
     hostContact.classList.remove("hidden");
+
    }else{
+
+    hostContact.classList.add("hidden");
+
     const note=document.createElement("p");
     note.className="error";
-    note.textContent="The host has not added a WhatsApp contact number. Please contact the show organiser.";
+    note.textContent=
+     "The host has not added a WhatsApp contact number. Please contact the show organiser.";
+
     paymentArea.appendChild(note);
    }
 
   }else{
-   document.getElementById("formHeading").textContent="Free Audience Entry";
+
+   document.getElementById("formHeading").textContent=
+    "Audience Registration";
 
    document.getElementById("formIntroduction").textContent=
-    "Enter your name to join this free show. Location is optional. Registration is automatically approved.";
+    "Enter your name to join this free show. Location is optional. Your entry is automatically approved.";
+
+   paymentArea.classList.add("hidden");
+   paymentReferenceArea.classList.add("hidden");
+
+   paymentReference.required=false;
+   mobileInput.required=false;
 
    button.textContent="JOIN FREE SHOW";
   }
 
  }catch(error){
+
   showDetails.textContent=error.message;
   showDetails.className="error";
   form.style.display="none";
+
   console.error(error);
  }
 }
 
 // CHECK EXISTING REGISTRATION
+
 async function findExistingRegistration(uid){
+
  const requestsQuery=query(
   ref(db,"audienceEntryRequests/"+showId),
   orderByChild("audienceUid"),
@@ -419,6 +516,7 @@ async function findExistingRegistration(uid){
  const requests=snapshot.val();
 
  for(const [requestId,request] of Object.entries(requests)){
+
   if(!request) continue;
 
   const status=String(request.status||"").toLowerCase();
@@ -431,8 +529,10 @@ async function findExistingRegistration(uid){
  return null;
 }
 
-// REGISTRATION SUBMISSION
+// FORM SUBMISSION
+
 form.addEventListener("submit",async(event)=>{
+
  event.preventDefault();
 
  if(submitting) return;
@@ -443,29 +543,53 @@ form.addEventListener("submit",async(event)=>{
  }
 
  const name=nameInput.value.trim();
+ const mobile=mobileInput.value.trim();
+
  const country=countryInput.value.trim();
  const state=stateInput.value.trim();
  const city=cityInput.value.trim();
+
  const accepted=acceptRules.checked;
  const reference=paymentReference.value.trim();
 
- // Location is optional.
  if(!name||!accepted){
-  showMessage("Please enter your full name and accept the auditorium rules.","error");
+  showMessage(
+   "Please enter your full name and accept the auditorium rules.",
+   "error"
+  );
   return;
  }
 
+ // MOBILE VALIDATION ONLY FOR PAID SHOWS
+
+ if(isPaidShow&&!/^[6-9][0-9]{9}$/.test(mobile)){
+  showMessage(
+   "Please enter a valid 10-digit Indian mobile number.",
+   "error"
+  );
+  mobileInput.focus();
+  return;
+ }
+
+ // PAYMENT REFERENCE ONLY FOR PAID SHOWS
+
  if(isPaidShow&&!reference){
-  showMessage("Please enter your payment transaction ID / UTR number.","error");
+  showMessage(
+   "Please enter your payment transaction ID / UTR number.",
+   "error"
+  );
+  paymentReference.focus();
   return;
  }
 
  submitting=true;
  button.disabled=true;
  button.textContent="PLEASE WAIT...";
+
  showMessage("Checking your registration...","muted");
 
  try{
+
   let user=auth.currentUser;
 
   if(!user){
@@ -474,58 +598,84 @@ form.addEventListener("submit",async(event)=>{
   }
 
   // CHECK BLOCK STATUS
+
   const blockSnapshot=await get(
    ref(db,"audienceBlocks/"+showId+"/"+user.uid)
   );
 
   if(blockSnapshot.exists()&&blockSnapshot.val()?.blocked===true){
-   throw new Error("You are blocked from entering this show. Please contact the host if you think this is a mistake.");
+   throw new Error(
+    "You are blocked from entering this show. Please contact the host if you think this is a mistake."
+   );
   }
 
   // RECHECK SHOW
+
   const latestShowSnapshot=await get(ref(db,"shows/"+showId));
 
-  if(!latestShowSnapshot.exists()||
-     latestShowSnapshot.val().status!=="Published"){
-   throw new Error("This show is no longer available for registration.");
+  if(
+   !latestShowSnapshot.exists()||
+   latestShowSnapshot.val().status!=="Published"
+  ){
+   throw new Error(
+    "This show is no longer available for registration."
+   );
   }
 
   const latestShow=latestShowSnapshot.val();
   const latestIsPaid=getAudienceEntryType(latestShow)==="paid";
 
   if(latestIsPaid!==isPaidShow){
-   throw new Error("The audience entry type has changed. Please refresh this page and try again.");
+   throw new Error(
+    "The audience entry type has changed. Please refresh this page and try again."
+   );
   }
 
   const latestAudienceFee=getAudienceEntryFee(latestShow);
 
   // CHECK EXISTING APPLICATIONS
+
   const existing=await findExistingRegistration(user.uid);
 
   if(existing){
+
    const status=String(existing.request.status||"").toLowerCase();
 
    if(status==="approved"){
-    throw new Error("You are already registered and approved for this show.");
+    throw new Error(
+     "You are already registered and approved for this show."
+    );
    }
 
    if(status==="pending"){
-    throw new Error("Your application is already pending with the host. Please wait for the host to review it.");
+    throw new Error(
+     "Your application is already pending with the host. Please wait for the host to review it."
+    );
    }
   }
 
-  const requestRef=push(ref(db,"audienceEntryRequests/"+showId));
+  // CREATE REGISTRATION
+
+  const requestRef=push(
+   ref(db,"audienceEntryRequests/"+showId)
+  );
+
   const requestId=requestRef.key;
   const now=Date.now();
 
   const locationParts=[city,state,country].filter(Boolean);
+
   const locationName=locationParts.length
    ?locationParts.join(", ")
    :"Not provided";
 
   const registration={
+
    audienceUid:user.uid,
    name:name,
+
+   // Mobile is saved only for paid audience registrations.
+   mobile:isPaidShow?mobile:"",
 
    country:country,
    state:state,
@@ -538,39 +688,56 @@ form.addEventListener("submit",async(event)=>{
 
    entryType:isPaidShow?"Paid":"Free",
    entryFee:isPaidShow?latestAudienceFee:0,
+
    audienceEntryType:isPaidShow?"paid":"free",
    audienceEntryFee:isPaidShow?latestAudienceFee:0,
 
    rulesAccepted:true,
    rulesAcceptedAt:now,
 
+   // Free audience is automatically approved.
+   // Paid audience waits for host approval.
    status:isPaidShow?"Pending":"Approved",
+
    createdAt:now
   };
 
   if(isPaidShow){
+
    registration.paymentReference=reference;
-   registration.paymentStatus="Submitted for host verification";
+
+   registration.paymentStatus=
+    "Submitted for host verification";
   }
 
   const updates={};
 
-  updates["audienceEntryRequests/"+showId+"/"+requestId]=registration;
+  updates[
+   "audienceEntryRequests/"+showId+"/"+requestId
+  ]=registration;
+
+  // FREE AUDIENCE GETS IMMEDIATE ACCESS
 
   if(!isPaidShow){
-   updates["audienceAccess/"+showId+"/"+user.uid]=true;
+
+   updates[
+    "audienceAccess/"+showId+"/"+user.uid
+   ]=true;
   }
 
   await update(ref(db),updates);
 
   if(isPaidShow){
+
    showMessage(
-    "Your paid audience application has been submitted successfully. Your entry is PENDING. The host must verify your payment and approve your application.",
+    "Your paid audience application has been submitted successfully. Your application is WAITING FOR HOST APPROVAL. The host must verify your payment and approve your application.",
     "success"
    );
+
   }else{
+
    showMessage(
-    "Your free audience registration is confirmed! Your entry is automatically approved. Please enter the auditorium when the show starts.",
+    "Your free audience registration is confirmed! Your entry is automatically approved. You can enter the auditorium when the show starts.",
     "success"
    );
   }
@@ -579,13 +746,22 @@ form.addEventListener("submit",async(event)=>{
   form.style.display="none";
 
  }catch(error){
+
   console.error("Audience entry error:",error);
-  showMessage("Registration failed: "+error.message,"error");
+
+  showMessage(
+   "Registration failed: "+error.message,
+   "error"
+  );
+
  }finally{
+
   submitting=false;
 
   if(form.style.display!=="none"){
+
    button.disabled=false;
+
    button.textContent=isPaidShow
     ?"SUBMIT PAID SHOW APPLICATION"
     :"JOIN FREE SHOW";
@@ -594,8 +770,10 @@ form.addEventListener("submit",async(event)=>{
 });
 
 // START PAGE
+
 loadCountries();
 loadShow();
+
 </script>
 </body>
 </html>
