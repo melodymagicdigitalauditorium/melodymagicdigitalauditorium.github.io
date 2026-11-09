@@ -220,8 +220,7 @@ Join us to share your talent, enjoy music and connect with a growing global musi
 </div>
 
 <p class="about">
-<strong style="color:var(--gold)">Created by Amol Kamble</strong><br>
-Melody Magic Music Studio
+<strong style="color:var(--gold)">Created &amp; Managed by Melody Magic Music Studio</strong>
 </p>
 </section>
 
@@ -238,6 +237,7 @@ Want to become a host?
 
 <footer>
 © 2026 Melody Magic Digital Auditorium<br>
+Created & Managed by Melody Magic Music Studio<br>
 Sing Together. Shine Together.<br>
 <a href="#contact">Contact Us</a> |
 <a href="host-login.html">Host Login</a> |
@@ -299,7 +299,6 @@ return url;
 return "";
 }
 
-// Create individual show card.
 function makeShowCard(show,showId){
 
 const card=document.createElement("article");
@@ -324,23 +323,17 @@ image.src="https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=for
 const info=document.createElement("div");
 info.className="show-info";
 
-// Format fee values.
 function formatFee(value){
-
 if(value===null||value===undefined||String(value).trim()===""){
 return "Not announced";
 }
-
 const amount=Number(value);
-
 if(!Number.isFinite(amount)||amount<0){
 return "Not announced";
 }
-
 return amount===0?"FREE":"₹"+amount;
 }
 
-// Read separate fee values from Firebase.
 const soloFee=formatFee(show.soloEntryFee);
 const duetFee=formatFee(show.duetEntryFee);
 const audienceFee=formatFee(
@@ -398,7 +391,6 @@ card.append(image,info);
 return card;
 }
 
-// Display only published shows.
 function renderShows(){
 
 showsContainer.replaceChildren();
@@ -426,7 +418,6 @@ showsContainer.appendChild(makeShowCard(show,show.id));
 });
 }
 
-// Listen for published shows.
 onValue(ref(db,"shows"),snapshot=>{
 publishedShows=snapshot.val()||{};
 renderShows();
@@ -435,7 +426,6 @@ console.error("Show loading error:",error);
 showsContainer.textContent="Unable to load shows: "+error.message;
 });
 
-// Listen for approved posters.
 onValue(ref(db,"approvedPosters"),snapshot=>{
 approvedPosters=snapshot.val()||{};
 renderShows();
