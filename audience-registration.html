@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melody Magic - Audience Registration</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  padding:20px;
+  background:#090807;
+  color:white;
+  font-family:Arial,sans-serif;
+}
+
+.container{
+  max-width:600px;
+  margin:25px auto;
+}
+
+h1,h2{color:#e7bd68}
+
+.card{
+  background:#191510;
+  border:1px solid #705322;
+  border-radius:12px;
+  padding:22px;
+  margin:18px 0;
+}
+
+.muted{
+  color:#c2b7a6;
+  line-height:1.6;
+}
+
+.fee{
+  color:#e7bd68;
+  font-weight:bold;
+  font-size:19px;
+}
+
+.action{
+  display:block;
+  width:100%;
+  padding:15px;
+  margin-top:18px;
+  border-radius:7px;
+  text-align:center;
+  text-decoration:none;
+  font-size:16px;
+  font-weight:bold;
+  border:0;
+}
+
+.join{
+  background:#e7bd68;
+  color:#171009;
+}
+
+.whatsapp{
+  background:#25D366;
+  color:#071b0c;
+}
+
+.error{
+  color:#ff9999;
+  line-height:1.6;
+}
+
+.success{
+  color:#8ee29a;
+  line-height:1.6;
+}
+
+.hidden{display:none!important}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>MELODY MAGIC</h1>
+  <p class="muted">DIGITAL AUDITORIUM</p>
+
+  <div class="card">
+    <h2>Selected Show</h2>
+
+    <div id="showDetails" class="muted">
+      Loading show details...
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Audience Registration</h2>
+
+    <div id="entryDetails" class="muted">
+      Checking audience entry details...
+    </div>
+
+    <a id="joinButton"
+       class="action join hidden">
+       JOIN SHOW
+    </a>
+
+    <a id="whatsappButton"
+       class="action whatsapp hidden"
+       target="_blank"
+       rel="noopener">
+       CONTACT HOST ON WHATSAPP
+    </a>
+
+    <div id="message" class="muted"></div>
+  </div>
+
+</div>
+
+<script type="module">
+
+import { db } from "./firebase.js";
+
+import {
+  ref,
+  get
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const showId =
+  new URLSearchParams(window.location.search).get("showId");
+
+const showDetails =
+  document.getElementById("showDetails");
+
+const entryDetails =
+  document.getElementById("entryDetails");
+
+const joinButton =
+  document.getElementById("joinButton");
+
+const whatsappButton =
+  document.getElementById("whatsappButton");
+
+const messageBox =
+  document.getElementById("message");
+
+function cleanPhone(value){
+  return String(value || "").replace(/\D/g, "");
+}
+
+function addDetail(label,value){
+  const p = document.createElement("p");
+  p.textContent = label + ": " + value;
+  return p;
+}
+
+function getAudienceFee(show){
+
+  const value = show.audienceFee;
+
+  if(value === null || value === undefined || value === ""){
+    return 0;
+  }
+
+  const fee = Number(value);
+
+  if(!Number.isFinite(fee) || fee < 0){
+    throw new Error("Invalid audience entry fee. Please contact the organiser.");
+  }
+
+  return fee;
+}
+
+async function loadShow(){
+
+  try{
+
+    if(!showId){
+      throw new Error("No show selected. Please select a show from the homepage.");
+    }
+
+    const snapshot = await get(
+      ref(db,"shows/" + showId)
+    );
+
+    if(!snapshot.exists()){
+      throw new Error("This show does not exist.");
+    }
+
+    const show = snapshot.val();
+
+    if(show.status !== "Published"){
+      throw new Error("This show is not currently available.");
+    }
+
+    const title =
+      show.name || show.title || "Singing Show";
+
+    const hostName =
+      show.hostName || "Show Host";
+
+    const fee = getAudienceFee(show);
+
+    showDetails.replaceChildren();
+
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+
+    showDetails.appendChild(heading);
+
+    showDetails.appendChild(
+      addDetail("Date",show.date || "To be announced")
+    );
+
+    showDetails.appendChild(
+      addDetail("Time",show.time || "To be announced")
+    );
+
+    showDetails.appendChild(
+      addDetail("Host",hostName)
+    );
+
+    entryDetails.replaceChildren();
+
+    const feeText = document.createElement("p");
+    feeText.className = "fee";
+
+    feeText.textContent =
+      fee === 0 ? "Audience Entry: FREE" :
+      "Audience Entry Fee: ₹" + fee;
+
+    entryDetails.appendChild(feeText);
+
+    if(fee === 0){
+
+      // FREE SHOW: DIRECT ENTRY
+      joinButton.href =
+        "live-stage.html?showId=" +
+        encodeURIComponent(showId);
+
+      joinButton.classList.remove("hidden");
+
+      messageBox.className = "success";
+      messageBox.textContent =
+        "This is a free show. Click JOIN SHOW to enter directly.";
+
+    }else{
+
+      // PAID SHOW: CONTACT HOST
+      const phone = cleanPhone(
+        show.hostWhatsApp ||
+        show.hostWhatsapp ||
+        show.hostMobile ||
+        show.contactWhatsApp ||
+        show.whatsappNumber ||
+        show.hostPhone ||
+        show.mobile
+      );
+
+      if(!phone){
+
+        messageBox.className = "error";
+        messageBox.textContent =
+          "The host has not added a WhatsApp number. Please contact the organiser through another available channel.";
+
+        return;
+      }
+
+      const whatsappNumber =
+        phone.length === 10 ? "91" + phone : phone;
+
+      const whatsappMessage =
+        "Hello " + hostName +
+        ", I want to join your paid audience show: " +
+        title +
+        ". Please share the entry fee payment and joining details.";
+
+      whatsappButton.href =
+        "https://wa.me/" +
+        whatsappNumber +
+        "?text=" +
+        encodeURIComponent(whatsappMessage);
+
+      whatsappButton.classList.remove("hidden");
+
+      messageBox.className = "muted";
+      messageBox.textContent =
+        "This is a paid show. Contact the host on WhatsApp for payment and joining instructions.";
+
+    }
+
+  }catch(error){
+
+    console.error("Audience page error:",error);
+
+    showDetails.className = "error";
+    showDetails.textContent = error.message;
+
+    entryDetails.textContent = "";
+    messageBox.textContent = "";
+
+  }
+
+}
+
+loadShow();
+
+</script>
+
+</body>
+</html>
