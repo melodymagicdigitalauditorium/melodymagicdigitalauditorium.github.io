@@ -1,1 +1,276 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melody Magic - Live Stage</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080b14;color:#fff;
+ font-family:Arial,sans-serif;text-align:center;
+}
+header{
+ padding:22px 12px;background:#111827;
+ border-bottom:2px solid #d4af37;
+}
+h1{color:#f5d76e;margin:0;font-size:24px}
+.subtitle{color:#bbb;margin-top:8px}
+.container{max-width:850px;margin:auto;padding:18px}
+.card{
+ background:#151c2b;border:1px solid #30394b;
+ border-radius:14px;padding:18px;margin:15px 0;
+}
+.status{
+ display:inline-block;padding:7px 14px;
+ border-radius:20px;background:#343b4c;color:#fff;
+ font-size:13px;font-weight:bold;
+}
+.status.live{background:#a71919}
+h2{color:#f5d76e}
+.performers{
+ display:flex;flex-wrap:wrap;justify-content:center;gap:12px;
+ margin-top:15px;
+}
+.performer{
+ background:#222c40;padding:14px 18px;
+ border-radius:10px;min-width:120px;
+}
+.performer strong{display:block;margin-top:7px}
+.role{
+ font-size:11px;color:#f5d76e;font-weight:bold;
+ letter-spacing:1px;
+}
+#player{
+ width:100%;aspect-ratio:16/9;
+ background:#000;border-radius:12px;
+ overflow:hidden;
+}
+#player iframe{width:100%;height:100%;border:0}
+button{
+ background:#d4af37;color:#111;border:0;
+ padding:13px 22px;border-radius:8px;
+ font-weight:bold;font-size:15px;cursor:pointer;
+ margin:10px 0;
+}
+.message{color:#bbb;line-height:1.6}
+footer{padding:20px;color:#888;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<header>
+ <h1>MELODY MAGIC</h1>
+ <div class="subtitle">DIGITAL AUDITORIUM • LIVE STAGE</div>
+</header>
+
+<div class="container">
+
+ <div class="card">
+  <span id="status" class="status">CONNECTING...</span>
+  <h2 id="showTitle">Live Performance</h2>
+  <p id="stageMessage" class="message">
+   Connecting to the auditorium...
+  </p>
+ </div>
+
+ <div class="card">
+  <h2>NOW PERFORMING</h2>
+  <div id="performers" class="performers">
+   <p class="message">Waiting for performers...</p>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>KARAOKE TRACK</h2>
+  <div id="player">
+   <p class="message" style="padding:35px 10px">
+    The host will start the karaoke track here.
+   </p>
+  </div>
+  <button id="playButton" style="display:none" onclick="playTrack()">
+   PLAY KARAOKE TRACK
+  </button>
+ </div>
+
+ <div class="card">
+  <h2>Welcome to the Show!</h2>
+  <p class="message">
+   Enjoy the performance and support our singers.
+   Please wait while the host manages the stage.
+  </p>
+ </div>
+
+</div>
+
+<footer>
+ Created by Melody Magic Music Studio
+</footer>
+
+<script type="module">
+import {db} from "./firebase.js";
+import {
+ ref,onValue
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const params = new URLSearchParams(location.search);
+const showId = params.get("showId");
+
+const statusEl = document.getElementById("status");
+const titleEl = document.getElementById("showTitle");
+const messageEl = document.getElementById("stageMessage");
+const performersEl = document.getElementById("performers");
+const playerEl = document.getElementById("player");
+const playButton = document.getElementById("playButton");
+
+let currentVideoId = "";
+
+function getVideoId(value){
+ if(!value) return "";
+ try{
+  const url = new URL(value);
+  if(url.hostname.includes("youtu.be")){
+   return url.pathname.split("/").filter(Boolean)[0] || "";
+  }
+  if(url.searchParams.get("v")){
+   return url.searchParams.get("v");
+  }
+  const parts = url.pathname.split("/").filter(Boolean);
+  const index = parts.findIndex(p => ["embed","shorts","live"].includes(p));
+  if(index >= 0) return parts[index+1] || "";
+ }catch(e){}
+ return "";
+}
+
+function showPerformers(data){
+ performersEl.innerHTML = "";
+
+ let list = data.performers || data.singers || [];
+
+ if(!Array.isArray(list)){
+  list = Object.values(list);
+ }
+
+ if(data.hostJoins && data.host){
+  list = list.filter(p => p.role !== "HOST");
+ }
+
+ if(data.hostName || data.host){
+  const hostName = data.hostName ||
+   (typeof data.host === "string" ? data.host : data.host.name);
+
+  if(hostName){
+   addPerformer(hostName,"HOST");
+  }
+ }
+
+ list.forEach(person => {
+  if(!person) return;
+  const name = person.name || person.displayName || person.singerName || "Singer";
+  const role = person.role === "HOST" ? "HOST" :
+   (person.role || "SINGER").toUpperCase();
+
+  if(role !== "HOST") addPerformer(name,role);
+ });
+}
+
+function addPerformer(name,role){
+ const div = document.createElement("div");
+ div.className = "performer";
+
+ const label = document.createElement("span");
+ label.className = "role";
+ label.textContent = role;
+
+ const strong = document.createElement("strong");
+ strong.textContent = name;
+
+ div.appendChild(label);
+ div.appendChild(strong);
+ performersEl.appendChild(div);
+}
+
+function playTrack(){
+ if(!currentVideoId) return;
+
+ playerEl.innerHTML = "";
+ const iframe = document.createElement("iframe");
+ iframe.src = "https://www.youtube-nocookie.com/embed/" +
+  encodeURIComponent(currentVideoId) + "?autoplay=1&rel=0";
+ iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+ iframe.allowFullscreen = true;
+ playerEl.appendChild(iframe);
+}
+
+window.playTrack = playTrack;
+
+if(!showId){
+ statusEl.textContent = "SHOW ID MISSING";
+ messageEl.textContent =
+  "Please open the Live Stage using the show link provided by the host.";
+}else{
+
+ onValue(ref(db,"livePerformance/"+showId),(snapshot)=>{
+  const data = snapshot.val();
+
+  if(!data){
+   statusEl.textContent = "WAITING";
+   statusEl.className = "status";
+   messageEl.textContent =
+    "The host has not started a performance yet.";
+   performersEl.innerHTML =
+    '<p class="message">Waiting for performers...</p>';
+   playerEl.innerHTML =
+    '<p class="message" style="padding:35px 10px">Waiting for the host...</p>';
+   playButton.style.display = "none";
+   currentVideoId = "";
+   return;
+  }
+
+  titleEl.textContent = data.showName || data.title || "Live Performance";
+
+  if(String(data.status || "").toLowerCase() === "stopped"){
+   statusEl.textContent = "STAGE PAUSED";
+   statusEl.className = "status";
+   messageEl.textContent = "The host has stopped the performance.";
+   playButton.style.display = "none";
+   currentVideoId = "";
+   playerEl.innerHTML =
+    '<p class="message" style="padding:35px 10px">Performance stopped.</p>';
+   showPerformers(data);
+   return;
+  }
+
+  statusEl.textContent = "LIVE PERFORMANCE";
+  statusEl.className = "status live";
+  messageEl.textContent = "The host is managing the live stage.";
+
+  showPerformers(data);
+
+  const trackValue = data.trackUrl || data.youtubeUrl || data.youtubeLink || "";
+  const videoId = data.youtubeId || getVideoId(trackValue);
+
+  if(videoId && videoId !== currentVideoId){
+   currentVideoId = videoId;
+   playerEl.innerHTML =
+    '<p class="message" style="padding:35px 10px">Karaoke track is ready. Tap Play to listen.</p>';
+   playButton.style.display = "inline-block";
+  }else if(!videoId){
+   currentVideoId = "";
+   playButton.style.display = "none";
+   playerEl.innerHTML =
+    '<p class="message" style="padding:35px 10px">Waiting for the host to add a karaoke track.</p>';
+  }
+ },(error)=>{
+  statusEl.textContent = "CONNECTION ERROR";
+  messageEl.textContent = error.message;
+ });
+}
+</script>
+
+</body>
+</html>
+
