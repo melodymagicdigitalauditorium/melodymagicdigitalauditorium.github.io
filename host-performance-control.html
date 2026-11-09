@@ -1,0 +1,495 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host Live Control - Melody Magic</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#090d18;color:white;
+ font-family:Arial,sans-serif;padding:15px
+}
+header{
+ background:#151d32;padding:20px;text-align:center;
+ border-bottom:2px solid #e5ad35
+}
+h2,h3{color:#f5bd43}
+main{max-width:850px;margin:20px auto}
+.card{
+ background:#151d32;border:1px solid #39445e;
+ border-radius:12px;padding:16px;margin-bottom:15px
+}
+input,select{
+ width:100%;padding:12px;margin:7px 0;
+ background:#0c1426;color:white;
+ border:1px solid #53617c;border-radius:7px;
+ font-size:15px
+}
+button{
+ width:100%;padding:13px;margin:6px 0;
+ border:0;border-radius:7px;
+ background:#e5ad35;color:#111;
+ font-weight:bold;font-size:15px
+}
+.green{background:#16834a;color:white}
+.grey{background:#35415d;color:white}
+.singer{
+ background:#0c1426;border:1px solid #46516b;
+ border-radius:10px;padding:14px;margin:12px 0
+}
+.small{font-size:13px;color:#b9c4d8}
+.host{color:#f5bd43;font-weight:bold}
+#message{
+ background:#26344d;padding:12px;
+ border-radius:8px;margin:12px 0
+}
+.hidden{display:none}
+footer{text-align:center;color:#aaa;padding:20px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>MELODY MAGIC</h2>
+DIGITAL AUDITORIUM - HOST CONTROL
+</header>
+
+<main>
+
+<div id="message">Checking host account...</div>
+
+<div id="panel" class="hidden">
+
+<div class="card">
+<h2>Host Control</h2>
+<div id="hostInfo"></div>
+
+<label>Select Your Show</label>
+<select id="showSelect">
+<option value="">Select Show</option>
+</select>
+
+<button class="grey" id="openStage">
+Open Live Stage
+</button>
+</div>
+
+<div class="card">
+<h2>Approved Singer List</h2>
+<p class="small">
+Approved singers will automatically appear here.
+</p>
+<div id="singerList">Loading singers...</div>
+</div>
+
+<div class="card">
+<h2>Current Performance</h2>
+<div id="currentPerformance">
+No performance started.
+</div>
+<button class="grey" id="stopButton">
+Stop Performance
+</button>
+</div>
+
+</div>
+</main>
+
+<footer>
+Melody Magic Digital Auditorium<br>
+Powered by Melody Magic Music Studio
+</footer>
+
+<script type="module">
+
+import {auth,db} from "./firebase-host.js";
+
+import {
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+ ref,get,set,update,onValue
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const $ = id => document.getElementById(id);
+
+let currentUser=null;
+let hostData={};
+let shows={};
+let registrations={};
+let tracks={};
+let selectedShow="";
+
+function showMessage(message){
+ $("message").textContent=message;
+}
+
+function escapeHTML(value){
+ return String(value??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",
+ '"':"&quot;","'":"&#39;"
+ }[c]));
+}
+
+function getYouTubeID(url){
+ try{
+  const u=new URL(url);
+  let id="";
+
+  if(u.hostname.includes("youtu.be")){
+   id=u.pathname.split("/")[1];
+  }else{
+   id=u.searchParams.get("v")||"";
+   if(!id && u.pathname.includes("/embed/")){
+    id=u.pathname.split("/embed/")[1];
+   }
+   if(!id && u.pathname.includes("/shorts/")){
+    id=u.pathname.split("/shorts/")[1];
+   }
+  }
+
+  return /^[A-Za-z0-9_-]{11}$/.test(id)?id:"";
+ }catch(e){
+  return "";
+ }
+}
+
+function getApprovedSingers(){
+ return Object.entries(registrations||{})
+ .filter(([id,s])=>
+  s && ["Approved","Queued"].includes(
+   String(s.status||"")
+  )
+ )
+ .map(([id,s])=>({id,...s}));
+}
+
+function renderSingers(){
+
+ const box=$("singerList");
+ const singers=getApprovedSingers();
+
+ if(!selectedShow){
+  box.textContent="Please select a show.";
+  return;
+ }
+
+ if(!singers.length){
+  box.textContent="No approved singers yet.";
+  return;
+ }
+
+ box.innerHTML="";
+
+ singers.forEach(singer=>{
+
+  const card=document.createElement("div");
+  card.className="singer";
+
+  const partnerOptions=singers
+   .filter(s=>s.id!==singer.id)
+   .map(s=>`<option value="${escapeHTML(s.id)}">${escapeHTML(s.name||"Singer")}</option>`)
+   .join("");
+
+  const saved=tracks[singer.id]||{};
+
+  card.innerHTML=`
+   <h3>${escapeHTML(singer.name||"Singer")}</h3>
+   <div class="small">APPROVED PERFORMER</div>
+
+   <label>Karaoke Track YouTube Link</label>
+   <input class="trackLink"
+    placeholder="Paste karaoke YouTube link"
+    value="${escapeHTML(saved.videoUrl||"")}">
+
+   <label>Assign Duet Partner</label>
+   <select class="partner">
+    <option value="">Solo Performance</option>
+    ${partnerOptions}
+   </select>
+
+   <label>
+    <input type="checkbox" class="hostJoins"
+     style="width:auto">
+    Host also joins this performance
+   </label>
+
+   <button class="grey saveButton">
+    Save Track Link
+   </button>
+
+   <button class="green startButton">
+    START PERFORMANCE
+   </button>
+
+   <div class="small result"></div>
+  `;
+
+  const link=card.querySelector(".trackLink");
+  const partner=card.querySelector(".partner");
+  const hostJoins=card.querySelector(".hostJoins");
+  const result=card.querySelector(".result");
+
+  card.querySelector(".saveButton").onclick=async()=>{
+
+   const videoId=getYouTubeID(link.value);
+
+   if(!videoId){
+    result.textContent="Please enter a valid YouTube link.";
+    return;
+   }
+
+   try{
+    await set(
+     ref(db,`performanceTracks/${selectedShow}/${singer.id}`),
+     {
+      videoUrl:link.value.trim(),
+      videoId:videoId,
+      updatedAt:Date.now(),
+      hostUid:currentUser.uid
+     }
+    );
+
+    result.textContent="Track link saved successfully.";
+
+   }catch(error){
+    result.textContent="Error: "+error.message;
+   }
+  };
+
+  card.querySelector(".startButton").onclick=async()=>{
+
+   const videoId=getYouTubeID(link.value);
+
+   if(!videoId){
+    result.textContent="Paste a valid YouTube track link.";
+    return;
+   }
+
+   const partnerSinger=singers.find(
+    s=>s.id===partner.value
+   );
+
+   if(partner.value && !partnerSinger){
+    result.textContent="Select an approved duet partner.";
+    return;
+   }
+
+   const performers=[
+    {
+     id:singer.id,
+     name:singer.name||"Singer",
+     role:"SINGER"
+    }
+   ];
+
+   if(partnerSinger){
+    performers.push({
+     id:partnerSinger.id,
+     name:partnerSinger.name||"Singer",
+     role:"SINGER"
+    });
+   }
+
+   if(hostJoins.checked){
+    performers.push({
+     id:"HOST",
+     name:hostData.name||currentUser.displayName||"Host",
+     role:"HOST"
+    });
+   }
+
+   const mode=partnerSinger?
+    (hostJoins.checked?"TRIO":"DUET"):
+    (hostJoins.checked?"HOST + SINGER":"SOLO");
+
+   try{
+
+    const data={
+     showId:selectedShow,
+     hostUid:currentUser.uid,
+     status:"Live",
+     mode:mode,
+     performers:performers,
+     videoUrl:link.value.trim(),
+     videoId:videoId,
+     startedAt:Date.now()
+    };
+
+    await set(
+     ref(db,`performanceTracks/${selectedShow}/${singer.id}`),
+     {
+      videoUrl:link.value.trim(),
+      videoId:videoId,
+      updatedAt:Date.now(),
+      hostUid:currentUser.uid
+     }
+    );
+
+    await set(
+     ref(db,`livePerformance/${selectedShow}`),
+     data
+    );
+
+    result.textContent="Performance started!";
+
+   }catch(error){
+    result.textContent="Could not start: "+error.message;
+   }
+  };
+
+  box.appendChild(card);
+ });
+}
+
+function watchShow(showId){
+
+ selectedShow=showId;
+ registrations={};
+ tracks={};
+
+ if(!showId){
+  $("singerList").textContent="Select your show.";
+  return;
+ }
+
+ onValue(
+  ref(db,`showRegistrations/${showId}`),
+  snapshot=>{
+   registrations=snapshot.val()||{};
+   renderSingers();
+  }
+ );
+
+ onValue(
+  ref(db,`performanceTracks/${showId}`),
+  snapshot=>{
+   tracks=snapshot.val()||{};
+   renderSingers();
+  }
+ );
+
+ onValue(
+  ref(db,`livePerformance/${showId}`),
+  snapshot=>{
+
+   const data=snapshot.val();
+
+   if(!data || data.status!=="Live"){
+    $("currentPerformance").textContent=
+     "No performance running.";
+    return;
+   }
+
+   const names=(data.performers||[])
+    .map(p=>(p.role==="HOST"?"HOST: ":"")+p.name)
+    .join(" + ");
+
+   $("currentPerformance").textContent=
+    data.mode+" - "+names;
+  }
+ );
+}
+
+$("showSelect").onchange=e=>{
+ watchShow(e.target.value);
+};
+
+$("openStage").onclick=()=>{
+ if(!selectedShow){
+  alert("Select a show first.");
+  return;
+ }
+ window.open(
+  "live-performance.html?showId="+
+  encodeURIComponent(selectedShow),
+  "_blank"
+ );
+};
+
+$("stopButton").onclick=async()=>{
+ if(!selectedShow)return;
+
+ await update(
+  ref(db,`livePerformance/${selectedShow}`),
+  {
+   status:"Stopped",
+   stoppedAt:Date.now()
+  }
+ );
+};
+
+onAuthStateChanged(auth,async user=>{
+
+ if(!user){
+  showMessage("Please login with your host account.");
+  return;
+ }
+
+ currentUser=user;
+
+ try{
+
+  const hostSnap=await get(
+   ref(db,"hostApplications/"+user.uid)
+  );
+
+  if(!hostSnap.exists()){
+   throw new Error("Host application not found.");
+  }
+
+  hostData=hostSnap.val();
+
+  const start=Number(hostData.subscriptionStartAt||0);
+  const end=Number(hostData.subscriptionEndAt||0);
+
+  if(hostData.status!=="Approved" ||
+     !start || !end ||
+     Date.now()<start || Date.now()>=end){
+   throw new Error("Host approval and active subscription required.");
+  }
+
+  $("hostInfo").innerHTML=
+   `<span class="host">HOST:</span> ${
+    escapeHTML(hostData.name||user.email)
+   }`;
+
+  const showSnap=await get(ref(db,"shows"));
+  shows=showSnap.val()||{};
+
+  const myShows=Object.entries(shows)
+   .filter(([id,s])=>
+    s && s.hostUid===user.uid &&
+    s.status!=="Deleted"
+   );
+
+  $("showSelect").innerHTML=
+   '<option value="">Select Show</option>'+
+   myShows.map(([id,s])=>
+    `<option value="${escapeHTML(id)}">${
+     escapeHTML(s.name||s.title||"Show")
+    }</option>`
+   ).join("");
+
+  $("message").classList.add("hidden");
+  $("panel").classList.remove("hidden");
+
+  if(myShows.length===1){
+   $("showSelect").value=myShows[0][0];
+   watchShow(myShows[0][0]);
+  }
+
+ }catch(error){
+  showMessage("Host access error: "+error.message);
+ }
+
+});
+
+</script>
+</body>
+</html>
