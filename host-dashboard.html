@@ -4,100 +4,123 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Host Live Control - Melody Magic</title>
+<title>Melody Magic Digital Auditorium - Host Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;background:#090d18;color:white;
- font-family:Arial,sans-serif;padding:15px
-}
-header{
- background:#151d32;padding:20px;text-align:center;
- border-bottom:2px solid #e5ad35
-}
-h2,h3{color:#f5bd43}
-main{max-width:850px;margin:20px auto}
-.card{
- background:#151d32;border:1px solid #39445e;
- border-radius:12px;padding:16px;margin-bottom:15px
-}
-input,select{
- width:100%;padding:12px;margin:7px 0;
- background:#0c1426;color:white;
- border:1px solid #53617c;border-radius:7px;
- font-size:15px
-}
-button{
- width:100%;padding:13px;margin:6px 0;
- border:0;border-radius:7px;
- background:#e5ad35;color:#111;
- font-weight:bold;font-size:15px
-}
-.green{background:#16834a;color:white}
-.grey{background:#35415d;color:white}
-.singer{
- background:#0c1426;border:1px solid #46516b;
- border-radius:10px;padding:14px;margin:12px 0
-}
-.small{font-size:13px;color:#b9c4d8}
-.host{color:#f5bd43;font-weight:bold}
-#message{
- background:#26344d;padding:12px;
- border-radius:8px;margin:12px 0
-}
+body{margin:0;background:#090d18;color:#fff;font-family:Arial,sans-serif}
+header{background:#151d32;padding:20px;text-align:center;border-bottom:2px solid #e5ad35}
+h1,h2{color:#f5bd43}
+h1{margin:0}
+.container{max-width:1000px;margin:25px auto;padding:15px}
+.card,.show{background:#151d32;padding:20px;border-radius:12px;margin-bottom:20px}
+.show{border:1px solid #39445e;margin:12px 0}
+input,textarea,select{width:100%;padding:12px;margin:7px 0 14px;border:1px solid #39445e;border-radius:7px;background:#0c1426;color:white}
+button{padding:12px 18px;border:0;border-radius:7px;background:#e5ad35;color:#111;font-weight:bold;cursor:pointer;margin:5px 3px}
+button:disabled{opacity:.5}
+button.secondary{background:#35415d;color:white}
+button.green{background:#16834a;color:white}
+button.danger{background:#b83232;color:white}
+label{display:block;color:#dbe2ef}
+.small{color:#b9c4d8;font-size:13px}
+.status{padding:12px;background:#26344d;border-radius:7px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .hidden{display:none}
-footer{text-align:center;color:#aaa;padding:20px}
+a{color:#f5bd43;overflow-wrap:anywhere}
+.button-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.button-row button{flex:1 1 145px}
+.show-details{background:#0c1426;border:1px solid #39445e;border-radius:8px;padding:12px;margin-top:12px}
+.poster-preview{display:block;max-width:280px;width:100%;height:auto;margin:12px 0;border-radius:9px}
+.upload-status{color:#f5bd43;font-size:13px;white-space:pre-wrap}
+.time-note{color:#f5bd43;font-size:13px;margin-top:-8px;margin-bottom:12px}
+.badge{display:inline-block;padding:5px 9px;border-radius:5px;background:#35415d;font-size:12px}
+.badge.pending{background:#8a6415}
+.badge.approved{background:#176b42}
+.badge.rejected{background:#8b2929}
+.fee-group{border:1px solid #39445e;border-radius:8px;padding:12px;margin:12px 0}
+footer{text-align:center;padding:25px;color:#aab4c8}
+@media(max-width:600px){
+.container{padding:10px}
+.card{padding:15px}
+button{width:100%;margin:5px 0}
+.button-row button{width:auto}
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<h2>MELODY MAGIC</h2>
-DIGITAL AUDITORIUM - HOST CONTROL
+<h1>MELODY MAGIC</h1>
+<div>DIGITAL AUDITORIUM — HOST DASHBOARD</div>
 </header>
 
-<main>
+<div class="container">
+<div id="message" class="status">Checking host account...</div>
 
-<div id="message">Checking host account...</div>
-
-<div id="panel" class="hidden">
+<div id="dashboard" class="hidden">
 
 <div class="card">
-<h2>Host Control</h2>
-<div id="hostInfo"></div>
+<h2>Host Account</h2>
+<div id="hostInfo">Loading...</div>
+<button class="danger" id="logoutBtn">Logout</button>
+</div>
 
-<label>Select Your Show</label>
-<select id="showSelect">
-<option value="">Select Show</option>
+<div class="card">
+<h2>Create Your Show</h2>
+
+<label>Show Name</label>
+<input id="showName" placeholder="Enter show name" required>
+
+<label>Show Description</label>
+<textarea id="showDescription" rows="3" placeholder="Describe your show"></textarea>
+
+<label>Show Date</label>
+<input id="showDate" type="date" required>
+
+<label>Show Time (India Standard Time)</label>
+<input id="showTime" type="time" required>
+<div class="time-note">All show timings are in IST (UTC+5:30).</div>
+
+<label>Host WhatsApp Number</label>
+<input id="hostWhatsApp" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit Indian mobile number" required>
+<p class="small">Performers and paid audience members will contact you on this number.</p>
+
+<div class="fee-group">
+<h3>Performer Entry Fees</h3>
+
+<label>Solo Entry Fee (₹)</label>
+<input id="soloEntryFee" type="number" min="0" step="1" placeholder="Enter solo entry fee">
+
+<label>Duet Entry Fee (₹)</label>
+<input id="duetEntryFee" type="number" min="0" step="1" placeholder="Enter duet entry fee">
+
+<p class="small">Leave blank if you have not decided the fee. Enter 0 for FREE.</p>
+</div>
+
+<label>Audience Entry Fee (₹)</label>
+<input id="audienceFee" type="number" min="0" step="1" value="0">
+
+<label>Show Type</label>
+<select id="showType">
+<option value="Karaoke">Karaoke</option>
+<option value="Live Singing">Live Singing</option>
+<option value="Music Show">Music Show</option>
+<option value="Open Mic">Open Mic</option>
+<option value="Other">Other</option>
 </select>
 
-<button class="grey" id="openStage">
-Open Live Stage
-</button>
+<button id="createShowBtn">Create Show</button>
+<div id="createMessage" class="small"></div>
 </div>
 
 <div class="card">
-<h2>Approved Singer List</h2>
-<p class="small">
-Approved singers will automatically appear here.
-</p>
-<div id="singerList">Loading singers...</div>
-</div>
-
-<div class="card">
-<h2>Current Performance</h2>
-<div id="currentPerformance">
-No performance started.
-</div>
-<button class="grey" id="stopButton">
-Stop Performance
-</button>
+<h2>My Shows</h2>
+<div id="showsList">Loading your shows...</div>
 </div>
 
 </div>
-</main>
+</div>
 
 <footer>
 Melody Magic Digital Auditorium<br>
@@ -105,391 +128,776 @@ Powered by Melody Magic Music Studio
 </footer>
 
 <script type="module">
-
-import {auth,db} from "./firebase-host.js";
+import { auth, db } from "./firebase-host.js";
 
 import {
- onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
- ref,get,set,update,onValue
+  ref, get, push, set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-const $ = id => document.getElementById(id);
+const CLOUD_NAME = "quqojlew";
+const UPLOAD_PRESET = "melody_magic_posters";
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-let currentUser=null;
-let hostData={};
-let shows={};
-let registrations={};
-let tracks={};
-let selectedShow="";
+const message = document.getElementById("message");
+const dashboard = document.getElementById("dashboard");
+const hostInfo = document.getElementById("hostInfo");
+const showsList = document.getElementById("showsList");
+const createMessage = document.getElementById("createMessage");
 
-function showMessage(message){
- $("message").textContent=message;
+let currentUser = null;
+let currentHost = null;
+
+function showMessage(text) {
+  message.textContent = text;
+  message.classList.remove("hidden");
 }
 
-function escapeHTML(value){
- return String(value??"").replace(/[&<>"']/g,c=>({
- "&":"&amp;","<":"&lt;",">":"&gt;",
- '"':"&quot;","'":"&#39;"
- }[c]));
+function hideMessage() {
+  message.classList.add("hidden");
 }
 
-function getYouTubeID(url){
- try{
-  const u=new URL(url);
-  let id="";
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[c]));
+}
 
-  if(u.hostname.includes("youtu.be")){
-   id=u.pathname.split("/")[1];
-  }else{
-   id=u.searchParams.get("v")||"";
-   if(!id && u.pathname.includes("/embed/")){
-    id=u.pathname.split("/embed/")[1];
-   }
-   if(!id && u.pathname.includes("/shorts/")){
-    id=u.pathname.split("/shorts/")[1];
-   }
+function withTimeout(promise, milliseconds = 20000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(
+        "Request timed out. Check your internet connection and Firebase rules."
+      )), milliseconds)
+    )
+  ]);
+}
+
+function normaliseWhatsApp(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!/^[6-9]\d{9}$/.test(digits)) {
+    throw new Error("Enter a valid 10-digit Indian WhatsApp number.");
+  }
+  return "91" + digits;
+}
+
+function whatsappURL(number, text) {
+  return "https://wa.me/" + number + "?text=" + encodeURIComponent(text);
+}
+
+function validCloudinaryURL(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" &&
+      parsed.hostname === "res.cloudinary.com";
+  } catch {
+    return false;
+  }
+}
+
+function formatTime12Hour(value) {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) return "Time not set";
+
+  const [h,m] = value.split(":").map(Number);
+  if (h > 23 || m > 59) return "Invalid time";
+
+  const suffix = h >= 12 ? "PM" : "AM";
+
+  return String(h % 12 || 12).padStart(2,"0") + ":" +
+    String(m).padStart(2,"0") + " " + suffix;
+}
+
+function formatDate(value) {
+  if (!value) return "Date not set";
+
+  const parts = value.split("-");
+
+  return parts.length === 3
+    ? parts[2] + "/" + parts[1] + "/" + parts[0]
+    : value;
+}
+
+function formatFee(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Not set";
   }
 
-  return /^[A-Za-z0-9_-]{11}$/.test(id)?id:"";
- }catch(e){
-  return "";
- }
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) return "Not set";
+
+  return amount === 0 ? "FREE" : "₹" + amount;
 }
 
-function getApprovedSingers(){
- return Object.entries(registrations||{})
- .filter(([id,s])=>
-  s && ["Approved","Queued"].includes(
-   String(s.status||"")
-  )
- )
- .map(([id,s])=>({id,...s}));
+function readOptionalFee(id) {
+  const raw = document.getElementById(id).value.trim();
+
+  if (raw === "") return null;
+
+  const amount = Number(raw);
+
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error("Please enter valid, non-negative fees.");
+  }
+
+  return amount;
 }
 
-function renderSingers(){
+function showPosterStatus(status) {
+  const value = String(status || "").toLowerCase();
 
- const box=$("singerList");
- const singers=getApprovedSingers();
+  if (value === "approved") {
+    return '<span class="badge approved">Approved</span>';
+  }
 
- if(!selectedShow){
-  box.textContent="Please select a show.";
-  return;
- }
+  if (value === "rejected") {
+    return '<span class="badge rejected">Rejected</span>';
+  }
 
- if(!singers.length){
-  box.textContent="No approved singers yet.";
-  return;
- }
+  if (value === "pending") {
+    return '<span class="badge pending">Pending admin approval</span>';
+  }
 
- box.innerHTML="";
+  return '<span class="badge">No custom poster submitted</span>';
+}
 
- singers.forEach(singer=>{
+function showPosterStatusHTML(status) {
+  return "<p>Custom poster status: " + showPosterStatus(status) + "</p>";
+}
 
-  const card=document.createElement("div");
-  card.className="singer";
+function audienceEntryURL(showId) {
+  return new URL(
+    "audience-entry.html?showId=" + encodeURIComponent(showId),
+    location.href
+  ).href;
+}
 
-  const partnerOptions=singers
-   .filter(s=>s.id!==singer.id)
-   .map(s=>`<option value="${escapeHTML(s.id)}">${escapeHTML(s.name||"Singer")}</option>`)
-   .join("");
+function liveStageURL(showId) {
+  return new URL(
+    "live-stage.html?showId=" + encodeURIComponent(showId),
+    location.href
+  ).href;
+}
 
-  const saved=tracks[singer.id]||{};
+/* HOST ACCOUNT VERIFICATION */
 
-  card.innerHTML=`
-   <h3>${escapeHTML(singer.name||"Singer")}</h3>
-   <div class="small">APPROVED PERFORMER</div>
-
-   <label>Karaoke Track YouTube Link</label>
-   <input class="trackLink"
-    placeholder="Paste karaoke YouTube link"
-    value="${escapeHTML(saved.videoUrl||"")}">
-
-   <label>Assign Duet Partner</label>
-   <select class="partner">
-    <option value="">Solo Performance</option>
-    ${partnerOptions}
-   </select>
-
-   <label>
-    <input type="checkbox" class="hostJoins"
-     style="width:auto">
-    Host also joins this performance
-   </label>
-
-   <button class="grey saveButton">
-    Save Track Link
-   </button>
-
-   <button class="green startButton">
-    START PERFORMANCE
-   </button>
-
-   <div class="small result"></div>
-  `;
-
-  const link=card.querySelector(".trackLink");
-  const partner=card.querySelector(".partner");
-  const hostJoins=card.querySelector(".hostJoins");
-  const result=card.querySelector(".result");
-
-  card.querySelector(".saveButton").onclick=async()=>{
-
-   const videoId=getYouTubeID(link.value);
-
-   if(!videoId){
-    result.textContent="Please enter a valid YouTube link.";
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    showMessage("Please log in with your host account. Redirecting...");
+    setTimeout(() => location.href = "host-login.html", 1500);
     return;
-   }
+  }
 
-   try{
-    await set(
-     ref(db,`performanceTracks/${selectedShow}/${singer.id}`),
-     {
-      videoUrl:link.value.trim(),
-      videoId:videoId,
-      updatedAt:Date.now(),
-      hostUid:currentUser.uid
-     }
+  currentUser = user;
+  showMessage("Checking host account...");
+
+  try {
+    const snapshot = await withTimeout(
+      get(ref(db, "hostApplications/" + user.uid))
     );
 
-    result.textContent="Track link saved successfully.";
-
-   }catch(error){
-    result.textContent="Error: "+error.message;
-   }
-  };
-
-  card.querySelector(".startButton").onclick=async()=>{
-
-   const videoId=getYouTubeID(link.value);
-
-   if(!videoId){
-    result.textContent="Paste a valid YouTube track link.";
-    return;
-   }
-
-   const partnerSinger=singers.find(
-    s=>s.id===partner.value
-   );
-
-   if(partner.value && !partnerSinger){
-    result.textContent="Select an approved duet partner.";
-    return;
-   }
-
-   const performers=[
-    {
-     id:singer.id,
-     name:singer.name||"Singer",
-     role:"SINGER"
+    if (!snapshot.exists()) {
+      showMessage("Host application not found. Please contact the administrator.");
+      return;
     }
-   ];
 
-   if(partnerSinger){
-    performers.push({
-     id:partnerSinger.id,
-     name:partnerSinger.name||"Singer",
-     role:"SINGER"
-    });
-   }
+    currentHost = snapshot.val();
 
-   if(hostJoins.checked){
-    performers.push({
-     id:"HOST",
-     name:hostData.name||currentUser.displayName||"Host",
-     role:"HOST"
-    });
-   }
+    if (currentHost.status !== "Approved") {
+      showMessage("Your host account is not approved yet.");
+      return;
+    }
 
-   const mode=partnerSinger?
-    (hostJoins.checked?"TRIO":"DUET"):
-    (hostJoins.checked?"HOST + SINGER":"SOLO");
+    const start = Number(currentHost.subscriptionStartAt || 0);
+    const end = Number(currentHost.subscriptionEndAt || 0);
+    const now = Date.now();
 
-   try{
+    if (!start || !end || now < start || now >= end) {
+      showMessage("Your host subscription is not currently active. Please contact the administrator.");
+      return;
+    }
 
-    const data={
-     showId:selectedShow,
-     hostUid:currentUser.uid,
-     status:"Live",
-     mode:mode,
-     performers:performers,
-     videoUrl:link.value.trim(),
-     videoId:videoId,
-     startedAt:Date.now()
-    };
+    hostInfo.innerHTML =
+      "<strong>" + escapeHTML(currentHost.name || user.email) +
+      "</strong><br>" + escapeHTML(user.email) +
+      "<br>Subscription: Active";
 
-    await set(
-     ref(db,`performanceTracks/${selectedShow}/${singer.id}`),
-     {
-      videoUrl:link.value.trim(),
-      videoId:videoId,
-      updatedAt:Date.now(),
-      hostUid:currentUser.uid
-     }
-    );
+    dashboard.classList.remove("hidden");
+    hideMessage();
 
-    await set(
-     ref(db,`livePerformance/${selectedShow}`),
-     data
-    );
+    await loadShows();
 
-    result.textContent="Performance started!";
-
-   }catch(error){
-    result.textContent="Could not start: "+error.message;
-   }
-  };
-
-  box.appendChild(card);
- });
-}
-
-function watchShow(showId){
-
- selectedShow=showId;
- registrations={};
- tracks={};
-
- if(!showId){
-  $("singerList").textContent="Select your show.";
-  return;
- }
-
- onValue(
-  ref(db,`showRegistrations/${showId}`),
-  snapshot=>{
-   registrations=snapshot.val()||{};
-   renderSingers();
+  } catch (error) {
+    console.error(error);
+    showMessage("Unable to verify host account: " + error.message);
   }
- );
-
- onValue(
-  ref(db,`performanceTracks/${showId}`),
-  snapshot=>{
-   tracks=snapshot.val()||{};
-   renderSingers();
-  }
- );
-
- onValue(
-  ref(db,`livePerformance/${showId}`),
-  snapshot=>{
-
-   const data=snapshot.val();
-
-   if(!data || data.status!=="Live"){
-    $("currentPerformance").textContent=
-     "No performance running.";
-    return;
-   }
-
-   const names=(data.performers||[])
-    .map(p=>(p.role==="HOST"?"HOST: ":"")+p.name)
-    .join(" + ");
-
-   $("currentPerformance").textContent=
-    data.mode+" - "+names;
-  }
- );
-}
-
-$("showSelect").onchange=e=>{
- watchShow(e.target.value);
-};
-
-$("openStage").onclick=()=>{
- if(!selectedShow){
-  alert("Select a show first.");
-  return;
- }
- window.open(
-  "live-performance.html?showId="+
-  encodeURIComponent(selectedShow),
-  "_blank"
- );
-};
-
-$("stopButton").onclick=async()=>{
- if(!selectedShow)return;
-
- await update(
-  ref(db,`livePerformance/${selectedShow}`),
-  {
-   status:"Stopped",
-   stoppedAt:Date.now()
-  }
- );
-};
-
-onAuthStateChanged(auth,async user=>{
-
- if(!user){
-  showMessage("Please login with your host account.");
-  return;
- }
-
- currentUser=user;
-
- try{
-
-  const hostSnap=await get(
-   ref(db,"hostApplications/"+user.uid)
-  );
-
-  if(!hostSnap.exists()){
-   throw new Error("Host application not found.");
-  }
-
-  hostData=hostSnap.val();
-
-  const start=Number(hostData.subscriptionStartAt||0);
-  const end=Number(hostData.subscriptionEndAt||0);
-
-  if(hostData.status!=="Approved" ||
-     !start || !end ||
-     Date.now()<start || Date.now()>=end){
-   throw new Error("Host approval and active subscription required.");
-  }
-
-  $("hostInfo").innerHTML=
-   `<span class="host">HOST:</span> ${
-    escapeHTML(hostData.name||user.email)
-   }`;
-
-  const showSnap=await get(ref(db,"shows"));
-  shows=showSnap.val()||{};
-
-  const myShows=Object.entries(shows)
-   .filter(([id,s])=>
-    s && s.hostUid===user.uid &&
-    s.status!=="Deleted"
-   );
-
-  $("showSelect").innerHTML=
-   '<option value="">Select Show</option>'+
-   myShows.map(([id,s])=>
-    `<option value="${escapeHTML(id)}">${
-     escapeHTML(s.name||s.title||"Show")
-    }</option>`
-   ).join("");
-
-  $("message").classList.add("hidden");
-  $("panel").classList.remove("hidden");
-
-  if(myShows.length===1){
-   $("showSelect").value=myShows[0][0];
-   watchShow(myShows[0][0]);
-  }
-
- }catch(error){
-  showMessage("Host access error: "+error.message);
- }
-
 });
 
+/* CREATE SHOW */
+
+document.getElementById("createShowBtn").addEventListener("click", async () => {
+  const name = document.getElementById("showName").value.trim();
+  const description = document.getElementById("showDescription").value.trim();
+  const date = document.getElementById("showDate").value;
+  const time = document.getElementById("showTime").value;
+  const audienceFee = Number(document.getElementById("audienceFee").value || 0);
+  const type = document.getElementById("showType").value;
+
+  let hostWhatsApp;
+  let soloEntryFee;
+  let duetEntryFee;
+
+  try {
+    if (!currentUser || !currentHost) {
+      throw new Error("Your host account is not ready. Please log in again.");
+    }
+
+    if (!name || !date || !time) {
+      throw new Error("Please enter show name, date and time.");
+    }
+
+    hostWhatsApp = normaliseWhatsApp(
+      document.getElementById("hostWhatsApp").value
+    );
+
+    soloEntryFee = readOptionalFee("soloEntryFee");
+    duetEntryFee = readOptionalFee("duetEntryFee");
+
+    if (!Number.isFinite(audienceFee) || audienceFee < 0) {
+      throw new Error("Please enter a valid audience entry fee.");
+    }
+
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  const button = document.getElementById("createShowBtn");
+  button.disabled = true;
+  button.textContent = "Creating...";
+  createMessage.textContent = "";
+
+  try {
+    const newShow = push(ref(db, "shows"));
+
+    await withTimeout(set(newShow, {
+      hostUid: currentUser.uid,
+      hostName: currentHost.name || currentUser.email,
+      hostWhatsApp,
+      name,
+      description,
+      date,
+      time,
+      timeZone: "Asia/Kolkata",
+      timeZoneLabel: "IST",
+      soloEntryFee,
+      duetEntryFee,
+      audienceFee,
+      type,
+      status: "Published",
+      createdAt: Date.now()
+    }));
+
+    alert("Your show has been created successfully.");
+
+    document.getElementById("showName").value = "";
+    document.getElementById("showDescription").value = "";
+    document.getElementById("showDate").value = "";
+    document.getElementById("showTime").value = "";
+    document.getElementById("hostWhatsApp").value = "";
+    document.getElementById("soloEntryFee").value = "";
+    document.getElementById("duetEntryFee").value = "";
+    document.getElementById("audienceFee").value = "0";
+
+    await loadShows();
+
+  } catch (error) {
+    console.error("Show creation error:", error);
+    createMessage.textContent = "Error: " + error.message;
+    alert("Could not create show: " + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Create Show";
+  }
+});
+
+/* LOAD HOST SHOWS */
+
+async function loadShows() {
+  showsList.textContent = "Loading your shows...";
+
+  try {
+    const snapshot = await withTimeout(get(ref(db, "shows")));
+
+    if (!snapshot.exists()) {
+      showsList.textContent = "You have not created any shows yet.";
+      return;
+    }
+
+    const myShows = Object.entries(snapshot.val())
+      .filter(([id, show]) =>
+        show && show.hostUid === currentUser.uid
+      );
+
+    showsList.innerHTML = "";
+
+    if (!myShows.length) {
+      showsList.textContent = "You have not created any shows yet.";
+      return;
+    }
+
+    for (const [id, show] of myShows) {
+      const entry = document.createElement("div");
+      entry.className = "show";
+
+      const audienceLink = audienceEntryURL(id);
+      const liveLink = liveStageURL(id);
+      const hostNumber = String(show.hostWhatsApp || "").replace(/\D/g, "");
+
+      let posterRecord = null;
+
+      try {
+        const posterSnapshot = await withTimeout(
+          get(ref(db, "showPosters/" + id))
+        );
+
+        if (posterSnapshot.exists()) {
+          posterRecord = posterSnapshot.val();
+        }
+      } catch (error) {
+        console.warn("Could not read poster status:", error);
+      }
+
+      const customPosterURL =
+        posterRecord && validCloudinaryURL(posterRecord.imageUrl)
+          ? posterRecord.imageUrl : "";
+
+      const posterStatus = posterRecord ? posterRecord.status : "";
+
+      const posterUploadAllowed =
+        !posterRecord || posterStatus === "Rejected";
+
+      const performerMessage =
+        "Hello " + (show.hostName || "Host") +
+        ", I am interested in performing in your show: " +
+        (show.name || "Music Show") +
+        ". Please share the solo/duet registration details and payment information.";
+
+      const audienceMessage =
+        "Hello, I am interested in attending your show: " +
+        (show.name || "Music Show") + ". Please share the entry details.";
+
+      const performerWhatsAppURL = hostNumber
+        ? whatsappURL(hostNumber, performerMessage) : "";
+
+      const audienceWhatsAppURL = hostNumber
+        ? whatsappURL(hostNumber, audienceMessage) : "";
+
+      entry.innerHTML = `
+        <h3>${escapeHTML(show.name || "Untitled Show")}</h3>
+        <p>${escapeHTML(show.description || "")}</p>
+
+        <p>
+          <strong>Date:</strong> ${escapeHTML(formatDate(show.date))}<br>
+          <strong>Time:</strong> ${escapeHTML(formatTime12Hour(show.time))} IST
+        </p>
+
+        <p><strong>Type:</strong> ${escapeHTML(show.type || "")}</p>
+
+        <p><strong>Solo entry fee:</strong> ${escapeHTML(formatFee(show.soloEntryFee))}</p>
+        <p><strong>Duet entry fee:</strong> ${escapeHTML(formatFee(show.duetEntryFee))}</p>
+        <p><strong>Audience entry:</strong> ${escapeHTML(formatFee(show.audienceFee))}</p>
+
+        <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber || "Not available")}</p>
+        <p><strong>Status:</strong> ${escapeHTML(show.status || "Published")}</p>
+
+        <div class="button-row">
+          <button class="liveBtn green">▶ Go Live</button>
+          <button class="detailsBtn secondary">Show Details</button>
+          ${performerWhatsAppURL ? '<button class="performerBtn secondary">Performer WhatsApp</button>' : ''}
+          ${Number(show.audienceFee || 0) > 0 && audienceWhatsAppURL ? '<button class="paidAudienceBtn green">Paid Audience WhatsApp</button>' : ''}
+        </div>
+
+        <div class="show-details hidden">
+          <h4>Show Information</h4>
+          <p><strong>Show ID:</strong> ${escapeHTML(id)}</p>
+          <p><strong>Show name:</strong> ${escapeHTML(show.name || "")}</p>
+          <p><strong>Date:</strong> ${escapeHTML(formatDate(show.date))}</p>
+          <p><strong>Time:</strong> ${escapeHTML(formatTime12Hour(show.time))} IST</p>
+          <p><strong>Host WhatsApp:</strong> ${escapeHTML(hostNumber || "Not available")}</p>
+          <p><strong>Solo entry fee:</strong> ${escapeHTML(formatFee(show.soloEntryFee))}</p>
+          <p><strong>Duet entry fee:</strong> ${escapeHTML(formatFee(show.duetEntryFee))}</p>
+          <p><strong>Audience fee:</strong> ${escapeHTML(formatFee(show.audienceFee))}</p>
+          <p><strong>Audience registration link:</strong><br>
+          <a href="${escapeHTML(audienceLink)}" target="_blank" rel="noopener">${escapeHTML(audienceLink)}</a></p>
+        </div>
+
+        <hr style="border-color:#39445e;margin:18px 0">
+
+        <h4>Promotional Show Poster</h4>
+        <p class="small">Generate a poster with your show details and a QR code for audience registration.</p>
+
+        <button class="posterBtn secondary">Generate Promotional Poster</button>
+        <button class="sharePosterBtn green">Share Poster</button>
+
+        <div class="upload-section">
+          <h4>Upload Poster</h4>
+          <p class="small">Choose a JPG or PNG poster from your mobile gallery. Your custom poster will be submitted to the administrator for approval.</p>
+
+          ${showPosterStatusHTML(posterStatus)}
+
+          ${customPosterURL ? `<img class="poster-preview" src="${escapeHTML(customPosterURL)}" alt="Uploaded custom poster">` : ""}
+
+          ${posterRecord && posterStatus === "Rejected" ? '<p class="small">Your previous poster was rejected. You can upload a new one.</p>' : ""}
+
+          ${posterUploadAllowed ? `
+            <input type="file" class="posterFile" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+            <button class="uploadBtn">Upload Poster</button>
+          ` : '<p class="small">A poster submission already exists. You cannot upload another until the administrator rejects the current submission.</p>'}
+
+          <div class="upload-status"></div>
+        </div>
+      `;
+
+      entry.querySelector(".liveBtn").addEventListener("click", () => {
+        window.open(liveLink, "_blank", "noopener");
+      });
+
+      entry.querySelector(".detailsBtn").addEventListener("click", event => {
+        const details = entry.querySelector(".show-details");
+        details.classList.toggle("hidden");
+
+        event.currentTarget.textContent =
+          details.classList.contains("hidden") ? "Show Details" : "Hide Details";
+      });
+
+      const performerBtn = entry.querySelector(".performerBtn");
+
+      if (performerBtn) {
+        performerBtn.addEventListener("click", () => {
+          window.open(performerWhatsAppURL, "_blank", "noopener");
+        });
+      }
+
+      const paidAudienceBtn = entry.querySelector(".paidAudienceBtn");
+
+      if (paidAudienceBtn) {
+        paidAudienceBtn.addEventListener("click", () => {
+          window.open(audienceWhatsAppURL, "_blank", "noopener");
+        });
+      }
+
+      entry.querySelector(".posterBtn").addEventListener("click", async () => {
+        try {
+          const blob = await createPosterBlob(show, audienceLink);
+          downloadBlob(blob, "Melody-Magic-Show-Poster.png");
+
+          alert("Your promotional poster has been generated and downloaded.");
+        } catch (error) {
+          console.error(error);
+          alert("Could not generate poster: " + error.message);
+        }
+      });
+
+      entry.querySelector(".sharePosterBtn").addEventListener("click", async () => {
+        try {
+          const blob = await createPosterBlob(show, audienceLink);
+
+          const file = new File([blob], "Melody-Magic-Show-Poster.png", {
+            type: "image/png"
+          });
+
+          if (navigator.canShare && navigator.canShare({files:[file]}) && navigator.share) {
+            await navigator.share({
+              title: show.name || "Melody Magic Show",
+              text: "Join my show on Melody Magic Digital Auditorium.",
+              files: [file]
+            });
+          } else {
+            downloadBlob(blob, "Melody-Magic-Show-Poster.png");
+
+            const shareText =
+              "Join my show: " + (show.name || "Music Show") +
+              "\nDate: " + formatDate(show.date) +
+              "\nTime: " + formatTime12Hour(show.time) + " IST" +
+              "\nSolo entry: " + formatFee(show.soloEntryFee) +
+              "\nDuet entry: " + formatFee(show.duetEntryFee) +
+              "\nAudience entry: " + formatFee(show.audienceFee) +
+              "\nAudience registration: " + audienceLink +
+              (hostNumber ? "\nHost WhatsApp: https://wa.me/" + hostNumber : "");
+
+            window.open("https://wa.me/?text=" + encodeURIComponent(shareText), "_blank", "noopener");
+
+            alert("Poster downloaded. Attach the image to your social media post.");
+          }
+
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            console.error(error);
+            alert("Sharing failed: " + error.message);
+          }
+        }
+      });
+
+      /* CUSTOM POSTER UPLOAD */
+
+      if (posterUploadAllowed) {
+        const fileInput = entry.querySelector(".posterFile");
+        const uploadButton = entry.querySelector(".uploadBtn");
+        const uploadStatus = entry.querySelector(".upload-status");
+
+        uploadButton.addEventListener("click", async () => {
+          const file = fileInput.files[0];
+
+          if (!file) {
+            alert("Please select a poster image first.");
+            return;
+          }
+
+          if (!["image/jpeg","image/png"].includes(file.type)) {
+            alert("Only JPG, JPEG and PNG images are allowed.");
+            return;
+          }
+
+          if (file.size > MAX_FILE_SIZE) {
+            alert("Poster size must be 5 MB or smaller.");
+            return;
+          }
+
+          uploadButton.disabled = true;
+          uploadButton.textContent = "Uploading...";
+          uploadStatus.textContent = "Uploading your poster. Please wait...";
+
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("upload_preset", UPLOAD_PRESET);
+
+            const response = await fetch(
+              `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+              {method:"POST", body:formData}
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+              throw new Error(result.error?.message || "Cloudinary upload failed.");
+            }
+
+            if (!validCloudinaryURL(result.secure_url)) {
+              throw new Error("Cloudinary returned an invalid image URL.");
+            }
+
+            await withTimeout(set(ref(db, "showPosters/" + id), {
+              hostUid: currentUser.uid,
+              showId: id,
+              imageUrl: result.secure_url,
+              publicId: result.public_id || "",
+              status: "Pending",
+              submittedAt: Date.now()
+            }));
+
+            alert("Your custom poster has been submitted for approval.");
+            await loadShows();
+
+          } catch (error) {
+            console.error("Poster upload error:", error);
+            uploadStatus.textContent = "Upload failed: " + error.message;
+            alert("Could not upload poster: " + error.message);
+
+          } finally {
+            uploadButton.disabled = false;
+            uploadButton.textContent = "Upload Poster";
+          }
+        });
+      }
+
+      showsList.appendChild(entry);
+    }
+
+  } catch (error) {
+    console.error(error);
+    showsList.textContent = "Could not load shows: " + error.message;
+  }
+}
+
+/* POSTER GENERATION */
+
+async function createPosterBlob(show, link) {
+  if (typeof QRCode === "undefined") {
+    throw new Error("QR code library did not load. Check your internet connection.");
+  }
+
+  const qrHolder = document.createElement("div");
+  qrHolder.style.position = "fixed";
+  qrHolder.style.left = "-10000px";
+  document.body.appendChild(qrHolder);
+
+  try {
+    new QRCode(qrHolder, {
+      text: link,
+      width: 220,
+      height: 220,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    let qrCanvas = qrHolder.querySelector("canvas");
+
+    if (!qrCanvas) {
+      const qrImage = qrHolder.querySelector("img");
+
+      if (!qrImage) {
+        throw new Error("Could not create QR code.");
+      }
+
+      await new Promise((resolve, reject) => {
+        if (qrImage.complete) return resolve();
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+      });
+
+      qrCanvas = document.createElement("canvas");
+      qrCanvas.width = 220;
+      qrCanvas.height = 220;
+      qrCanvas.getContext("2d").drawImage(qrImage, 0, 0, 220, 220);
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1350;
+
+    const ctx = canvas.getContext("2d");
+
+    const gradient = ctx.createLinearGradient(0, 0, 1080, 1350);
+    gradient.addColorStop(0, "#111a35");
+    gradient.addColorStop(1, "#401b45");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1080, 1350);
+
+    ctx.strokeStyle = "#f5bd43";
+    ctx.lineWidth = 8;
+    ctx.strokeRect(35, 35, 1010, 1280);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f5bd43";
+    ctx.font = "bold 58px Arial";
+    ctx.fillText("MELODY MAGIC", 540, 135);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 42px Arial";
+    ctx.fillText("DIGITAL AUDITORIUM", 540, 200);
+
+    ctx.fillStyle = "#f5bd43";
+    ctx.font = "bold 35px Arial";
+    ctx.fillText("PRESENTS", 540, 280);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 62px Arial";
+    drawWrappedText(ctx, show.name || "Music Show", 540, 385, 900, 78);
+
+    ctx.fillStyle = "#f5bd43";
+    ctx.font = "bold 38px Arial";
+    ctx.fillText("SHOW DETAILS", 540, 555);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "34px Arial";
+    ctx.fillText(formatDate(show.date), 540, 615);
+    ctx.fillText(formatTime12Hour(show.time) + " IST", 540, 675);
+
+    ctx.font = "30px Arial";
+    ctx.fillText("Solo Entry: " + formatFee(show.soloEntryFee).replace("₹","Rs. "), 540, 745);
+    ctx.fillText("Duet Entry: " + formatFee(show.duetEntryFee).replace("₹","Rs. "), 540, 800);
+    ctx.fillText("Audience Entry: " + formatFee(show.audienceFee).replace("₹","Rs. "), 540, 855);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(420, 890, 240, 240);
+    ctx.drawImage(qrCanvas, 430, 900, 220, 220);
+
+    ctx.fillStyle = "#f5bd43";
+    ctx.font = "bold 28px Arial";
+    ctx.fillText("SCAN TO JOIN THE SHOW", 540, 1175);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("Contact host for paid entry", 540, 1220);
+
+    const number = String(show.hostWhatsApp || "").replace(/\D/g, "");
+
+    if (number) {
+      ctx.font = "23px Arial";
+      ctx.fillText("WhatsApp: +" + number, 540, 1265);
+    }
+
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error("Could not create poster image."));
+      }, "image/png");
+    });
+
+  } finally {
+    qrHolder.remove();
+  }
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = String(text).split(/\s+/);
+  let line = "";
+  let currentY = y;
+
+  for (const word of words) {
+    const test = line ? line + " " + word : word;
+
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, currentY);
+      line = word;
+      currentY += lineHeight;
+    } else {
+      line = test;
+    }
+  }
+
+  if (line) ctx.fillText(line, x, currentY);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = filename;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* LOGOUT */
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    location.href = "host-login.html";
+  } catch (error) {
+    alert("Logout failed: " + error.message);
+  }
+});
 </script>
 </body>
 </html>
