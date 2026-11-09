@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Melody Magic Digital Auditorium - Host Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#090d18;color:#fff;font-family:Arial,sans-serif}
@@ -39,12 +40,14 @@ a{color:#f5bd43;overflow-wrap:anywhere}
 .fee-group{border:1px solid #39445e;border-radius:8px;padding:12px;margin:12px 0}
 footer{text-align:center;padding:25px;color:#aab4c8}
 @media(max-width:600px){
-.container{padding:10px}.card{padding:15px}
+.container{padding:10px}
+.card{padding:15px}
 button{width:100%;margin:5px 0}
 .button-row button{width:auto}
 }
 </style>
 </head>
+
 <body>
 
 <header>
@@ -160,7 +163,11 @@ function hideMessage() {
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
   }[c]));
 }
 
@@ -199,16 +206,21 @@ function validCloudinaryURL(url) {
 
 function formatTime12Hour(value) {
   if (!value || !/^\d{2}:\d{2}$/.test(value)) return "Time not set";
+
   const [h,m] = value.split(":").map(Number);
   if (h > 23 || m > 59) return "Invalid time";
+
   const suffix = h >= 12 ? "PM" : "AM";
+
   return String(h % 12 || 12).padStart(2,"0") + ":" +
     String(m).padStart(2,"0") + " " + suffix;
 }
 
 function formatDate(value) {
   if (!value) return "Date not set";
+
   const parts = value.split("-");
+
   return parts.length === 3
     ? parts[2] + "/" + parts[1] + "/" + parts[0]
     : value;
@@ -218,8 +230,11 @@ function formatFee(value) {
   if (value === null || value === undefined || value === "") {
     return "Not set";
   }
+
   const amount = Number(value);
+
   if (!Number.isFinite(amount)) return "Not set";
+
   return amount === 0 ? "FREE" : "₹" + amount;
 }
 
@@ -239,9 +254,19 @@ function readOptionalFee(id) {
 
 function showPosterStatus(status) {
   const value = String(status || "").toLowerCase();
-  if (value === "approved") return '<span class="badge approved">Approved</span>';
-  if (value === "rejected") return '<span class="badge rejected">Rejected</span>';
-  if (value === "pending") return '<span class="badge pending">Pending admin approval</span>';
+
+  if (value === "approved") {
+    return '<span class="badge approved">Approved</span>';
+  }
+
+  if (value === "rejected") {
+    return '<span class="badge rejected">Rejected</span>';
+  }
+
+  if (value === "pending") {
+    return '<span class="badge pending">Pending admin approval</span>';
+  }
+
   return '<span class="badge">No custom poster submitted</span>';
 }
 
@@ -444,7 +469,10 @@ async function loadShows() {
         const posterSnapshot = await withTimeout(
           get(ref(db, "showPosters/" + id))
         );
-        if (posterSnapshot.exists()) posterRecord = posterSnapshot.val();
+
+        if (posterSnapshot.exists()) {
+          posterRecord = posterSnapshot.val();
+        }
       } catch (error) {
         console.warn("Could not read poster status:", error);
       }
@@ -454,6 +482,7 @@ async function loadShows() {
           ? posterRecord.imageUrl : "";
 
       const posterStatus = posterRecord ? posterRecord.status : "";
+
       const posterUploadAllowed =
         !posterRecord || posterStatus === "Rejected";
 
@@ -513,21 +542,28 @@ async function loadShows() {
         </div>
 
         <hr style="border-color:#39445e;margin:18px 0">
+
         <h4>Promotional Show Poster</h4>
         <p class="small">Generate a poster with your show details and a QR code for audience registration.</p>
+
         <button class="posterBtn secondary">Generate Promotional Poster</button>
         <button class="sharePosterBtn green">Share Poster</button>
 
         <div class="upload-section">
-          <h4>Custom Poster Upload</h4>
-          <p class="small">Upload JPG or PNG. Your custom poster will be submitted to the administrator for approval.</p>
+          <h4>Upload Poster</h4>
+          <p class="small">Choose a JPG or PNG poster from your mobile gallery. Your custom poster will be submitted to the administrator for approval.</p>
+
           ${showPosterStatusHTML(posterStatus)}
+
           ${customPosterURL ? `<img class="poster-preview" src="${escapeHTML(customPosterURL)}" alt="Uploaded custom poster">` : ""}
+
           ${posterRecord && posterStatus === "Rejected" ? '<p class="small">Your previous poster was rejected. You can upload a new one.</p>' : ""}
+
           ${posterUploadAllowed ? `
             <input type="file" class="posterFile" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
-            <button class="uploadBtn">Submit Custom Poster for Approval</button>
+            <button class="uploadBtn">Upload Poster</button>
           ` : '<p class="small">A poster submission already exists. You cannot upload another until the administrator rejects the current submission.</p>'}
+
           <div class="upload-status"></div>
         </div>
       `;
@@ -539,11 +575,13 @@ async function loadShows() {
       entry.querySelector(".detailsBtn").addEventListener("click", event => {
         const details = entry.querySelector(".show-details");
         details.classList.toggle("hidden");
+
         event.currentTarget.textContent =
           details.classList.contains("hidden") ? "Show Details" : "Hide Details";
       });
 
       const performerBtn = entry.querySelector(".performerBtn");
+
       if (performerBtn) {
         performerBtn.addEventListener("click", () => {
           window.open(performerWhatsAppURL, "_blank", "noopener");
@@ -551,6 +589,7 @@ async function loadShows() {
       }
 
       const paidAudienceBtn = entry.querySelector(".paidAudienceBtn");
+
       if (paidAudienceBtn) {
         paidAudienceBtn.addEventListener("click", () => {
           window.open(audienceWhatsAppURL, "_blank", "noopener");
@@ -561,6 +600,7 @@ async function loadShows() {
         try {
           const blob = await createPosterBlob(show, audienceLink);
           downloadBlob(blob, "Melody-Magic-Show-Poster.png");
+
           alert("Your promotional poster has been generated and downloaded.");
         } catch (error) {
           console.error(error);
@@ -571,6 +611,7 @@ async function loadShows() {
       entry.querySelector(".sharePosterBtn").addEventListener("click", async () => {
         try {
           const blob = await createPosterBlob(show, audienceLink);
+
           const file = new File([blob], "Melody-Magic-Show-Poster.png", {
             type: "image/png"
           });
@@ -595,8 +636,10 @@ async function loadShows() {
               (hostNumber ? "\nHost WhatsApp: https://wa.me/" + hostNumber : "");
 
             window.open("https://wa.me/?text=" + encodeURIComponent(shareText), "_blank", "noopener");
+
             alert("Poster downloaded. Attach the image to your social media post.");
           }
+
         } catch (error) {
           if (error.name !== "AbortError") {
             console.error(error);
@@ -604,6 +647,8 @@ async function loadShows() {
           }
         }
       });
+
+      /* CUSTOM POSTER UPLOAD */
 
       if (posterUploadAllowed) {
         const fileInput = entry.querySelector(".posterFile");
@@ -668,9 +713,10 @@ async function loadShows() {
             console.error("Poster upload error:", error);
             uploadStatus.textContent = "Upload failed: " + error.message;
             alert("Could not upload poster: " + error.message);
+
           } finally {
             uploadButton.disabled = false;
-            uploadButton.textContent = "Submit Custom Poster for Approval";
+            uploadButton.textContent = "Upload Poster";
           }
         });
       }
@@ -712,7 +758,10 @@ async function createPosterBlob(show, link) {
 
     if (!qrCanvas) {
       const qrImage = qrHolder.querySelector("img");
-      if (!qrImage) throw new Error("Could not create QR code.");
+
+      if (!qrImage) {
+        throw new Error("Could not create QR code.");
+      }
 
       await new Promise((resolve, reject) => {
         if (qrImage.complete) return resolve();
@@ -731,6 +780,7 @@ async function createPosterBlob(show, link) {
     canvas.height = 1350;
 
     const ctx = canvas.getContext("2d");
+
     const gradient = ctx.createLinearGradient(0, 0, 1080, 1350);
     gradient.addColorStop(0, "#111a35");
     gradient.addColorStop(1, "#401b45");
@@ -786,6 +836,7 @@ async function createPosterBlob(show, link) {
     ctx.fillText("Contact host for paid entry", 540, 1220);
 
     const number = String(show.hostWhatsApp || "").replace(/\D/g, "");
+
     if (number) {
       ctx.font = "23px Arial";
       ctx.fillText("WhatsApp: +" + number, 540, 1265);
@@ -810,6 +861,7 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 
   for (const word of words) {
     const test = line ? line + " " + word : word;
+
     if (ctx.measureText(test).width > maxWidth && line) {
       ctx.fillText(line, x, currentY);
       line = word;
@@ -825,11 +877,14 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+
   a.href = url;
   a.download = filename;
+
   document.body.appendChild(a);
   a.click();
   a.remove();
+
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
