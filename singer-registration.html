@@ -11,7 +11,7 @@
 
 body{
   margin:0;
-  padding:20px;
+  padding:18px;
   background:#090807;
   color:white;
   font-family:Arial,sans-serif;
@@ -19,7 +19,7 @@ body{
 
 .container{
   max-width:600px;
-  margin:25px auto;
+  margin:20px auto;
 }
 
 h1,h2{color:#e7bd68}
@@ -28,7 +28,7 @@ h1,h2{color:#e7bd68}
   background:#191510;
   border:1px solid #705322;
   border-radius:12px;
-  padding:22px;
+  padding:20px;
   margin:18px 0;
 }
 
@@ -37,23 +37,46 @@ h1,h2{color:#e7bd68}
   line-height:1.6;
 }
 
-.fee{
+label{
+  display:block;
+  margin-top:15px;
+  margin-bottom:7px;
   color:#e7bd68;
   font-weight:bold;
-  font-size:16px;
-  margin-top:12px;
 }
 
-.contact-button{
+input,select{
+  width:100%;
+  padding:13px;
+  border-radius:7px;
+  border:1px solid #705322;
+  background:#0d0b09;
+  color:white;
+  font-size:16px;
+}
+
+button,.contact-button{
   display:block;
   width:100%;
   padding:15px;
-  margin-top:16px;
+  margin-top:17px;
+  border:0;
   border-radius:7px;
   text-align:center;
   text-decoration:none;
-  font-size:16px;
+  font-size:15px;
   font-weight:bold;
+  cursor:pointer;
+}
+
+.submit{
+  background:#e7bd68;
+  color:#171009;
+}
+
+.submit:disabled{
+  opacity:.5;
+  cursor:not-allowed;
 }
 
 .whatsapp{
@@ -66,12 +89,29 @@ h1,h2{color:#e7bd68}
   color:#171009;
 }
 
-.error{
-  color:#ff9999;
-  line-height:1.6;
+.fee{
+  color:#e7bd68;
+  font-weight:bold;
+  margin-top:12px;
 }
 
+.message{
+  margin-top:15px;
+  line-height:1.6;
+  white-space:pre-wrap;
+}
+
+.success{color:#8ee6a1}
+.error{color:#ff9999}
+
 .hidden{display:none!important}
+
+footer{
+  text-align:center;
+  color:#a99b84;
+  font-size:12px;
+  margin:25px 0;
+}
 </style>
 </head>
 
@@ -84,21 +124,75 @@ h1,h2{color:#e7bd68}
 
   <div class="card">
     <h2>Selected Show</h2>
-
     <div id="showDetails" class="muted">
       Loading show details...
     </div>
+    <div id="feeDetails"></div>
   </div>
 
   <div class="card">
     <h2>Performer Registration</h2>
 
     <p class="muted">
-      Want to perform in this show? Contact the host directly through WhatsApp or call.
-      The host will guide you about registration, performance order and payment, if applicable.
+      Fill in your details to request a performance slot.
+      Your registration will be sent to the host for approval.
     </p>
 
-    <div id="feeDetails"></div>
+    <form id="registrationForm">
+
+      <label for="singerName">Singer Name *</label>
+      <input id="singerName" maxlength="60"
+        placeholder="Enter your full name" required>
+
+      <label for="mobile">Mobile Number *</label>
+      <input id="mobile" type="tel"
+        inputmode="numeric" maxlength="10"
+        pattern="[6-9][0-9]{9}"
+        placeholder="10-digit mobile number" required>
+
+      <label for="song">Requested Song Name *</label>
+      <input id="song" maxlength="100"
+        placeholder="Enter the song you want to sing" required>
+
+      <label for="language">Song Language *</label>
+      <select id="language" required>
+        <option value="">Select language</option>
+        <option>Hindi</option>
+        <option>Marathi</option>
+        <option>English</option>
+        <option>Gujarati</option>
+        <option>Punjabi</option>
+        <option>Other</option>
+      </select>
+
+      <label for="performance">Performance Type *</label>
+      <select id="performance" required>
+        <option value="Solo">Solo</option>
+        <option value="Duet">Duet</option>
+      </select>
+
+      <div id="partnerSection" class="hidden">
+        <label for="partnerName">Duet Partner Name *</label>
+        <input id="partnerName" maxlength="60"
+          placeholder="Enter duet partner name">
+      </div>
+
+      <button id="submitButton" class="submit" type="submit">
+        SUBMIT REGISTRATION
+      </button>
+
+    </form>
+
+    <div id="formMessage" class="message" aria-live="polite"></div>
+  </div>
+
+  <div class="card">
+    <h2>Need Registration Help?</h2>
+
+    <p class="muted">
+      If you cannot register online, contact the show host
+      through WhatsApp or phone for manual assistance.
+    </p>
 
     <a id="whatsappButton"
        class="contact-button whatsapp hidden"
@@ -115,25 +209,43 @@ h1,h2{color:#e7bd68}
     <div id="contactMessage" class="muted"></div>
   </div>
 
+  <footer>
+    Powered by Melody Magic Music Studio
+  </footer>
+
 </div>
 
 <script type="module">
 
-import { db } from "./firebase.js";
+import {
+  db,
+  connectAuditorium
+} from "./firebase.js";
 
 import {
   ref,
-  get
+  get,
+  push,
+  set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const showId =
   new URLSearchParams(window.location.search).get("showId");
 
-const showDetails =
-  document.getElementById("showDetails");
+const showDetails = document.getElementById("showDetails");
+const feeDetails = document.getElementById("feeDetails");
+const form = document.getElementById("registrationForm");
+const submitButton = document.getElementById("submitButton");
+const formMessage = document.getElementById("formMessage");
 
-const feeDetails =
-  document.getElementById("feeDetails");
+const performance =
+  document.getElementById("performance");
+
+const partnerSection =
+  document.getElementById("partnerSection");
+
+const partnerName =
+  document.getElementById("partnerName");
 
 const whatsappButton =
   document.getElementById("whatsappButton");
@@ -143,6 +255,8 @@ const callButton =
 
 const contactMessage =
   document.getElementById("contactMessage");
+
+let selectedShow = null;
 
 function cleanPhone(value){
   return String(value || "").replace(/\D/g, "");
@@ -162,22 +276,35 @@ function formatFee(value){
   return fee === 0 ? "FREE" : "₹" + fee;
 }
 
-function addDetail(label, value){
+function addDetail(label,value){
   const p = document.createElement("p");
   p.textContent = label + ": " + value;
   return p;
 }
+
+performance.addEventListener("change",()=>{
+  const isDuet = performance.value === "Duet";
+
+  partnerSection.classList.toggle("hidden",!isDuet);
+  partnerName.required = isDuet;
+
+  if(!isDuet){
+    partnerName.value = "";
+  }
+});
 
 async function loadShow(){
 
   try{
 
     if(!showId){
-      throw new Error("No show selected. Please select a show from the homepage.");
+      throw new Error(
+        "No show selected. Please open registration from the homepage."
+      );
     }
 
     const snapshot = await get(
-      ref(db, "shows/" + showId)
+      ref(db,"shows/"+showId)
     );
 
     if(!snapshot.exists()){
@@ -190,46 +317,35 @@ async function loadShow(){
       throw new Error("This show is not currently available.");
     }
 
-    const title =
-      show.name || show.title || "Singing Show";
-
-    const hostName =
-      show.hostName || "Show Host";
+    selectedShow = show;
 
     showDetails.replaceChildren();
 
     const heading = document.createElement("h3");
-    heading.textContent = title;
+    heading.textContent = show.name || show.title || "Singing Show";
+
     showDetails.appendChild(heading);
 
-    showDetails.appendChild(
-      addDetail("Date", show.date || "To be announced")
+    showDetails.append(
+      addDetail("Date",show.date || "To be announced"),
+      addDetail("Time",show.time || "To be announced"),
+      addDetail("Host",show.hostName || "Show Host")
     );
 
-    showDetails.appendChild(
-      addDetail("Time", show.time || "To be announced")
-    );
-
-    showDetails.appendChild(
-      addDetail("Host", hostName)
-    );
-
-    // DISPLAY SOLO AND DUET FEES
     feeDetails.replaceChildren();
 
     const solo = document.createElement("p");
     solo.className = "fee";
     solo.textContent =
-      "Solo Performer Fee: " + formatFee(show.soloEntryFee);
+      "Solo Performer Fee: "+formatFee(show.soloEntryFee);
 
     const duet = document.createElement("p");
     duet.className = "fee";
     duet.textContent =
-      "Duet Performer Fee: " + formatFee(show.duetEntryFee);
+      "Duet Performer Fee: "+formatFee(show.duetEntryFee);
 
-    feeDetails.append(solo, duet);
+    feeDetails.append(solo,duet);
 
-    // GET HOST CONTACT NUMBER
     const phone = cleanPhone(
       show.hostWhatsApp ||
       show.hostWhatsapp ||
@@ -240,53 +356,156 @@ async function loadShow(){
       show.mobile
     );
 
-    if(!phone){
-      contactMessage.className = "error";
+    if(phone){
+
+      const whatsappNumber =
+        phone.length === 10 ? "91"+phone : phone;
+
+      const message =
+        "Hello "+(show.hostName || "Host")+
+        ", I need help with performer registration for your show: "+
+        (show.name || show.title || "Singing Show");
+
+      whatsappButton.href =
+        "https://wa.me/"+whatsappNumber+
+        "?text="+encodeURIComponent(message);
+
+      whatsappButton.classList.remove("hidden");
+
+      const callNumber =
+        phone.length === 10 ? "+91"+phone : "+"+phone;
+
+      callButton.href = "tel:"+callNumber;
+      callButton.classList.remove("hidden");
+
       contactMessage.textContent =
-        "The host has not added a contact number. Please contact the organiser through another available channel.";
-      return;
+        "Contact the host for manual registration assistance.";
+
+    }else{
+
+      contactMessage.textContent =
+        "The host has not added a contact number.";
     }
-
-    // FORMAT INDIAN MOBILE NUMBER
-    const whatsappNumber =
-      phone.length === 10 ? "91" + phone : phone;
-
-    // WHATSAPP MESSAGE
-    const message =
-      "Hello " + hostName +
-      ", I want to join as a Performer in your show: " +
-      title +
-      ". Please share the registration details.";
-
-    whatsappButton.href =
-      "https://wa.me/" +
-      whatsappNumber +
-      "?text=" +
-      encodeURIComponent(message);
-
-    whatsappButton.classList.remove("hidden");
-
-    // DIRECT CALL BUTTON
-    const callNumber =
-      phone.length === 10 ? "+91" + phone : "+" + phone;
-
-    callButton.href = "tel:" + callNumber;
-    callButton.classList.remove("hidden");
-
-    contactMessage.textContent =
-      "Contact the host to confirm your participation and performance slot.";
 
   }catch(error){
 
-    console.error("Show loading error:", error);
+    console.error(error);
 
     showDetails.className = "error";
     showDetails.textContent = error.message;
 
+    form.classList.add("hidden");
     feeDetails.replaceChildren();
-    contactMessage.textContent = "";
   }
 }
+
+form.addEventListener("submit",async(event)=>{
+
+  event.preventDefault();
+
+  if(!selectedShow || !showId){
+    formMessage.className = "message error";
+    formMessage.textContent = "Show details are not available.";
+    return;
+  }
+
+  const name =
+    document.getElementById("singerName").value.trim();
+
+  const mobile =
+    document.getElementById("mobile").value.trim();
+
+  const song =
+    document.getElementById("song").value.trim();
+
+  const language =
+    document.getElementById("language").value;
+
+  const type = performance.value;
+
+  const partner =
+    partnerName.value.trim();
+
+  if(!/^[6-9][0-9]{9}$/.test(mobile)){
+    formMessage.className = "message error";
+    formMessage.textContent =
+      "Please enter a valid 10-digit Indian mobile number.";
+    return;
+  }
+
+  if(type === "Duet" && !partner){
+    formMessage.className = "message error";
+    formMessage.textContent =
+      "Please enter your duet partner's name.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "SUBMITTING...";
+  formMessage.className = "message";
+  formMessage.textContent = "";
+
+  try{
+
+    // SIGN IN SINGER ANONYMOUSLY
+    const user = await connectAuditorium();
+
+    // CREATE REGISTRATION UNDER THE SELECTED SHOW
+    const registrationRef = push(
+      ref(db,"showRegistrations/"+showId)
+    );
+
+    await set(registrationRef,{
+
+      singerUid: user.uid,
+      showId: showId,
+
+      name: name,
+      mobile: mobile,
+
+      song: song,
+      requestedSong: song,
+
+      language: language,
+
+      performance: type,
+      performanceType: type,
+
+      duetPartnerName: type === "Duet" ? partner : "",
+
+      status: "Waiting",
+
+      createdAt: Date.now()
+
+    });
+
+    formMessage.className = "message success";
+    formMessage.textContent =
+      "Registration submitted successfully!\n\n"+
+      "Your request is WAITING FOR HOST APPROVAL.\n"+
+      "Please contact the host if you need any assistance.";
+
+    form.reset();
+
+    partnerSection.classList.add("hidden");
+    partnerName.required = false;
+
+    submitButton.textContent = "REGISTRATION SUBMITTED";
+
+  }catch(error){
+
+    console.error("Registration error:",error);
+
+    formMessage.className = "message error";
+    formMessage.textContent =
+      "Registration could not be submitted.\n"+
+      (error.code || error.message || "Please try again.");
+
+    submitButton.disabled = false;
+    submitButton.textContent = "SUBMIT REGISTRATION";
+  }
+
+});
 
 loadShow();
 
