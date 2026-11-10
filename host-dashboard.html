@@ -1,73 +1,47 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Melody Magic Digital Auditorium - Host Dashboard</title>
-
 <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;background:#090909;color:#fff;
-  font-family:Arial,sans-serif;padding:15px
-}
-.container{max-width:1000px;margin:auto}
-header{
-  text-align:center;padding:22px 10px;
-  background:linear-gradient(135deg,#211500,#090909);
-  border:1px solid #9c762d;border-radius:14px;margin-bottom:18px
-}
-header h1{color:#e9bd55;margin:0 0 8px}
+body{margin:0;padding:12px;background:#090909;color:#fff;font-family:Arial,sans-serif}
+.container{max-width:950px;margin:auto}
+header{padding:18px;text-align:center;background:linear-gradient(135deg,#211500,#090909);border:1px solid #9c762d;border-radius:12px}
+header h1{color:#e9bd55;margin:0 0 7px}
 header p{margin:5px;color:#ccc}
-.card{
-  background:#151515;border:1px solid #393024;
-  border-radius:12px;padding:17px;margin:15px 0
-}
-h2{color:#e9bd55;font-size:20px;margin-top:0}
-h3{color:#e9bd55}
-input,textarea,select{
-  display:block;width:100%;padding:12px;margin:8px 0 13px;
-  border-radius:7px;border:1px solid #555;
-  background:#090909;color:white;font-size:15px
-}
-textarea{min-height:75px;resize:vertical}
+.card{background:#151515;border:1px solid #393024;border-radius:11px;padding:13px;margin:12px 0}
+h2{font-size:18px;color:#e9bd55;margin:0}
+h3{font-size:16px;color:#e9bd55}
+details.card{padding:0;overflow:hidden}
+details.card>summary{cursor:pointer;list-style:none;padding:16px;font-weight:bold;color:#e9bd55;font-size:17px}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary:after{content:"＋";float:right}
+details.card[open]>summary:after{content:"−"}
+.section-content{padding:0 14px 14px}
+input,textarea,select{display:block;width:100%;padding:11px;margin:7px 0 12px;border-radius:7px;border:1px solid #555;background:#090909;color:white;font-size:14px}
+textarea{min-height:65px}
 label{font-size:13px;color:#ddd}
-button,.btn{
-  display:inline-block;border:0;border-radius:7px;
-  padding:11px 14px;margin:4px 3px;
-  background:#d5a83e;color:#111;font-weight:bold;
-  cursor:pointer;text-decoration:none;font-size:14px
-}
-button.secondary,.btn.secondary{background:#393939;color:white}
-button.danger{background:#a52d2d;color:white}
-button.success{background:#287c48;color:white}
-button:disabled{opacity:.5;cursor:not-allowed}
-.small{font-size:12px;color:#aaa}
-.status{padding:10px;background:#222;border-radius:7px;margin:8px 0}
-.hidden{display:none!important}
-.show-card,.registration,.queue-item{
-  background:#202020;border:1px solid #454545;
-  padding:13px;border-radius:9px;margin:10px 0
-}
+button,.btn{display:inline-block;border:0;border-radius:7px;padding:10px 12px;margin:4px 2px;background:#d5a83e;color:#111;font-weight:bold;cursor:pointer;text-decoration:none;font-size:13px}
+.secondary{background:#393939!important;color:white!important}
+.danger{background:#a52d2d!important;color:white!important}
+.success{background:#287c48!important;color:white!important}
+button:disabled{opacity:.5}
 .row{display:flex;gap:8px;flex-wrap:wrap}
-.row>*{flex:1}
-.pill{
-  display:inline-block;padding:4px 8px;border-radius:20px;
-  background:#393939;font-size:12px;margin:3px
-}
-.gold{color:#e9bd55}
-hr{border:0;border-top:1px solid #444;margin:15px 0}
-#posterCanvas{width:100%;max-width:300px;display:block;margin:10px auto}
-footer{text-align:center;color:#999;padding:25px 5px;font-size:13px}
-.empty{color:#aaa;text-align:center;padding:15px}
-.queue-number{
-  display:inline-flex;width:28px;height:28px;
-  border-radius:50%;background:#d5a83e;color:#111;
-  align-items:center;justify-content:center;font-weight:bold;
-  margin-right:7px
-}
+.row>*{flex:1;min-width:120px}
+.small{font-size:12px;color:#aaa}
+.status,.show-card,.registration,.queue-item{background:#202020;border:1px solid #454545;padding:12px;border-radius:8px;margin:9px 0}
+.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#393939;font-size:11px;margin:3px}
+.empty{text-align:center;color:#aaa;padding:14px}
+.hidden{display:none!important}
+hr{border:0;border-top:1px solid #444;margin:13px 0}
+#posterCanvas{width:100%;max-width:280px;display:block;margin:12px auto}
+footer{text-align:center;color:#999;padding:20px;font-size:12px}
+.queue-number{display:inline-flex;width:26px;height:26px;border-radius:50%;background:#d5a83e;color:#111;align-items:center;justify-content:center;font-weight:bold;margin-right:7px}
 </style>
 </head>
 
@@ -75,1093 +49,845 @@ footer{text-align:center;color:#999;padding:25px 5px;font-size:13px}
 <div class="container">
 
 <header>
-  <h1>🎤 Melody Magic</h1>
-  <p>Digital Auditorium</p>
-  <p>Host Dashboard</p>
+<h1>🎤 Melody Magic</h1>
+<p>Digital Auditorium</p>
+<p>Host Dashboard</p>
 </header>
 
 <section id="loginSection" class="card">
-  <h2>Host Account</h2>
-  <div id="loginMessage" class="status">
-    Checking your host account...
-  </div>
-  <button id="logoutLoginBtn" class="secondary hidden">Logout</button>
+<h2>Host Account</h2>
+<div id="loginMessage" class="status">Checking your host account...</div>
+<button id="logoutLoginBtn" class="secondary hidden">Logout</button>
 </section>
 
 <main id="dashboard" class="hidden">
 
-  <section class="card">
-    <h2>Host Account Details</h2>
-    <p>Host: <strong id="hostName">-</strong></p>
-    <p>Status: <span id="hostStatus" class="pill">Checking</span></p>
-    <button id="logoutBtn" class="danger">Logout</button>
-  </section>
+<section class="card">
+<h2>Host Account Details</h2>
+<p>Host: <strong id="hostName">-</strong></p>
+<p>Status: <span id="hostStatus" class="pill">Checking</span></p>
+<button id="logoutBtn" class="danger">Logout</button>
+</section>
 
-  <section class="card">
-    <h2>➕ Create New Show</h2>
+<!-- NEW SHOW -->
+<details class="card" open>
+<summary>➕ New Show</summary>
+<div class="section-content">
 
-    <form id="showForm">
-      <label>Show Name</label>
-      <input id="showName" required placeholder="Enter show name">
+<form id="showForm">
+<label>Show Name</label>
+<input id="showName" required placeholder="Enter show name">
 
-      <label>Show Description</label>
-      <textarea id="showDescription" placeholder="About your show"></textarea>
+<label>Show Description</label>
+<textarea id="showDescription" placeholder="About your show"></textarea>
 
-      <div class="row">
-        <div>
-          <label>Show Date</label>
-          <input type="date" id="showDate" required>
-        </div>
-        <div>
-          <label>Show Time</label>
-          <input type="time" id="showTime" required>
-        </div>
-      </div>
+<div class="row">
+<div><label>Show Date</label><input type="date" id="showDate" required></div>
+<div><label>Show Time</label><input type="time" id="showTime" required></div>
+</div>
 
-      <label>Host WhatsApp Number</label>
-      <input id="hostWhatsApp" type="tel" placeholder="10-digit mobile number">
+<label>Host WhatsApp Number</label>
+<input id="hostWhatsApp" type="tel" placeholder="10-digit mobile number">
 
-      <div class="row">
-        <div>
-          <label>Solo Song Fee (₹)</label>
-          <input type="number" id="soloEntryFee" min="0" value="100">
-        </div>
-        <div>
-          <label>Duet Song Fee (₹)</label>
-          <input type="number" id="duetEntryFee" min="0" value="150">
-        </div>
-      </div>
+<div class="row">
+<div><label>Solo Song Fee (₹)</label><input type="number" id="soloEntryFee" min="0" value="100"></div>
+<div><label>Duet Song Fee (₹)</label><input type="number" id="duetEntryFee" min="0" value="150"></div>
+</div>
 
-      <label>Audience Entry Fee (₹)</label>
-      <input type="number" id="audienceFee" min="0" value="0">
+<label>Audience Entry Fee (₹)</label>
+<input type="number" id="audienceFee" min="0" value="0">
 
-      <label>Show Type</label>
-      <select id="showType">
-        <option>Karaoke</option>
-        <option>Live Singing</option>
-        <option>Music Concert</option>
-        <option>Open Mic</option>
-        <option>Other</option>
-      </select>
+<label>Show Type</label>
+<select id="showType">
+<option>Karaoke</option>
+<option>Live Singing</option>
+<option>Music Concert</option>
+<option>Open Mic</option>
+<option>Other</option>
+</select>
 
-      <button type="submit" id="createShowBtn">Publish Show</button>
-    </form>
-    <div id="createMessage" class="small"></div>
-  </section>
+<button type="submit" id="createShowBtn">Publish Show</button>
+</form>
+<div id="createMessage" class="small"></div>
 
-  <section class="card">
-    <h2>🎭 My Shows</h2>
-    <div id="showsList">Loading your shows...</div>
-  </section>
+<hr>
+<h3>🖼️ Upload Custom Poster</h3>
+<p class="small">Upload a poster for admin review. Maximum 5 MB.</p>
+<label>Select Show</label>
+<select id="posterShowSelect"><option value="">Select a show</option></select>
+<input type="file" id="posterFile" accept="image/*">
+<button id="uploadPosterBtn">Upload Custom Poster</button>
+<div id="posterUploadMessage" class="small"></div>
 
-  <section class="card">
-    <h2>🎟️ Performer Registrations</h2>
-    <label>Select Show</label>
-    <select id="registrationShowSelect">
-      <option value="">Select a show</option>
-    </select>
-    <div id="registrationsList" class="empty">
-      Select a show to view registrations.
-    </div>
-  </section>
+<hr>
+<h3>🎨 Generate Show Poster</h3>
+<label>Select Show</label>
+<select id="generatedPosterSelect"><option value="">Select a show</option></select>
+<canvas id="posterCanvas" width="900" height="1200"></canvas>
+<button id="generatePosterBtn">Generate Poster</button>
+<button id="downloadPosterBtn" class="secondary">Download Poster</button>
+<button id="sharePosterBtn" class="success">Share Poster</button>
+</div>
+</details>
 
-  <section class="card">
-    <h2>🎤 Performance Queue</h2>
-    <p class="small">
-      Approved performers are added automatically. You can also add
-      walk-in performers and arrange the performance order.
-    </p>
+<!-- PUBLISHED SHOWS -->
+<details class="card">
+<summary>📢 Published Shows</summary>
+<div class="section-content">
+<div id="showsList" class="empty">Loading published shows...</div>
+</div>
+</details>
 
-    <label>Select Show</label>
-    <select id="queueShowSelect">
-      <option value="">Select a show</option>
-    </select>
+<!-- ONLINE AND OFFLINE REGISTRATION -->
+<details class="card">
+<summary>🎟️ Performer Registration — Online & Offline</summary>
+<div class="section-content">
 
-    <hr>
+<h3>Online Registrations</h3>
+<label>Select Show</label>
+<select id="registrationShowSelect"><option value="">Select a show</option></select>
+<div id="registrationsList" class="empty">Select a show to view online registrations.</div>
 
-    <h3>Add Walk-in Performer</h3>
-    <form id="manualQueueForm">
-      <label>Performer Name</label>
-      <input id="manualName" required placeholder="Performer name">
+<hr>
+<h3>Offline / Walk-in Registration</h3>
+<p class="small">Add performers who register directly at your venue. They will enter the live queue immediately.</p>
 
-      <label>Mobile Number</label>
-      <input id="manualMobile" placeholder="Mobile number">
+<form id="manualQueueForm">
+<label>Select Show</label>
+<select id="offlineShowSelect"><option value="">Select a show</option></select>
 
-      <label>Song Name</label>
-      <input id="manualSong" placeholder="Song name">
+<label>Performer Name</label>
+<input id="manualName" required placeholder="Performer name">
 
-      <label>Performance Type</label>
-      <select id="manualType">
-        <option>Solo</option>
-        <option>Duet</option>
-        <option>Group</option>
-      </select>
+<label>Mobile Number</label>
+<input id="manualMobile" placeholder="Mobile number">
 
-      <button type="submit">Add to Queue</button>
-    </form>
+<label>Song Name</label>
+<input id="manualSong" placeholder="Song name">
 
-    <hr>
-    <h3>Current Performance Order</h3>
-    <div id="queueList" class="empty">
-      Select a show to view its queue.
-    </div>
-  </section>
+<label>Performance Type</label>
+<select id="manualType">
+<option>Solo</option>
+<option>Duet</option>
+<option>Group</option>
+</select>
 
-  <section class="card">
-    <h2>🖼️ Custom Show Poster</h2>
-    <p class="small">
-      Upload a poster for admin review. Maximum file size: 5 MB.
-    </p>
+<button type="submit">Register Offline Performer</button>
+</form>
+<div id="offlineMessage" class="small"></div>
+</div>
+</details>
 
-    <label>Select Show</label>
-    <select id="posterShowSelect">
-      <option value="">Select a show</option>
-    </select>
+<!-- LIVE CONTROL AND QUEUE -->
+<details class="card" open>
+<summary>🔴 Live Show Control & Performance Queue</summary>
+<div class="section-content">
 
-    <input type="file" id="posterFile" accept="image/*">
-    <button id="uploadPosterBtn">Upload Custom Poster</button>
-    <div id="posterUploadMessage" class="small"></div>
-  </section>
+<label>Select Show</label>
+<select id="queueShowSelect"><option value="">Select a show</option></select>
 
-  <section class="card">
-    <h2>🎨 Generate Show Poster</h2>
+<h3>▶ YouTube Live / Video Link</h3>
+<p class="small">Paste the YouTube video or live-stream URL for this show.</p>
+<input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
 
-    <label>Select Show</label>
-    <select id="generatedPosterSelect">
-      <option value="">Select a show</option>
-    </select>
+<div class="row">
+<button id="saveYoutubeBtn">Save YouTube Link</button>
+<button id="startLiveBtn" class="success">Start Live</button>
+<button id="stopLiveBtn" class="danger">Stop Live</button>
+</div>
+<div id="liveMessage" class="small"></div>
+<div id="liveLinks" class="small"></div>
 
-    <canvas id="posterCanvas" width="900" height="1200"></canvas>
+<hr>
+<h3>🎤 Performance Queue</h3>
+<p class="small">Approved online performers and offline walk-in performers appear here automatically.</p>
+<div id="queueList" class="empty">Select a show to view its queue.</div>
 
-    <button id="generatePosterBtn">Generate Poster</button>
-    <button id="downloadPosterBtn" class="secondary">Download Poster</button>
-    <button id="sharePosterBtn" class="success">Share Poster</button>
-  </section>
+</div>
+</details>
 
 </main>
 
-<footer>
-  Powered by Melody Magic Music Studio
-</footer>
+<footer>Powered by Melody Magic Music Studio</footer>
 </div>
 
 <script type="module">
-import { auth, db } from "./firebase-host.js";
+import {auth,db} from "./firebase-host.js";
 
 import {
-  onAuthStateChanged,
-  signOut
+ onAuthStateChanged,signOut
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
-  ref,
-  get,
-  set,
-  push,
-  update,
-  remove,
-  onValue,
-  off
+ ref,get,set,push,update,remove,onValue,off
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-/* --------------------------------
-   CONFIGURATION
---------------------------------- */
+const CLOUD_NAME="quqojlew";
+const UPLOAD_PRESET="melody_magic_posters";
+const ADMIN_UID="PI8sswS9a3ZBU001D3SBejMBJyO2";
 
-const CLOUD_NAME = "quqojlew";
-const UPLOAD_PRESET = "melody_magic_posters";
+let currentUser=null,currentHost=null,myShows=[];
+let registrationUnsubscribe=null,queueUnsubscribe=null,liveUnsubscribe=null;
+let currentQueue=[];
 
-const ADMIN_UID = "PI8sswS9a3ZBU001D3SBejMBJyO2";
+const $=id=>document.getElementById(id);
 
-let currentUser = null;
-let currentHost = null;
-let myShows = [];
-
-let registrationUnsubscribe = null;
-let queueUnsubscribe = null;
-
-const $ = id => document.getElementById(id);
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#039;"
-  })[char]);
+function escapeHTML(value){
+ return String(value??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+ })[c]);
 }
-
-function money(value) {
-  return "₹" + Number(value || 0).toLocaleString("en-IN");
+function money(value){return "₹"+Number(value||0).toLocaleString("en-IN")}
+function normaliseWhatsApp(value){
+ let n=String(value||"").replace(/\D/g,"");
+ if(n.length===10)n="91"+n;
+ return n;
 }
-
-function normaliseWhatsApp(value) {
-  let number = String(value || "").replace(/\D/g, "");
-  if (number.length === 10) number = "91" + number;
-  return number;
+function message(id,text){$(id).textContent=text}
+function stopRegistrationListener(){
+ if(registrationUnsubscribe){registrationUnsubscribe();registrationUnsubscribe=null}
 }
-
-function showMessage(id, message) {
-  $(id).textContent = message;
+function stopQueueListener(){
+ if(queueUnsubscribe){queueUnsubscribe();queueUnsubscribe=null}
 }
-
-function validCloudinaryURL(url) {
-  return typeof url === "string" &&
-    /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
+function stopLiveListener(){
+ if(liveUnsubscribe){liveUnsubscribe();liveUnsubscribe=null}
 }
+function baseURL(){return location.href.replace(/[^/]*$/,"")}
 
-function stopRegistrationListener() {
-  if (registrationUnsubscribe) {
-    registrationUnsubscribe();
-    registrationUnsubscribe = null;
-  }
-}
+/* HOST ACCESS */
+onAuthStateChanged(auth,async user=>{
+ currentUser=user;
+ if(!user){showLogin("Please log in using your host account.");return}
+ try{
+  const snap=await get(ref(db,"hostApplications/"+user.uid));
+  if(!snap.exists()){showLogin("Host application not found. Contact the administrator.");return}
+  const app=snap.val(),now=Date.now();
+  const start=Number(app.subscriptionStartAt||0);
+  const end=Number(app.subscriptionEndAt||0);
+  if(app.status!=="Approved"){showLogin("Your host account is not approved yet.");return}
+  if(!(start<=now&&end>now)){showLogin("Your host subscription is not active.");return}
 
-function stopQueueListener() {
-  if (queueUnsubscribe) {
-    queueUnsubscribe();
-    queueUnsubscribe = null;
-  }
-}
-
-/* --------------------------------
-   AUTHENTICATION AND HOST ACCESS
---------------------------------- */
-
-onAuthStateChanged(auth, async user => {
-  currentUser = user;
-
-  if (!user) {
-    showLogin("Please log in using your host account.");
-    return;
-  }
-
-  try {
-    const snapshot = await get(ref(db, "hostApplications/" + user.uid));
-
-    if (!snapshot.exists()) {
-      showLogin("Host application not found. Please contact the administrator.");
-      return;
-    }
-
-    const application = snapshot.val();
-    const now = Date.now();
-
-    const start = Number(application.subscriptionStartAt || 0);
-    const end = Number(application.subscriptionEndAt || 0);
-
-    const approved = application.status === "Approved";
-    const active = start <= now && end > now;
-
-    if (!approved || !active) {
-      showLogin(
-        !approved
-          ? "Your host account is not approved yet."
-          : "Your host subscription is not active."
-      );
-      return;
-    }
-
-    currentHost = application;
-
-    $("loginSection").classList.add("hidden");
-    $("dashboard").classList.remove("hidden");
-
-    $("hostName").textContent =
-      application.hostName || application.name || user.email || "Host";
-
-    $("hostStatus").textContent = "Approved • Active";
-
-    await loadShows();
-
-  } catch (error) {
-    console.error(error);
-    showLogin("Unable to verify your host account: " + error.message);
-  }
+  currentHost=app;
+  $("loginSection").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
+  $("hostName").textContent=app.hostName||app.name||user.email||"Host";
+  $("hostStatus").textContent="Approved • Active";
+  await loadShows();
+ }catch(e){console.error(e);showLogin("Unable to verify host: "+e.message)}
 });
 
-function showLogin(message) {
-  $("dashboard").classList.add("hidden");
-  $("loginSection").classList.remove("hidden");
-  showMessage("loginMessage", message);
-  $("logoutLoginBtn").classList.remove("hidden");
+function showLogin(text){
+ $("dashboard").classList.add("hidden");
+ $("loginSection").classList.remove("hidden");
+ message("loginMessage",text);
+ $("logoutLoginBtn").classList.remove("hidden");
+}
+async function logout(){await signOut(auth);location.reload()}
+$("logoutBtn").addEventListener("click",logout);
+$("logoutLoginBtn").addEventListener("click",logout);
+
+/* OWNERSHIP CHECK */
+async function verifyShow(showId){
+ const snap=await get(ref(db,"shows/"+showId));
+ if(!snap.exists()||snap.val().hostUid!==currentUser.uid)
+  throw new Error("Show ownership verification failed.");
+ return snap.val();
 }
 
-async function logout() {
-  await signOut(auth);
-  location.reload();
-}
-
-$("logoutBtn").addEventListener("click", logout);
-$("logoutLoginBtn").addEventListener("click", logout);
-
-/* --------------------------------
-   CREATE SHOW
---------------------------------- */
-
-$("showForm").addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!currentUser || !currentHost) return;
-
-  const button = $("createShowBtn");
-  button.disabled = true;
-
-  try {
-    const showRef = push(ref(db, "shows"));
-
-    const showData = {
-      showId: showRef.key,
-      hostUid: currentUser.uid,
-      hostName: currentHost.hostName || currentHost.name || "Host",
-      hostWhatsApp: normaliseWhatsApp($("hostWhatsApp").value),
-
-      name: $("showName").value.trim(),
-      description: $("showDescription").value.trim(),
-
-      date: $("showDate").value,
-      time: $("showTime").value,
-      timeZone: "Asia/Kolkata",
-
-      soloEntryFee: Number($("soloEntryFee").value || 0),
-      duetEntryFee: Number($("duetEntryFee").value || 0),
-      audienceFee: Number($("audienceFee").value || 0),
-
-      type: $("showType").value,
-      status: "Published",
-      createdAt: Date.now()
-    };
-
-    if (!showData.name || !showData.date || !showData.time) {
-      throw new Error("Please enter show name, date and time.");
-    }
-
-    await set(showRef, showData);
-
-    $("showForm").reset();
-    $("soloEntryFee").value = 100;
-    $("duetEntryFee").value = 150;
-    $("audienceFee").value = 0;
-
-    showMessage("createMessage", "Show published successfully!");
-
-    await loadShows();
-
-  } catch (error) {
-    console.error(error);
-    showMessage("createMessage", "Error: " + error.message);
-  } finally {
-    button.disabled = false;
-  }
+/* CREATE SHOW */
+$("showForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!currentUser||!currentHost)return;
+ const btn=$("createShowBtn");btn.disabled=true;
+ try{
+  const showRef=push(ref(db,"shows"));
+  const data={
+   showId:showRef.key,
+   hostUid:currentUser.uid,
+   hostName:currentHost.hostName||currentHost.name||"Host",
+   hostWhatsApp:normaliseWhatsApp($("hostWhatsApp").value),
+   name:$("showName").value.trim(),
+   description:$("showDescription").value.trim(),
+   date:$("showDate").value,
+   time:$("showTime").value,
+   timeZone:"Asia/Kolkata",
+   soloEntryFee:Number($("soloEntryFee").value||0),
+   duetEntryFee:Number($("duetEntryFee").value||0),
+   audienceFee:Number($("audienceFee").value||0),
+   type:$("showType").value,
+   status:"Published",
+   createdAt:Date.now()
+  };
+  if(!data.name||!data.date||!data.time)throw new Error("Enter show name, date and time.");
+  await set(showRef,data);
+  $("showForm").reset();
+  $("soloEntryFee").value=100;
+  $("duetEntryFee").value=150;
+  $("audienceFee").value=0;
+  message("createMessage","Show published successfully!");
+  await loadShows();
+ }catch(e){message("createMessage","Error: "+e.message)}
+ finally{btn.disabled=false}
 });
 
-/* --------------------------------
-   LOAD HOST SHOWS
---------------------------------- */
-
-async function loadShows() {
-  const snapshot = await get(ref(db, "shows"));
-  const allShows = snapshot.exists() ? snapshot.val() : {};
-
-  myShows = Object.entries(allShows)
-    .filter(([id, show]) =>
-      show &&
-      show.hostUid === currentUser.uid &&
-      show.status !== "Deleted"
-    )
-    .map(([id, show]) => ({...show, showId:id}))
-    .sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-
-  renderShows();
-  populateShowDropdowns();
+/* LOAD PUBLISHED SHOWS */
+async function loadShows(){
+ const snap=await get(ref(db,"shows"));
+ const all=snap.exists()?snap.val():{};
+ myShows=Object.entries(all)
+  .filter(([id,s])=>s&&s.hostUid===currentUser.uid&&s.status!=="Deleted")
+  .map(([id,s])=>({...s,showId:id}))
+  .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+ renderShows();
+ populateDropdowns();
 }
 
-function renderShows() {
-  const container = $("showsList");
+function renderShows(){
+ const box=$("showsList");
+ if(!myShows.length){
+  box.innerHTML='<div class="empty">No published shows yet.</div>';
+  return;
+ }
+ box.innerHTML=myShows.map(s=>{
+  const id=encodeURIComponent(s.showId);
+  const audience=baseURL()+"audience-entry.html?showId="+id;
+  const stage=baseURL()+"live-stage.html?showId="+id;
+  const performance=baseURL()+"live-performance.html?showId="+id;
+  return `<div class="show-card">
+   <h3>${escapeHTML(s.name)}</h3>
+   <p>${escapeHTML(s.description||"")}</p>
+   <p>📅 ${escapeHTML(s.date)} | 🕒 ${escapeHTML(s.time)}</p>
+   <p>${escapeHTML(s.type)} | Solo ${money(s.soloEntryFee)} | Duet ${money(s.duetEntryFee)} | Audience ${money(s.audienceFee)}</p>
+   <span class="pill">${escapeHTML(s.status||"Published")}</span>
+   <div>
+    <a class="btn" href="${stage}" target="_blank">Open Stage</a>
+    <a class="btn secondary" href="${performance}" target="_blank">Performance View</a>
+    <a class="btn secondary" href="${audience}" target="_blank">Audience Link</a>
+   </div>
+   <button class="secondary" data-copy="${escapeHTML(audience)}">Copy Audience Link</button>
+   <button class="secondary" data-queue="${escapeHTML(s.showId)}">Open Live Control</button>
+   <button class="danger" data-delete="${escapeHTML(s.showId)}">Delete Show</button>
+  </div>`;
+ }).join("");
 
-  if (!myShows.length) {
-    container.innerHTML = '<div class="empty">You have not created any shows yet.</div>';
-    return;
-  }
+ box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
+  try{
+   await navigator.clipboard.writeText(b.dataset.copy);
+   alert("Audience link copied");
+  }catch(e){prompt("Copy audience link:",b.dataset.copy)}
+ });
 
-  container.innerHTML = myShows.map(show => {
-    const id = escapeHTML(show.showId);
-
-    const audienceURL =
-      location.href.replace(/[^/]*$/, "") +
-      "audience-entry.html?showId=" + encodeURIComponent(show.showId);
-
-    const stageURL =
-      location.href.replace(/[^/]*$/, "") +
-      "live-stage.html?showId=" + encodeURIComponent(show.showId);
-
-    const performanceURL =
-      location.href.replace(/[^/]*$/, "") +
-      "live-performance.html?showId=" + encodeURIComponent(show.showId);
-
-    return `
-      <div class="show-card">
-        <h3>${escapeHTML(show.name)}</h3>
-        <p>${escapeHTML(show.description || "")}</p>
-        <p>📅 ${escapeHTML(show.date)} &nbsp; 🕒 ${escapeHTML(show.time)}</p>
-        <p>Type: ${escapeHTML(show.type)}</p>
-        <p>Solo: ${money(show.soloEntryFee)} |
-           Duet: ${money(show.duetEntryFee)} |
-           Audience: ${money(show.audienceFee)}</p>
-
-        <span class="pill">${escapeHTML(show.status || "Published")}</span>
-
-        <div>
-          <a class="btn" href="${stageURL}" target="_blank">Go Live / Stage</a>
-          <a class="btn secondary" href="${performanceURL}" target="_blank">Performance View</a>
-          <a class="btn secondary" href="${audienceURL}" target="_blank">Audience Link</a>
-        </div>
-
-        <button class="secondary" data-action="copy-audience" data-url="${escapeHTML(audienceURL)}">Copy Audience Link</button>
-        <button class="secondary" data-action="open-queue" data-show="${id}">Manage Queue</button>
-        <button class="danger" data-action="delete-show" data-show="${id}">Delete Show</button>
-      </div>
-    `;
-  }).join("");
-
-  container.querySelectorAll("button[data-action]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const action = button.dataset.action;
-      const showId = button.dataset.show;
-
-      if (action === "copy-audience") {
-        await navigator.clipboard.writeText(button.dataset.url);
-        alert("Audience link copied.");
-      }
-
-      if (action === "open-queue") {
-        $("queueShowSelect").value = showId;
-        listenToQueue(showId);
-        $("queueShowSelect").scrollIntoView({behavior:"smooth"});
-      }
-
-      if (action === "delete-show") {
-        await deleteShow(showId);
-      }
-    });
+ box.querySelectorAll("[data-queue]").forEach(b=>b.onclick=()=>{
+  $("queueShowSelect").value=b.dataset.queue;
+  listenToQueue(b.dataset.queue);
+  listenToLive(b.dataset.queue);
+  $("queueShowSelect").scrollIntoView({behavior:"smooth"});
+  document.querySelectorAll("details.card").forEach(d=>{
+   if(d.querySelector("#queueShowSelect"))d.open=true;
   });
+ });
+
+ box.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteShow(b.dataset.delete));
 }
 
-async function deleteShow(showId) {
-  if (!confirm("Are you sure you want to delete this show?")) return;
-
-  try {
-    const snapshot = await get(ref(db, "shows/" + showId));
-
-    if (!snapshot.exists() || snapshot.val().hostUid !== currentUser.uid) {
-      throw new Error("You cannot delete this show.");
-    }
-
-    await update(ref(db, "shows/" + showId), {
-      status: "Deleted",
-      deletedAt: Date.now()
-    });
-
-    await loadShows();
-
-  } catch (error) {
-    alert("Delete failed: " + error.message);
-  }
+async function deleteShow(id){
+ if(!confirm("Delete this show?"))return;
+ try{
+  await verifyShow(id);
+  await update(ref(db,"shows/"+id),{status:"Deleted",deletedAt:Date.now()});
+  await loadShows();
+ }catch(e){alert("Delete failed: "+e.message)}
 }
 
-/* --------------------------------
-   SHOW DROPDOWNS
---------------------------------- */
-
-function populateShowDropdowns() {
-  const ids = [
-    "registrationShowSelect",
-    "queueShowSelect",
-    "posterShowSelect",
-    "generatedPosterSelect"
-  ];
-
-  ids.forEach(id => {
-    const select = $(id);
-    const previous = select.value;
-
-    select.innerHTML = '<option value="">Select a show</option>';
-
-    myShows.forEach(show => {
-      const option = document.createElement("option");
-      option.value = show.showId;
-      option.textContent = show.name + " - " + show.date;
-      select.appendChild(option);
-    });
-
-    if (myShows.some(show => show.showId === previous)) {
-      select.value = previous;
-    }
+/* DROPDOWNS */
+function populateDropdowns(){
+ const ids=[
+  "posterShowSelect",
+  "generatedPosterSelect",
+  "registrationShowSelect",
+  "offlineShowSelect",
+  "queueShowSelect"
+ ];
+ ids.forEach(id=>{
+  const el=$(id),old=el.value;
+  el.innerHTML='<option value="">Select a show</option>';
+  myShows.forEach(s=>{
+   const o=document.createElement("option");
+   o.value=s.showId;
+   o.textContent=s.name+" - "+s.date;
+   el.appendChild(o);
   });
-
-  if ($("registrationShowSelect").value) {
-    listenToRegistrations($("registrationShowSelect").value);
-  }
-
-  if ($("queueShowSelect").value) {
-    listenToQueue($("queueShowSelect").value);
-  }
+  if(myShows.some(s=>s.showId===old))el.value=old;
+ });
+ if($("registrationShowSelect").value)
+  listenToRegistrations($("registrationShowSelect").value);
+ if($("queueShowSelect").value){
+  listenToQueue($("queueShowSelect").value);
+  listenToLive($("queueShowSelect").value);
+ }
 }
 
-/* --------------------------------
-   PERFORMER REGISTRATIONS
---------------------------------- */
+/* ONLINE REGISTRATIONS */
+$("registrationShowSelect").addEventListener("change",e=>listenToRegistrations(e.target.value));
 
-$("registrationShowSelect").addEventListener("change", event => {
-  listenToRegistrations(event.target.value);
+function listenToRegistrations(showId){
+ stopRegistrationListener();
+ if(!showId){
+  $("registrationsList").textContent="Select a show.";
+  return;
+ }
+ const r=ref(db,"showRegistrations/"+showId);
+ const cb=onValue(r,s=>{
+  renderRegistrations(showId,s.exists()?s.val():{});
+ },e=>{
+  $("registrationsList").textContent="Error: "+e.message;
+ });
+ registrationUnsubscribe=()=>off(r,"value",cb);
+}
+
+function renderRegistrations(showId,data){
+ const box=$("registrationsList");
+ const entries=Object.entries(data||{});
+ if(!entries.length){
+  box.innerHTML='<div class="empty">No registrations yet.</div>';
+  return;
+ }
+
+ box.innerHTML=entries.map(([id,p])=>`
+ <div class="registration">
+ <h3>${escapeHTML(p.singerName||p.name||"Performer")}</h3>
+ <p>Song: ${escapeHTML(p.songName||p.song||"-")} | Mobile: ${escapeHTML(p.mobile||p.phone||"-")}</p>
+ <p>Type: ${escapeHTML(p.performanceType||p.type||"-")}</p>
+ <p>Status: <span class="pill">${escapeHTML(p.status||"Pending")}</span>
+ Payment: <span class="pill">${escapeHTML(p.paymentStatus||"Unpaid")}</span></p>
+ <button class="success" data-approve="${escapeHTML(id)}">Approve & Add to Queue</button>
+ <button class="danger" data-reject="${escapeHTML(id)}">Reject</button>
+ <button class="secondary" data-paid="${escapeHTML(id)}">Mark Paid</button>
+ <button class="secondary" data-unpaid="${escapeHTML(id)}">Mark Unpaid</button>
+ </div>`).join("");
+
+ box.querySelectorAll("[data-approve]").forEach(b=>b.onclick=async()=>{
+  try{
+   await updatePerformer(showId,b.dataset.approve,{status:"Approved"});
+   await addRegistrationToQueue(showId,b.dataset.approve);
+   alert("Approved and added to live queue.");
+  }catch(e){alert("Approval failed: "+e.message)}
+ });
+
+ box.querySelectorAll("[data-reject]").forEach(b=>b.onclick=async()=>{
+  try{
+   await updatePerformer(showId,b.dataset.reject,{status:"Rejected"});
+   await remove(ref(db,`performanceQueue/${showId}/${b.dataset.reject}`));
+  }catch(e){alert(e.message)}
+ });
+
+ box.querySelectorAll("[data-paid]").forEach(b=>b.onclick=async()=>{
+  try{await updatePerformer(showId,b.dataset.paid,{paymentStatus:"Paid"})}
+  catch(e){alert(e.message)}
+ });
+
+ box.querySelectorAll("[data-unpaid]").forEach(b=>b.onclick=async()=>{
+  try{await updatePerformer(showId,b.dataset.unpaid,{paymentStatus:"Unpaid"})}
+  catch(e){alert(e.message)}
+ });
+}
+
+async function updatePerformer(showId,id,changes){
+ await verifyShow(showId);
+ const r=ref(db,`showRegistrations/${showId}/${id}`);
+ const s=await get(r);
+ if(!s.exists())throw new Error("Registration not found.");
+ await update(r,{...changes,updatedAt:Date.now()});
+}
+
+/* QUEUE */
+$("queueShowSelect").addEventListener("change",e=>{
+ listenToQueue(e.target.value);
+ listenToLive(e.target.value);
 });
 
-function listenToRegistrations(showId) {
-  stopRegistrationListener();
+async function addRegistrationToQueue(showId,id){
+ await verifyShow(showId);
+ const rs=await get(ref(db,`showRegistrations/${showId}/${id}`));
+ if(!rs.exists())throw new Error("Registration not found.");
+ const p=rs.val();
+ if(p.status!=="Approved")throw new Error("Only approved performers can enter the queue.");
 
-  if (!showId) {
-    $("registrationsList").innerHTML = "Select a show to view registrations.";
-    return;
-  }
+ const qr=ref(db,`performanceQueue/${showId}/${id}`);
+ const existing=await get(qr);
+ if(existing.exists()){
+  await update(qr,{status:"Waiting",updatedAt:Date.now()});
+  return;
+ }
 
-  const registrationsRef = ref(db, "showRegistrations/" + showId);
+ const qs=await get(ref(db,`performanceQueue/${showId}`));
+ const data=qs.exists()?qs.val():{};
+ const count=Object.values(data).filter(x=>x&&x.status!=="Removed"&&x.status!=="Rejected").length;
 
-  const callback = onValue(registrationsRef, snapshot => {
-    const data = snapshot.exists() ? snapshot.val() : {};
-    renderRegistrations(showId, data);
-  }, error => {
-    $("registrationsList").textContent = "Could not load registrations: " + error.message;
-  });
-
-  registrationUnsubscribe = () => off(registrationsRef, "value", callback);
+ await set(qr,{
+  registrationId:id,
+  performerName:p.singerName||p.name||"Performer",
+  mobile:p.mobile||p.phone||"",
+  songName:p.songName||p.song||"",
+  performanceType:p.performanceType||p.type||"Solo",
+  status:"Waiting",
+  source:"Online Registration",
+  order:count+1,
+  createdAt:Date.now()
+ });
 }
 
-function renderRegistrations(showId, registrations) {
-  const container = $("registrationsList");
-  const entries = Object.entries(registrations || {});
-
-  if (!entries.length) {
-    container.innerHTML = '<div class="empty">No performer registrations yet.</div>';
-    return;
-  }
-
-  container.innerHTML = entries.map(([registrationId, item]) => `
-    <div class="registration">
-      <h3>${escapeHTML(item.singerName || item.name || "Performer")}</h3>
-      <p>Song: ${escapeHTML(item.songName || item.song || "-")}</p>
-      <p>Mobile: ${escapeHTML(item.mobile || item.phone || "-")}</p>
-      <p>Type: ${escapeHTML(item.performanceType || item.type || "-")}</p>
-      <p>Status: <span class="pill">${escapeHTML(item.status || "Pending")}</span></p>
-      <p>Payment: <span class="pill">${escapeHTML(item.paymentStatus || "Unpaid")}</span></p>
-
-      <button class="success" data-reg-action="approve" data-id="${escapeHTML(registrationId)}">Approve & Add to Queue</button>
-      <button class="danger" data-reg-action="reject" data-id="${escapeHTML(registrationId)}">Reject</button>
-      <button class="secondary" data-reg-action="paid" data-id="${escapeHTML(registrationId)}">Mark Paid</button>
-      <button class="secondary" data-reg-action="unpaid" data-id="${escapeHTML(registrationId)}">Mark Unpaid</button>
-    </div>
-  `).join("");
-
-  container.querySelectorAll("button[data-reg-action]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const registrationId = button.dataset.id;
-      const action = button.dataset.regAction;
-
-      try {
-        if (action === "approve") {
-          await updatePerformer(showId, registrationId, {status:"Approved"});
-          await addRegistrationToQueue(showId, registrationId);
-          alert("Performer approved and added to the queue.");
-        }
-
-        if (action === "reject") {
-          await updatePerformer(showId, registrationId, {status:"Rejected"});
-          await remove(ref(db, `performanceQueue/${showId}/${registrationId}`));
-        }
-
-        if (action === "paid") {
-          await updatePerformer(showId, registrationId, {paymentStatus:"Paid"});
-        }
-
-        if (action === "unpaid") {
-          await updatePerformer(showId, registrationId, {paymentStatus:"Unpaid"});
-        }
-
-      } catch (error) {
-        alert("Action failed: " + error.message);
-      }
-    });
-  });
+function listenToQueue(showId){
+ stopQueueListener();
+ if(!showId){
+  $("queueList").textContent="Select a show.";
+  return;
+ }
+ const r=ref(db,"performanceQueue/"+showId);
+ const cb=onValue(r,s=>{
+  renderQueue(showId,s.exists()?s.val():{});
+ },e=>{
+  $("queueList").textContent="Queue error: "+e.message;
+ });
+ queueUnsubscribe=()=>off(r,"value",cb);
 }
 
-async function updatePerformer(showId, registrationId, changes) {
-  const showSnapshot = await get(ref(db, "shows/" + showId));
+function renderQueue(showId,data){
+ currentQueue=Object.entries(data||{})
+ .map(([id,item])=>({...item,id}))
+ .filter(x=>x.status!=="Removed"&&x.status!=="Rejected")
+ .sort((a,b)=>Number(a.order||0)-Number(b.order||0)||Number(a.createdAt||0)-Number(b.createdAt||0));
 
-  if (!showSnapshot.exists() ||
-      showSnapshot.val().hostUid !== currentUser.uid) {
-    throw new Error("Show ownership verification failed.");
-  }
+ const box=$("queueList");
+ if(!currentQueue.length){
+  box.innerHTML='<div class="empty">No performers in the queue.</div>';
+  return;
+ }
 
-  const registrationRef =
-    ref(db, `showRegistrations/${showId}/${registrationId}`);
+ box.innerHTML=currentQueue.map((p,i)=>`
+ <div class="queue-item">
+ <h3><span class="queue-number">${i+1}</span>${escapeHTML(p.performerName||"Performer")}</h3>
+ <p>Song: ${escapeHTML(p.songName||"-")} | Mobile: ${escapeHTML(p.mobile||"-")}</p>
+ <p>Type: ${escapeHTML(p.performanceType||"-")} | Source: ${escapeHTML(p.source||"-")}</p>
+ <p>Status: <span class="pill">${escapeHTML(p.status||"Waiting")}</span></p>
+ <button class="secondary" data-up="${escapeHTML(p.id)}" ${i===0?"disabled":""}>↑ Move Up</button>
+ <button class="secondary" data-down="${escapeHTML(p.id)}" ${i===currentQueue.length-1?"disabled":""}>↓ Move Down</button>
+ <button class="danger" data-remove="${escapeHTML(p.id)}">Remove</button>
+ </div>`).join("");
 
-  const registrationSnapshot = await get(registrationRef);
+ box.querySelectorAll("[data-up],[data-down]").forEach(b=>b.onclick=async()=>{
+  const id=b.dataset.up||b.dataset.down;
+  const i=currentQueue.findIndex(x=>x.id===id);
+  const j=b.dataset.up?i-1:i+1;
+  if(j<0||j>=currentQueue.length)return;
 
-  if (!registrationSnapshot.exists()) {
-    throw new Error("Registration not found.");
-  }
+  const a=currentQueue[i],c=currentQueue[j];
+  const ao=Number(a.order||i+1),co=Number(c.order||j+1);
+  const changes={};
+  changes[`performanceQueue/${showId}/${a.id}/order`]=co;
+  changes[`performanceQueue/${showId}/${c.id}/order`]=ao;
 
-  await update(registrationRef, {
-    ...changes,
-    updatedAt: Date.now()
-  });
+  try{await update(ref(db),changes)}
+  catch(e){alert(e.message)}
+ });
+
+ box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=async()=>{
+  if(!confirm("Remove performer from queue?"))return;
+  try{
+   await remove(ref(db,`performanceQueue/${showId}/${b.dataset.remove}`));
+  }catch(e){alert(e.message)}
+ });
 }
 
-/* --------------------------------
-   PERFORMANCE QUEUE
---------------------------------- */
+/* OFFLINE REGISTRATION */
+$("manualQueueForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const showId=$("offlineShowSelect").value;
+ if(!showId){
+  message("offlineMessage","Please select a show.");
+  return;
+ }
+ try{
+  await verifyShow(showId);
+  const snap=await get(ref(db,`performanceQueue/${showId}`));
+  const data=snap.exists()?snap.val():{};
+  const count=Object.values(data).filter(x=>x&&x.status!=="Removed"&&x.status!=="Rejected").length;
+  const newRef=push(ref(db,`performanceQueue/${showId}`));
 
-$("queueShowSelect").addEventListener("change", event => {
-  listenToQueue(event.target.value);
+  await set(newRef,{
+   performerName:$("manualName").value.trim(),
+   mobile:$("manualMobile").value.trim(),
+   songName:$("manualSong").value.trim(),
+   performanceType:$("manualType").value,
+   status:"Waiting",
+   source:"Offline Walk-in",
+   order:count+1,
+   createdAt:Date.now()
+  });
+
+  $("manualQueueForm").reset();
+  message("offlineMessage","Offline performer registered and added to the live queue.");
+ }catch(e){
+  message("offlineMessage","Could not register: "+e.message);
+ }
 });
 
-function listenToQueue(showId) {
-  stopQueueListener();
-
-  if (!showId) {
-    $("queueList").innerHTML = "Select a show to view its queue.";
-    return;
-  }
-
-  const queueRef = ref(db, "performanceQueue/" + showId);
-
-  const callback = onValue(queueRef, snapshot => {
-    const data = snapshot.exists() ? snapshot.val() : {};
-    renderQueue(showId, data);
-  }, error => {
-    $("queueList").textContent = "Queue error: " + error.message;
-  });
-
-  queueUnsubscribe = () => off(queueRef, "value", callback);
+/* YOUTUBE LIVE CONTROL */
+function youtubeId(url){
+ try{
+  const u=new URL(url);
+  if(u.hostname.includes("youtu.be"))return u.pathname.slice(1);
+  if(u.searchParams.get("v"))return u.searchParams.get("v");
+  const m=u.pathname.match(/\/(embed|live|shorts)\/([^/?]+)/);
+  return m?m[2]:"";
+ }catch(e){return ""}
 }
 
-function renderQueue(showId, queueData) {
-  const container = $("queueList");
-
-  const entries = Object.entries(queueData || {})
-    .map(([id, item]) => ({...item, id}))
-    .filter(item => item.status !== "Removed" && item.status !== "Rejected")
-    .sort((a,b) => {
-      const orderDifference = Number(a.order || 0) - Number(b.order || 0);
-      if (orderDifference !== 0) return orderDifference;
-      return Number(a.createdAt || 0) - Number(b.createdAt || 0);
-    });
-
-  if (!entries.length) {
-    container.innerHTML = '<div class="empty">The performance queue is empty.</div>';
-    return;
-  }
-
-  container.innerHTML = entries.map((item, index) => `
-    <div class="queue-item">
-      <h3><span class="queue-number">${index + 1}</span>${escapeHTML(item.performerName || "Performer")}</h3>
-      <p>Song: ${escapeHTML(item.songName || "-")}</p>
-      <p>Mobile: ${escapeHTML(item.mobile || "-")}</p>
-      <p>Type: ${escapeHTML(item.performanceType || "-")}</p>
-      <p>Status: <span class="pill">${escapeHTML(item.status || "Waiting")}</span></p>
-
-      <button class="secondary" data-queue-action="up" data-id="${escapeHTML(item.id)}" ${index === 0 ? "disabled" : ""}>↑ Move Up</button>
-      <button class="secondary" data-queue-action="down" data-id="${escapeHTML(item.id)}" ${index === entries.length - 1 ? "disabled" : ""}>↓ Move Down</button>
-      <button class="danger" data-queue-action="remove" data-id="${escapeHTML(item.id)}">Remove</button>
-    </div>
-  `).join("");
-
-  container.querySelectorAll("button[data-queue-action]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const itemId = button.dataset.id;
-      const action = button.dataset.queueAction;
-
-      try {
-        const index = entries.findIndex(item => item.id === itemId);
-        if (index < 0) return;
-
-        if (action === "remove") {
-          if (!confirm("Remove this performer from the queue?")) return;
-
-          await remove(ref(db, `performanceQueue/${showId}/${itemId}`));
-          return;
-        }
-
-        const otherIndex = action === "up" ? index - 1 : index + 1;
-        if (otherIndex < 0 || otherIndex >= entries.length) return;
-
-        const first = entries[index];
-        const second = entries[otherIndex];
-
-        const firstOrder = Number(first.order || index + 1);
-        const secondOrder = Number(second.order || otherIndex + 1);
-
-        const changes = {};
-        changes[`performanceQueue/${showId}/${first.id}/order`] = secondOrder;
-        changes[`performanceQueue/${showId}/${second.id}/order`] = firstOrder;
-
-        await update(ref(db), changes);
-
-      } catch (error) {
-        alert("Queue update failed: " + error.message);
-      }
-    });
-  });
+function listenToLive(showId){
+ stopLiveListener();
+ if(!showId){
+  $("youtubeUrl").value="";
+  $("liveLinks").textContent="";
+  return;
+ }
+ const r=ref(db,"livePerformance/"+showId);
+ const cb=onValue(r,s=>{
+  const d=s.exists()?s.val():{};
+  $("youtubeUrl").value=d.youtubeUrl||d.videoUrl||"";
+  $("liveMessage").textContent=d.status==="Live"?"Status: LIVE":"Status: "+(d.status||"Not started");
+  $("liveLinks").innerHTML=d.youtubeUrl?
+   `Saved link: <a style="color:#e9bd55" target="_blank" href="${escapeHTML(d.youtubeUrl)}">Open YouTube</a>`:"";
+ });
+ liveUnsubscribe=()=>off(r,"value",cb);
 }
 
-async function addRegistrationToQueue(showId, registrationId) {
-  const showSnapshot = await get(ref(db, "shows/" + showId));
+async function saveLiveData(status){
+ const showId=$("queueShowSelect").value;
+ if(!showId)throw new Error("Select a show first.");
+ await verifyShow(showId);
 
-  if (!showSnapshot.exists() ||
-      showSnapshot.val().hostUid !== currentUser.uid) {
-    throw new Error("Show ownership verification failed.");
-  }
+ const url=$("youtubeUrl").value.trim();
+ if(url&&!youtubeId(url))throw new Error("Enter a valid YouTube video or live URL.");
 
-  const registrationSnapshot =
-    await get(ref(db, `showRegistrations/${showId}/${registrationId}`));
+ const old=await get(ref(db,`livePerformance/${showId}`));
+ const previous=old.exists()?old.val():{};
 
-  if (!registrationSnapshot.exists()) {
-    throw new Error("Registration not found.");
-  }
-
-  const performer = registrationSnapshot.val();
-
-  if (performer.status !== "Approved") {
-    throw new Error("Only approved performers can enter the queue.");
-  }
-
-  const queueRef = ref(db, `performanceQueue/${showId}/${registrationId}`);
-  const existing = await get(queueRef);
-
-  if (existing.exists()) {
-    await update(queueRef, {
-      status:"Waiting",
-      updatedAt:Date.now()
-    });
-    return;
-  }
-
-  const queueSnapshot = await get(ref(db, "performanceQueue/" + showId));
-  const queueData = queueSnapshot.exists() ? queueSnapshot.val() : {};
-
-  const currentCount = Object.values(queueData)
-    .filter(item => item && item.status !== "Removed" && item.status !== "Rejected")
-    .length;
-
-  await set(queueRef, {
-    registrationId,
-    performerName: performer.singerName || performer.name || "Performer",
-    mobile: performer.mobile || performer.phone || "",
-    songName: performer.songName || performer.song || "",
-    performanceType: performer.performanceType || performer.type || "Solo",
-    status: "Waiting",
-    source: "Registration",
-    order: currentCount + 1,
-    createdAt: Date.now()
-  });
+ await set(ref(db,`livePerformance/${showId}`),{
+  ...previous,
+  showId,
+  hostUid:currentUser.uid,
+  youtubeUrl:url,
+  status,
+  updatedAt:Date.now(),
+  ...(status==="Live"?{startedAt:Date.now()}:{stoppedAt:Date.now()})
+ });
 }
 
-$("manualQueueForm").addEventListener("submit", async event => {
-  event.preventDefault();
+$("saveYoutubeBtn").onclick=async()=>{
+ try{
+  await saveLiveData("Ready");
+  message("liveMessage","YouTube link saved.");
+ }catch(e){message("liveMessage","Error: "+e.message)}
+};
 
-  const showId = $("queueShowSelect").value;
+$("startLiveBtn").onclick=async()=>{
+ try{
+  await saveLiveData("Live");
+  message("liveMessage","Live show control set to LIVE. Open Performance View to display the show.");
+ }catch(e){message("liveMessage","Error: "+e.message)}
+};
 
-  if (!showId) {
-    alert("Please select a show first.");
-    return;
-  }
+$("stopLiveBtn").onclick=async()=>{
+ try{
+  await saveLiveData("Stopped");
+  message("liveMessage","Live show stopped.");
+ }catch(e){message("liveMessage","Error: "+e.message)}
+};
 
-  try {
-    const showSnapshot = await get(ref(db, "shows/" + showId));
-
-    if (!showSnapshot.exists() ||
-        showSnapshot.val().hostUid !== currentUser.uid) {
-      throw new Error("Show ownership verification failed.");
-    }
-
-    const queueSnapshot = await get(ref(db, "performanceQueue/" + showId));
-    const queueData = queueSnapshot.exists() ? queueSnapshot.val() : {};
-
-    const currentCount = Object.values(queueData)
-      .filter(item => item && item.status !== "Removed" && item.status !== "Rejected")
-      .length;
-
-    const newRef = push(ref(db, "performanceQueue/" + showId));
-
-    await set(newRef, {
-      performerName: $("manualName").value.trim(),
-      mobile: $("manualMobile").value.trim(),
-      songName: $("manualSong").value.trim(),
-      performanceType: $("manualType").value,
-      status: "Waiting",
-      source: "Walk-in",
-      order: currentCount + 1,
-      createdAt: Date.now()
-    });
-
-    $("manualQueueForm").reset();
-    alert("Performer added to queue.");
-
-  } catch (error) {
-    alert("Could not add performer: " + error.message);
-  }
-});
-
-/* --------------------------------
-   CLOUDINARY CUSTOM POSTER UPLOAD
---------------------------------- */
-
-$("uploadPosterBtn").addEventListener("click", async () => {
-  const showId = $("posterShowSelect").value;
-  const file = $("posterFile").files[0];
-
-  if (!showId) {
-    alert("Select a show.");
-    return;
-  }
-
-  if (!file) {
-    alert("Select a poster image.");
-    return;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    alert("Image must be smaller than 5 MB.");
-    return;
-  }
-
-  try {
-    const showSnapshot = await get(ref(db, "shows/" + showId));
-
-    if (!showSnapshot.exists() ||
-        showSnapshot.val().hostUid !== currentUser.uid) {
-      throw new Error("Show ownership verification failed.");
-    }
-
-    showMessage("posterUploadMessage", "Uploading poster...");
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-      {method:"POST", body:formData}
-    );
-
-    const result = await response.json();
-
-    if (!response.ok || !result.secure_url) {
-      throw new Error(result.error?.message || "Cloudinary upload failed.");
-    }
-
-    if (!validCloudinaryURL(result.secure_url)) {
-      throw new Error("Unexpected poster URL.");
-    }
-
-    await set(ref(db, "showPosters/" + showId), {
-      hostUid: currentUser.uid,
-      showId,
-      imageUrl: result.secure_url,
-      publicId: result.public_id || "",
-      status: "Pending",
-      submittedAt: Date.now()
-    });
-
-    showMessage("posterUploadMessage", "Poster uploaded and submitted for review.");
-
-  } catch (error) {
-    console.error(error);
-    showMessage("posterUploadMessage", "Upload failed: " + error.message);
-  }
-});
-
-/* --------------------------------
-   GENERATE POSTER
---------------------------------- */
-
-function getSelectedPosterShow() {
-  const id = $("generatedPosterSelect").value;
-  return myShows.find(show => show.showId === id);
+/* CLOUDINARY CUSTOM POSTER */
+function validCloudinaryURL(url){
+ return typeof url==="string"&&/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
 }
 
-function createPosterBlob() {
-  return new Promise(resolve => {
-    $("posterCanvas").toBlob(resolve, "image/png");
+$("uploadPosterBtn").onclick=async()=>{
+ const showId=$("posterShowSelect").value;
+ const file=$("posterFile").files[0];
+
+ if(!showId){alert("Select a show.");return}
+ if(!file){alert("Select a poster image.");return}
+ if(file.size>5*1024*1024){alert("Image must be smaller than 5 MB.");return}
+
+ try{
+  await verifyShow(showId);
+  message("posterUploadMessage","Uploading poster...");
+
+  const fd=new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset",UPLOAD_PRESET);
+
+  const response=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
+   method:"POST",body:fd
   });
+  const result=await response.json();
+
+  if(!response.ok||!result.secure_url)
+   throw new Error(result.error?.message||"Upload failed.");
+
+  if(!validCloudinaryURL(result.secure_url))
+   throw new Error("Unexpected image URL.");
+
+  await set(ref(db,"showPosters/"+showId),{
+   hostUid:currentUser.uid,
+   showId,
+   imageUrl:result.secure_url,
+   publicId:result.public_id||"",
+   status:"Pending",
+   submittedAt:Date.now()
+  });
+
+  message("posterUploadMessage","Poster uploaded and submitted for admin review.");
+ }catch(e){
+  message("posterUploadMessage","Upload failed: "+e.message);
+ }
+};
+
+/* POSTER GENERATOR */
+function selectedPosterShow(){
+ return myShows.find(s=>s.showId===$("generatedPosterSelect").value);
 }
 
-function drawPoster(show) {
-  const canvas = $("posterCanvas");
-  const ctx = canvas.getContext("2d");
+function drawPoster(show){
+ const canvas=$("posterCanvas");
+ const ctx=canvas.getContext("2d");
+ const w=canvas.width,h=canvas.height;
 
-  const w = canvas.width;
-  const h = canvas.height;
+ const g=ctx.createLinearGradient(0,0,w,h);
+ g.addColorStop(0,"#090909");
+ g.addColorStop(.5,"#332100");
+ g.addColorStop(1,"#090909");
 
-  const gradient = ctx.createLinearGradient(0,0,w,h);
-  gradient.addColorStop(0,"#090909");
-  gradient.addColorStop(.5,"#332100");
-  gradient.addColorStop(1,"#090909");
+ ctx.fillStyle=g;
+ ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle="#d6ad50";
+ ctx.lineWidth=12;
+ ctx.strokeRect(30,30,w-60,h-60);
 
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0,0,w,h);
+ ctx.textAlign="center";
+ ctx.fillStyle="#e9bd55";
+ ctx.font="bold 54px Arial";
+ ctx.fillText("MELODY MAGIC",w/2,150);
 
-  ctx.strokeStyle = "#d6ad50";
-  ctx.lineWidth = 12;
-  ctx.strokeRect(30,30,w-60,h-60);
+ ctx.fillStyle="#fff";
+ ctx.font="32px Arial";
+ ctx.fillText("DIGITAL AUDITORIUM",w/2,205);
 
-  ctx.textAlign = "center";
+ ctx.strokeStyle="#d6ad50";
+ ctx.lineWidth=3;
+ ctx.beginPath();
+ ctx.moveTo(140,250);
+ ctx.lineTo(w-140,250);
+ ctx.stroke();
 
-  ctx.fillStyle = "#e9bd55";
-  ctx.font = "bold 54px Arial";
-  ctx.fillText("MELODY MAGIC",w/2,150);
+ ctx.fillStyle="#e9bd55";
+ ctx.font="bold 58px Arial";
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "32px Arial";
-  ctx.fillText("DIGITAL AUDITORIUM",w/2,205);
+ const words=String(show.name||"LIVE SHOW").split(" ");
+ let lines=[],line="";
 
-  ctx.strokeStyle = "#d6ad50";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(140,250);
-  ctx.lineTo(w-140,250);
-  ctx.stroke();
+ words.forEach(word=>{
+  const test=line?line+" "+word:word;
+  if(ctx.measureText(test).width>700&&line){
+   lines.push(line);
+   line=word;
+  }else line=test;
+ });
+ if(line)lines.push(line);
 
-  ctx.fillStyle = "#e9bd55";
-  ctx.font = "bold 62px Arial";
+ let y=390;
+ lines.slice(0,4).forEach(t=>{
+  ctx.fillText(t,w/2,y);
+  y+=85;
+ });
 
-  const words = String(show.name || "LIVE SHOW").split(" ");
-  let lines = [];
-  let line = "";
+ ctx.fillStyle="#fff";
+ ctx.font="38px Arial";
+ ctx.fillText(show.type||"Karaoke Show",w/2,770);
 
-  words.forEach(word => {
-    const test = line ? line + " " + word : word;
-    if (ctx.measureText(test).width > 700 && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = test;
-    }
-  });
-  if (line) lines.push(line);
+ ctx.fillStyle="#e9bd55";
+ ctx.font="bold 42px Arial";
+ ctx.fillText("DATE & TIME",w/2,870);
 
-  let y = 390;
-  lines.slice(0,4).forEach(text => {
-    ctx.fillText(text,w/2,y);
-    y += 85;
-  });
+ ctx.fillStyle="#fff";
+ ctx.font="38px Arial";
+ ctx.fillText(`${show.date||""} | ${show.time||""}`,w/2,930);
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "38px Arial";
-  ctx.fillText(String(show.type || "Karaoke Show"),w/2,770);
+ ctx.fillStyle="#e9bd55";
+ ctx.font="bold 38px Arial";
+ ctx.fillText("ENTRY DETAILS",w/2,1030);
 
-  ctx.fillStyle = "#e9bd55";
-  ctx.font = "bold 42px Arial";
-  ctx.fillText("DATE & TIME",w/2,870);
+ ctx.fillStyle="#fff";
+ ctx.font="34px Arial";
+ ctx.fillText(
+  Number(show.audienceFee||0)===0?"FREE ENTRY":"Entry Fee: "+money(show.audienceFee),
+  w/2,1090
+ );
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "38px Arial";
-  ctx.fillText(`${show.date || ""}  |  ${show.time || ""}`,w/2,930);
-
-  ctx.fillStyle = "#e9bd55";
-  ctx.font = "bold 38px Arial";
-  ctx.fillText("ENTRY DETAILS",w/2,1030);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "34px Arial";
-  ctx.fillText(
-    Number(show.audienceFee || 0) === 0
-      ? "FREE ENTRY"
-      : "Entry Fee: " + money(show.audienceFee),
-    w/2,1090
-  );
-
-  ctx.fillStyle = "#cccccc";
-  ctx.font = "25px Arial";
-  ctx.fillText("Powered by Melody Magic Music Studio",w/2,1150);
+ ctx.fillStyle="#ccc";
+ ctx.font="25px Arial";
+ ctx.fillText("Powered by Melody Magic Music Studio",w/2,1150);
 }
 
-$("generatePosterBtn").addEventListener("click", () => {
-  const show = getSelectedPosterShow();
+function posterBlob(){
+ return new Promise(resolve=>$("posterCanvas").toBlob(resolve,"image/png"));
+}
 
-  if (!show) {
-    alert("Select a show first.");
-    return;
+$("generatePosterBtn").onclick=()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+ drawPoster(s);
+};
+
+$("downloadPosterBtn").onclick=async()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+
+ drawPoster(s);
+ const blob=await posterBlob();
+ if(!blob){alert("Poster generation failed.");return}
+
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="Melody-Magic-"+s.name.replace(/[^a-z0-9]/gi,"-")+".png";
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+
+$("sharePosterBtn").onclick=async()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+
+ drawPoster(s);
+ const blob=await posterBlob();
+ if(!blob){alert("Poster generation failed.");return}
+
+ const file=new File([blob],"Melody-Magic-Show.png",{type:"image/png"});
+
+ if(navigator.canShare&&navigator.canShare({files:[file]})){
+  try{
+   await navigator.share({
+    title:s.name,
+    text:`${s.name} - ${s.date} at ${s.time}`,
+    files:[file]
+   });
+  }catch(e){
+   if(e.name!=="AbortError")alert(e.message);
   }
-
-  drawPoster(show);
-});
-
-$("downloadPosterBtn").addEventListener("click", async () => {
-  const show = getSelectedPosterShow();
-
-  if (!show) {
-    alert("Select a show first.");
-    return;
-  }
-
-  drawPoster(show);
-
-  const blob = await createPosterBlob();
-  if (!blob) {
-    alert("Could not generate poster.");
-    return;
-  }
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = "Melody-Magic-" +
-    String(show.name).replace(/[^a-z0-9]/gi,"-") +
-    ".png";
-
-  link.click();
-  URL.revokeObjectURL(url);
-});
-
-$("sharePosterBtn").addEventListener("click", async () => {
-  const show = getSelectedPosterShow();
-
-  if (!show) {
-    alert("Select a show first.");
-    return;
-  }
-
-  drawPoster(show);
-
-  const blob = await createPosterBlob();
-  if (!blob) {
-    alert("Could not generate poster.");
-    return;
-  }
-
-  const file = new File(
-    [blob],
-    "Melody-Magic-Show.png",
-    {type:"image/png"}
-  );
-
-  if (navigator.canShare && navigator.canShare({files:[file]})) {
-    try {
-      await navigator.share({
-        title: show.name,
-        text: `${show.name} - ${show.date} at ${show.time}`,
-        files:[file]
-      });
-    } catch (error) {
-      if (error.name !== "AbortError") alert(error.message);
-    }
-  } else {
-    alert("Your browser does not support poster sharing. Please download the poster and share it manually.");
-  }
-});
-
+ }else{
+  alert("Download the poster and share it manually.");
+ }
+};
 </script>
 </body>
 </html>
