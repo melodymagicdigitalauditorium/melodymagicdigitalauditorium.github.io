@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +17,7 @@ h1{margin:0}
 .show{border:1px solid #39445e;margin:12px 0}
 input,textarea,select{width:100%;padding:12px;margin:7px 0 14px;border:1px solid #39445e;border-radius:7px;background:#0c1426;color:white}
 button{padding:12px 18px;border:0;border-radius:7px;background:#e5ad35;color:#111;font-weight:bold;cursor:pointer;margin:5px 3px}
-button:disabled{opacity:.5}
+button:disabled{opacity:.5;cursor:not-allowed}
 button.secondary{background:#35415d;color:white}
 button.green{background:#16834a;color:white}
 button.danger{background:#b83232;color:white}
@@ -136,7 +135,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
-  ref, get, push, set
+  ref, get, push, set, update
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const CLOUD_NAME = "quqojlew";
@@ -430,6 +429,64 @@ document.getElementById("createShowBtn").addEventListener("click", async () => {
   }
 });
 
+/* DELETE SHOW */
+
+async function deleteShow(showId, showName, button) {
+  const confirmed = confirm(
+    'Are you sure you want to delete "' + showName + '"?\n\n' +
+    "This show will disappear from the active show list.\n" +
+    "Existing registrations and poster records will be preserved."
+  );
+
+  if (!confirmed) return;
+
+  button.disabled = true;
+  button.textContent = "Deleting...";
+
+  try {
+    if (!currentUser) {
+      throw new Error("Please log in again.");
+    }
+
+    // Confirm that this show belongs to the logged-in host.
+    const snapshot = await withTimeout(
+      get(ref(db, "shows/" + showId))
+    );
+
+    if (!snapshot.exists()) {
+      throw new Error("This show no longer exists.");
+    }
+
+    const show = snapshot.val();
+
+    if (show.hostUid !== currentUser.uid) {
+      throw new Error("You are not authorised to delete this show.");
+    }
+
+    if (show.status === "Deleted") {
+      await loadShows();
+      return;
+    }
+
+    // Soft delete: only change status; preserve other show information.
+    await withTimeout(
+      update(ref(db, "shows/" + showId), {
+        status: "Deleted",
+        deletedAt: Date.now()
+      })
+    );
+
+    alert("Show deleted successfully.");
+    await loadShows();
+
+  } catch (error) {
+    console.error("Delete show error:", error);
+    alert("Could not delete show: " + error.message);
+    button.disabled = false;
+    button.textContent = "DELETE SHOW";
+  }
+}
+
 /* LOAD HOST SHOWS */
 
 async function loadShows() {
@@ -445,13 +502,15 @@ async function loadShows() {
 
     const myShows = Object.entries(snapshot.val())
       .filter(([id, show]) =>
-        show && show.hostUid === currentUser.uid
+        show &&
+        show.hostUid === currentUser.uid &&
+        show.status !== "Deleted"
       );
 
     showsList.innerHTML = "";
 
     if (!myShows.length) {
-      showsList.textContent = "You have not created any shows yet.";
+      showsList.textContent = "You have no active shows. Create a new show above.";
       return;
     }
 
@@ -525,6 +584,7 @@ async function loadShows() {
           <button class="detailsBtn secondary">Show Details</button>
           ${performerWhatsAppURL ? '<button class="performerBtn secondary">Performer WhatsApp</button>' : ''}
           ${Number(show.audienceFee || 0) > 0 && audienceWhatsAppURL ? '<button class="paidAudienceBtn green">Paid Audience WhatsApp</button>' : ''}
+          <button class="deleteShowBtn danger">DELETE SHOW</button>
         </div>
 
         <div class="show-details hidden">
@@ -578,6 +638,11 @@ async function loadShows() {
 
         event.currentTarget.textContent =
           details.classList.contains("hidden") ? "Show Details" : "Hide Details";
+      });
+
+      // DELETE SHOW BUTTON ACTION
+      entry.querySelector(".deleteShowBtn").addEventListener("click", event => {
+        deleteShow(id, show.name || "Untitled Show", event.currentTarget);
       });
 
       const performerBtn = entry.querySelector(".performerBtn");
@@ -900,4 +965,4 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 </script>
 </body>
-</html>
+  </html>
