@@ -55,19 +55,15 @@ button,.contact-button{
 
 .song-box{
   border:1px solid #705322;
-  border-radius:9px;
-  padding:13px;
-  margin-top:12px;
-  background:#100e0b;
+  border-radius:9px;padding:13px;
+  margin-top:12px;background:#100e0b;
 }
 
 .song-box label{margin-top:5px}
 
 .duet-note{
-  color:#e7bd68;
-  font-size:13px;
-  line-height:1.5;
-  margin:7px 0 12px;
+  color:#e7bd68;font-size:13px;
+  line-height:1.5;margin:7px 0 12px;
 }
 
 footer{
@@ -93,20 +89,31 @@ footer{
   <h2>Performer Registration</h2>
 
   <p class="muted">
-    Fill in your details to request performance slots.
-    Your registration will be sent to the host for approval.
+    Complete the form below to request your performance slots.
+    Your registration will be submitted to the show host for approval.
   </p>
 
   <form id="registrationForm">
 
-    <label for="singerName">Singer Name *</label>
+    <label for="singerName">Name *</label>
     <input id="singerName" maxlength="60"
       placeholder="Enter your full name" required>
+
+    <label for="gender">Gender *</label>
+    <select id="gender" required>
+      <option value="">Select gender</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
 
     <label for="mobile">Mobile Number *</label>
     <input id="mobile" type="tel" inputmode="numeric"
       maxlength="10" pattern="[6-9][0-9]{9}"
       placeholder="10-digit mobile number" required>
+
+    <label for="location">Location *</label>
+    <input id="location" type="text" maxlength="100"
+      placeholder="Enter your city / area / locality" required>
 
     <label for="language">Song Language *</label>
     <select id="language" required>
@@ -156,8 +163,8 @@ footer{
   <h2>Need Registration Help?</h2>
 
   <p class="muted">
-    If you cannot register online, contact the show host
-    through WhatsApp or phone for manual assistance.
+    If you need assistance with online registration,
+    contact the show host through WhatsApp or phone.
   </p>
 
   <a id="whatsappButton"
@@ -178,7 +185,10 @@ footer{
 
 <script type="module">
 
-import {db,connectAuditorium} from "./firebase.js";
+import {
+  db,
+  connectAuditorium
+} from "./firebase.js";
 
 import {
   ref,get,push,set
@@ -212,8 +222,10 @@ function formatFee(value){
   if(value === null || value === undefined || value === ""){
     return "Contact host";
   }
+
   const fee = Number(value);
   if(!Number.isFinite(fee)) return "Contact host";
+
   return fee === 0 ? "FREE" : "₹" + fee;
 }
 
@@ -223,6 +235,8 @@ function addDetail(label,value){
   return p;
 }
 
+// CREATE DYNAMIC SONG FIELDS
+
 function createSongFields(){
 
   soloSongs.replaceChildren();
@@ -230,6 +244,8 @@ function createSongFields(){
 
   const soloTotal = Number(soloCount.value);
   const duetTotal = Number(duetCount.value);
+
+  // SOLO SONGS
 
   for(let i=1;i<=soloTotal;i++){
 
@@ -250,6 +266,8 @@ function createSongFields(){
     soloSongs.appendChild(box);
   }
 
+  // DUET SONGS
+
   for(let i=1;i<=duetTotal;i++){
 
     const box = document.createElement("div");
@@ -261,7 +279,7 @@ function createSongFields(){
     const note = document.createElement("p");
     note.className = "duet-note";
     note.textContent =
-      "Duet song will be finalised 2 days before the show, depending on partner availability.";
+      "Duet song selections will be finalised two days prior to the event, subject to partner availability.";
 
     const input = document.createElement("input");
     input.type = "text";
@@ -270,27 +288,15 @@ function createSongFields(){
     input.placeholder = "Enter proposed Duet Song " + i + " name";
     input.dataset.songType = "duet";
 
-    const partnerLabel = document.createElement("label");
-    partnerLabel.textContent = "Duet Partner Name " + i + " *";
-
-    const partnerInput = document.createElement("input");
-    partnerInput.type = "text";
-    partnerInput.maxLength = 60;
-    partnerInput.required = true;
-    partnerInput.placeholder = "Enter duet partner name";
-    partnerInput.dataset.partnerType = "duet";
-
-    box.append(
-      label,note,input,
-      partnerLabel,partnerInput
-    );
-
+    box.append(label,note,input);
     duetSongs.appendChild(box);
   }
 }
 
 soloCount.addEventListener("change",createSongFields);
 duetCount.addEventListener("change",createSongFields);
+
+// LOAD SHOW DETAILS
 
 async function loadShow(){
 
@@ -375,7 +381,7 @@ async function loadShow(){
       callButton.classList.remove("hidden");
 
       contactMessage.textContent =
-        "Contact the host for manual registration assistance.";
+        "Contact the host for registration assistance.";
 
     }else{
       contactMessage.textContent =
@@ -392,6 +398,8 @@ async function loadShow(){
   }
 }
 
+// SUBMIT REGISTRATION
+
 form.addEventListener("submit",async(event)=>{
 
   event.preventDefault();
@@ -402,9 +410,20 @@ form.addEventListener("submit",async(event)=>{
     return;
   }
 
-  const name = document.getElementById("singerName").value.trim();
-  const mobile = document.getElementById("mobile").value.trim();
-  const language = document.getElementById("language").value;
+  const name =
+    document.getElementById("singerName").value.trim();
+
+  const gender =
+    document.getElementById("gender").value;
+
+  const mobile =
+    document.getElementById("mobile").value.trim();
+
+  const location =
+    document.getElementById("location").value.trim();
+
+  const language =
+    document.getElementById("language").value;
 
   if(!/^[6-9][0-9]{9}$/.test(mobile)){
     formMessage.className = "message error";
@@ -423,26 +442,27 @@ form.addEventListener("submit",async(event)=>{
     return;
   }
 
-  const soloSongInputs =
-    [...soloSongs.querySelectorAll('input[data-song-type="solo"]')];
+  const soloSongInputs = [
+    ...soloSongs.querySelectorAll('input[data-song-type="solo"]')
+  ];
 
-  const duetSongInputs =
-    [...duetSongs.querySelectorAll('input[data-song-type="duet"]')];
+  const duetSongInputs = [
+    ...duetSongs.querySelectorAll('input[data-song-type="duet"]')
+  ];
 
-  const partnerInputs =
-    [...duetSongs.querySelectorAll('input[data-partner-type="duet"]')];
+  const soloSongList =
+    soloSongInputs.map(input=>input.value.trim());
 
-  const soloSongList = soloSongInputs.map(input=>input.value.trim());
-  const duetSongList = duetSongInputs.map(input=>input.value.trim());
-  const partnerList = partnerInputs.map(input=>input.value.trim());
+  const duetSongList =
+    duetSongInputs.map(input=>input.value.trim());
 
-  if(soloSongList.some(song=>!song) ||
-     duetSongList.some(song=>!song) ||
-     partnerList.some(name=>!name)){
-
+  if(
+    soloSongList.some(song=>!song) ||
+    duetSongList.some(song=>!song)
+  ){
     formMessage.className = "message error";
     formMessage.textContent =
-      "Please fill in every selected song name and duet partner name.";
+      "Please enter every selected song name.";
     return;
   }
 
@@ -460,17 +480,19 @@ form.addEventListener("submit",async(event)=>{
     );
 
     const allSongs = [
+
       ...soloSongList.map((song,index)=>({
         type:"Solo",
         number:index+1,
         song:song
       })),
+
       ...duetSongList.map((song,index)=>({
         type:"Duet",
         number:index+1,
-        song:song,
-        partnerName:partnerList[index]
+        song:song
       }))
+
     ];
 
     const performanceType =
@@ -486,7 +508,9 @@ form.addEventListener("submit",async(event)=>{
       showId:showId,
 
       name:name,
+      gender:gender,
       mobile:mobile,
+      location:location,
 
       song:compatibilitySong,
       requestedSong:compatibilitySong,
@@ -501,10 +525,9 @@ form.addEventListener("submit",async(event)=>{
 
       soloSongs:soloSongList,
       duetSongs:duetSongList,
-      duetPartnerNames:partnerList,
       songs:allSongs,
 
-      duetPartnerName:partnerList[0] || "",
+      duetPartnerName:"",
 
       status:"Waiting",
       createdAt:Date.now()
@@ -512,6 +535,7 @@ form.addEventListener("submit",async(event)=>{
     });
 
     formMessage.className = "message success";
+
     formMessage.textContent =
       "Registration submitted successfully!\n\n"+
       "Solo performances: "+soloTotal+"\n"+
