@@ -183,7 +183,7 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 </div>
 </details>
 
-<!-- LIVE CONTROL AND QUEUE -->
+<!-- SIMPLIFIED LIVE CONTROL -->
 <details class="card" open>
 <summary>🔴 Live Show Control & Performance Queue</summary>
 <div class="section-content">
@@ -191,21 +191,19 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 <label>Select Show</label>
 <select id="queueShowSelect"><option value="">Select a show</option></select>
 
-<h3>▶ YouTube Live / Show Video Link</h3>
-<p class="small">This is the show's live-stream link, not an individual singer's karaoke link.</p>
+<h3>▶ Main YouTube Show Video</h3>
+<p class="small">Paste the main YouTube live-stream or show video link here. Individual singers have separate karaoke links below.</p>
 <input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
 
-<div class="row">
-<button id="saveYoutubeBtn">Save YouTube Link</button>
-<button id="startLiveBtn" class="success">Start Live</button>
-<button id="stopLiveBtn" class="danger">Stop Live</button>
-</div>
+<button id="startLiveBtn" class="success">▶ START LIVE SHOW</button>
+<button id="stopLiveBtn" class="danger">END LIVE SHOW</button>
+
 <div id="liveMessage" class="small"></div>
 <div id="liveLinks" class="small"></div>
 
 <hr>
 <h3>🎤 Performance Queue</h3>
-<p class="small">Approve a singer, then paste their selected karaoke track below their queue entry. Only the host can add or change this link.</p>
+<p class="small">Paste the singer's YouTube karaoke link and press START PERFORMANCE. The link will be saved and that singer will be selected.</p>
 <div id="queueList" class="empty">Select a show to view its queue.</div>
 
 </div>
@@ -241,24 +239,45 @@ function escapeHTML(value){
  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
  })[c]);
 }
-function money(value){return "₹"+Number(value||0).toLocaleString("en-IN")}
+
+function money(value){
+ return "₹"+Number(value||0).toLocaleString("en-IN");
+}
+
 function normaliseWhatsApp(value){
  let n=String(value||"").replace(/\D/g,"");
  if(n.length===10)n="91"+n;
  return n;
 }
-function message(id,text){$(id).textContent=text}
+
+function message(id,text){
+ $(id).textContent=text;
+}
 
 function stopRegistrationListener(){
- if(registrationUnsubscribe){registrationUnsubscribe();registrationUnsubscribe=null}
+ if(registrationUnsubscribe){
+  registrationUnsubscribe();
+  registrationUnsubscribe=null;
+ }
 }
+
 function stopQueueListener(){
- if(queueUnsubscribe){queueUnsubscribe();queueUnsubscribe=null}
+ if(queueUnsubscribe){
+  queueUnsubscribe();
+  queueUnsubscribe=null;
+ }
 }
+
 function stopLiveListener(){
- if(liveUnsubscribe){liveUnsubscribe();liveUnsubscribe=null}
+ if(liveUnsubscribe){
+  liveUnsubscribe();
+  liveUnsubscribe=null;
+ }
 }
-function baseURL(){return location.href.replace(/[^/]*$/,"")}
+
+function baseURL(){
+ return location.href.replace(/[^/]*$/,"");
+}
 
 /* HOST ACCESS */
 onAuthStateChanged(auth,async user=>{
@@ -277,7 +296,8 @@ onAuthStateChanged(auth,async user=>{
    return;
   }
 
-  const app=snap.val(),now=Date.now();
+  const app=snap.val();
+  const now=Date.now();
   const start=Number(app.subscriptionStartAt||0);
   const end=Number(app.subscriptionEndAt||0);
 
@@ -478,7 +498,8 @@ function populateDropdowns(){
  ];
 
  ids.forEach(id=>{
-  const el=$(id),old=el.value;
+  const el=$(id);
+  const old=el.value;
 
   el.innerHTML='<option value="">Select a show</option>';
 
@@ -698,15 +719,16 @@ function renderQueue(showId,data){
   <p>Status: <span class="pill">${escapeHTML(p.status||"Waiting")}</span></p>
 
   <div class="karaoke-box">
-   <label>Host: Paste YouTube Karaoke Link for this performer</label>
+   <label>YouTube Karaoke Link</label>
    <input
     type="url"
     data-karaoke-input="${escapeHTML(p.id)}"
     value="${escapeHTML(p.karaokeUrl||"")}"
-    placeholder="https://www.youtube.com/watch?v=..."
+    placeholder="Paste singer's karaoke link"
    >
-   <button class="success" data-save-karaoke="${escapeHTML(p.id)}">Save Karaoke Link</button>
-   <button class="success" data-play-performer="${escapeHTML(p.id)}">▶ Play Performer</button>
+   <button class="success" data-start-performance="${escapeHTML(p.id)}">
+    ▶ START PERFORMANCE
+   </button>
    ${p.karaokeUrl?`<p><a style="color:#e9bd55" target="_blank" rel="noopener" href="${escapeHTML(p.karaokeUrl)}">Open Karaoke Track</a></p>`:""}
   </div>
 
@@ -716,75 +738,65 @@ function renderQueue(showId,data){
  </div>
  `).join("");
 
- /* SAVE KARAOKE LINK */
- box.querySelectorAll("[data-save-karaoke]").forEach(b=>b.onclick=async()=>{
-  const id=b.dataset.saveKaraoke;
-  const input=box.querySelector(`[data-karaoke-input="${CSS.escape(id)}"]`);
-  const url=input.value.trim();
+ /* SAVE KARAOKE LINK AND START PERFORMANCE */
+ box.querySelectorAll("[data-start-performance]").forEach(b=>{
+  b.onclick=async()=>{
+   const id=b.dataset.startPerformance;
+   const input=box.querySelector(
+    `[data-karaoke-input="${CSS.escape(id)}"]`
+   );
+   const url=input.value.trim();
 
-  if(!url||!youtubeId(url)){
-   alert("Please enter a valid YouTube karaoke URL.");
-   return;
-  }
-
-  try{
-   await verifyShow(showId);
-
-   const qr=ref(db,`performanceQueue/${showId}/${id}`);
-   const snap=await get(qr);
-
-   if(!snap.exists())throw new Error("Queue performer not found.");
-
-   await update(qr,{
-    karaokeUrl:url,
-    karaokeUpdatedAt:Date.now(),
-    karaokeUpdatedBy:currentUser.uid
-   });
-
-   alert("Karaoke link saved for this performer.");
-  }catch(e){
-   alert("Could not save karaoke link: "+e.message);
-  }
- });
-
- /* PLAY PERFORMER */
- box.querySelectorAll("[data-play-performer]").forEach(b=>b.onclick=async()=>{
-  const id=b.dataset.playPerformer;
-
-  try{
-   await verifyShow(showId);
-
-   const qr=ref(db,`performanceQueue/${showId}/${id}`);
-   const snap=await get(qr);
-
-   if(!snap.exists())throw new Error("Performer not found.");
-
-   const p=snap.val();
-
-   if(!p.karaokeUrl||!youtubeId(p.karaokeUrl)){
-    throw new Error("First paste and save this performer's YouTube karaoke link.");
+   if(!url||!youtubeId(url)){
+    alert("Please paste a valid YouTube karaoke link.");
+    return;
    }
 
-   const updates={};
+   b.disabled=true;
+   b.textContent="Starting...";
 
-   updates[`livePerformance/${showId}/currentPerformerId`]=id;
-   updates[`livePerformance/${showId}/currentPerformerName`]=p.performerName||"Performer";
-   updates[`livePerformance/${showId}/currentSongName`]=p.songName||"";
-   updates[`livePerformance/${showId}/currentMovieName`]=p.movieName||"";
-   updates[`livePerformance/${showId}/currentPerformanceType`]=p.performanceType||"Solo";
-   updates[`livePerformance/${showId}/currentKaraokeUrl`]=p.karaokeUrl;
-   updates[`livePerformance/${showId}/currentKaraokeVideoId`]=youtubeId(p.karaokeUrl);
-   updates[`livePerformance/${showId}/performanceStatus`]="Ready";
-   updates[`livePerformance/${showId}/selectedAt`]=Date.now();
-   updates[`performanceQueue/${showId}/${id}/status`]="Playing";
+   try{
+    await verifyShow(showId);
 
-   await update(ref(db),updates);
+    const qr=ref(db,`performanceQueue/${showId}/${id}`);
+    const snap=await get(qr);
 
-   alert("Performer selected. Open Performance View to play the karaoke track.");
+    if(!snap.exists())throw new Error("Singer not found.");
 
-  }catch(e){
-   alert("Unable to select performer: "+e.message);
-  }
+    const p=snap.val();
+
+    const updates={};
+
+    updates[`performanceQueue/${showId}/${id}/karaokeUrl`]=url;
+    updates[`performanceQueue/${showId}/${id}/karaokeUpdatedAt`]=Date.now();
+    updates[`performanceQueue/${showId}/${id}/karaokeUpdatedBy`]=currentUser.uid;
+
+    updates[`livePerformance/${showId}/currentPerformerId`]=id;
+    updates[`livePerformance/${showId}/currentPerformerName`]=p.performerName||"Performer";
+    updates[`livePerformance/${showId}/currentSongName`]=p.songName||"";
+    updates[`livePerformance/${showId}/currentMovieName`]=p.movieName||"";
+    updates[`livePerformance/${showId}/currentPerformanceType`]=p.performanceType||"Solo";
+    updates[`livePerformance/${showId}/currentKaraokeUrl`]=url;
+    updates[`livePerformance/${showId}/currentKaraokeVideoId`]=youtubeId(url);
+    updates[`livePerformance/${showId}/performanceStatus`]="Ready";
+    updates[`livePerformance/${showId}/selectedAt`]=Date.now();
+
+    updates[`performanceQueue/${showId}/${id}/status`]="Playing";
+
+    await update(ref(db),updates);
+
+    alert("Singer selected. Opening Performance View.");
+
+    const page=new URL("live-performance.html",location.href);
+    page.searchParams.set("showId",showId);
+    window.location.href=page.href;
+
+   }catch(e){
+    alert("Unable to start performance: "+e.message);
+    b.disabled=false;
+    b.textContent="▶ START PERFORMANCE";
+   }
+  };
  });
 
  /* REORDER */
@@ -891,7 +903,9 @@ function youtubeId(url){
   const u=new URL(url);
   const host=u.hostname.replace(/^www\./,"");
 
-  if(host==="youtu.be")return u.pathname.split("/").filter(Boolean)[0]||"";
+  if(host==="youtu.be"){
+   return u.pathname.split("/").filter(Boolean)[0]||"";
+  }
 
   if(host==="youtube.com"||host==="m.youtube.com"||host==="music.youtube.com"){
    if(u.searchParams.get("v"))return u.searchParams.get("v");
@@ -913,6 +927,7 @@ function listenToLive(showId){
  if(!showId){
   $("youtubeUrl").value="";
   $("liveLinks").textContent="";
+  $("liveMessage").textContent="";
   return;
  }
 
@@ -941,8 +956,8 @@ async function saveLiveData(status){
 
  const url=$("youtubeUrl").value.trim();
 
- if(url&&!youtubeId(url)){
-  throw new Error("Enter a valid YouTube video or live URL.");
+ if(!url||!youtubeId(url)){
+  throw new Error("Paste a valid YouTube show video or live URL first.");
  }
 
  const liveRef=ref(db,`livePerformance/${showId}`);
@@ -959,24 +974,33 @@ async function saveLiveData(status){
  });
 }
 
-$("saveYoutubeBtn").onclick=async()=>{
- try{
-  await saveLiveData("Ready");
-  message("liveMessage","Show YouTube link saved.");
- }catch(e){
-  message("liveMessage","Error: "+e.message);
- }
-};
-
+/* START LIVE SHOW: SAVE MAIN LINK AND OPEN PERFORMANCE VIEW */
 $("startLiveBtn").onclick=async()=>{
+ const showId=$("queueShowSelect").value;
+
+ const btn=$("startLiveBtn");
+ btn.disabled=true;
+ btn.textContent="Starting...";
+
  try{
+  if(!showId)throw new Error("Select a show first.");
+
   await saveLiveData("Live");
-  message("liveMessage","Show status is LIVE. Open Performance View to display the show.");
+
+  message("liveMessage","Show is LIVE. Opening Performance View...");
+
+  const page=new URL("live-performance.html",location.href);
+  page.searchParams.set("showId",showId);
+  window.location.href=page.href;
+
  }catch(e){
   message("liveMessage","Error: "+e.message);
+  btn.disabled=false;
+  btn.textContent="▶ START LIVE SHOW";
  }
 };
 
+/* END LIVE SHOW */
 $("stopLiveBtn").onclick=async()=>{
  try{
   await saveLiveData("Stopped");
