@@ -10,223 +10,178 @@
 *{box-sizing:border-box}
 
 body{
-  margin:0;
-  padding:18px;
-  background:#090807;
-  color:white;
-  font-family:Arial,sans-serif;
+  margin:0;padding:18px;background:#090807;
+  color:white;font-family:Arial,sans-serif;
 }
 
-.container{
-  max-width:600px;
-  margin:20px auto;
-}
-
+.container{max-width:600px;margin:20px auto}
 h1,h2{color:#e7bd68}
 
 .card{
-  background:#191510;
-  border:1px solid #705322;
-  border-radius:12px;
-  padding:20px;
-  margin:18px 0;
+  background:#191510;border:1px solid #705322;
+  border-radius:12px;padding:20px;margin:18px 0;
 }
 
-.muted{
-  color:#c2b7a6;
-  line-height:1.6;
-}
+.muted{color:#c2b7a6;line-height:1.6}
 
 label{
-  display:block;
-  margin-top:15px;
-  margin-bottom:7px;
-  color:#e7bd68;
-  font-weight:bold;
+  display:block;margin-top:15px;margin-bottom:7px;
+  color:#e7bd68;font-weight:bold;
 }
 
 input,select{
-  width:100%;
-  padding:13px;
-  border-radius:7px;
-  border:1px solid #705322;
-  background:#0d0b09;
-  color:white;
-  font-size:16px;
+  width:100%;padding:13px;border-radius:7px;
+  border:1px solid #705322;background:#0d0b09;
+  color:white;font-size:16px;
 }
 
 button,.contact-button{
-  display:block;
-  width:100%;
-  padding:15px;
-  margin-top:17px;
-  border:0;
-  border-radius:7px;
-  text-align:center;
-  text-decoration:none;
-  font-size:15px;
-  font-weight:bold;
+  display:block;width:100%;padding:15px;margin-top:17px;
+  border:0;border-radius:7px;text-align:center;
+  text-decoration:none;font-size:15px;font-weight:bold;
   cursor:pointer;
 }
 
-.submit{
-  background:#e7bd68;
-  color:#171009;
-}
+.submit{background:#e7bd68;color:#171009}
+.submit:disabled{opacity:.5;cursor:not-allowed}
+.whatsapp{background:#25D366;color:#071b0c}
+.call{background:#e7bd68;color:#171009}
 
-.submit:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-}
-
-.whatsapp{
-  background:#25D366;
-  color:#071b0c;
-}
-
-.call{
-  background:#e7bd68;
-  color:#171009;
-}
-
-.fee{
-  color:#e7bd68;
-  font-weight:bold;
-  margin-top:12px;
-}
-
-.message{
-  margin-top:15px;
-  line-height:1.6;
-  white-space:pre-wrap;
-}
-
+.fee{color:#e7bd68;font-weight:bold;margin-top:12px}
+.message{margin-top:15px;line-height:1.6;white-space:pre-wrap}
 .success{color:#8ee6a1}
 .error{color:#ff9999}
-
 .hidden{display:none!important}
 
+.song-box{
+  border:1px solid #705322;
+  border-radius:9px;
+  padding:13px;
+  margin-top:12px;
+  background:#100e0b;
+}
+
+.song-box label{margin-top:5px}
+
+.duet-note{
+  color:#e7bd68;
+  font-size:13px;
+  line-height:1.5;
+  margin:7px 0 12px;
+}
+
 footer{
-  text-align:center;
-  color:#a99b84;
-  font-size:12px;
-  margin:25px 0;
+  text-align:center;color:#a99b84;
+  font-size:12px;margin:25px 0;
 }
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
-  <h1>MELODY MAGIC</h1>
-  <p class="muted">DIGITAL AUDITORIUM</p>
+<h1>MELODY MAGIC</h1>
+<p class="muted">DIGITAL AUDITORIUM</p>
 
-  <div class="card">
-    <h2>Selected Show</h2>
-    <div id="showDetails" class="muted">
-      Loading show details...
-    </div>
-    <div id="feeDetails"></div>
-  </div>
+<div class="card">
+  <h2>Selected Show</h2>
+  <div id="showDetails" class="muted">Loading show details...</div>
+  <div id="feeDetails"></div>
+</div>
 
-  <div class="card">
-    <h2>Performer Registration</h2>
+<div class="card">
+  <h2>Performer Registration</h2>
 
-    <p class="muted">
-      Fill in your details to request a performance slot.
-      Your registration will be sent to the host for approval.
-    </p>
+  <p class="muted">
+    Fill in your details to request performance slots.
+    Your registration will be sent to the host for approval.
+  </p>
 
-    <form id="registrationForm">
+  <form id="registrationForm">
 
-      <label for="singerName">Singer Name *</label>
-      <input id="singerName" maxlength="60"
-        placeholder="Enter your full name" required>
+    <label for="singerName">Singer Name *</label>
+    <input id="singerName" maxlength="60"
+      placeholder="Enter your full name" required>
 
-      <label for="mobile">Mobile Number *</label>
-      <input id="mobile" type="tel"
-        inputmode="numeric" maxlength="10"
-        pattern="[6-9][0-9]{9}"
-        placeholder="10-digit mobile number" required>
+    <label for="mobile">Mobile Number *</label>
+    <input id="mobile" type="tel" inputmode="numeric"
+      maxlength="10" pattern="[6-9][0-9]{9}"
+      placeholder="10-digit mobile number" required>
 
-      <label for="song">Requested Song Name *</label>
-      <input id="song" maxlength="100"
-        placeholder="Enter the song you want to sing" required>
+    <label for="language">Song Language *</label>
+    <select id="language" required>
+      <option value="">Select language</option>
+      <option>Hindi</option>
+      <option>Marathi</option>
+      <option>English</option>
+      <option>Gujarati</option>
+      <option>Punjabi</option>
+      <option>Other</option>
+    </select>
 
-      <label for="language">Song Language *</label>
-      <select id="language" required>
-        <option value="">Select language</option>
-        <option>Hindi</option>
-        <option>Marathi</option>
-        <option>English</option>
-        <option>Gujarati</option>
-        <option>Punjabi</option>
-        <option>Other</option>
-      </select>
+    <label for="soloCount">Number of Solo Performances *</label>
+    <select id="soloCount" required>
+      <option value="0">0 - No Solo</option>
+      <option value="1">1 Solo Song</option>
+      <option value="2">2 Solo Songs</option>
+      <option value="3">3 Solo Songs</option>
+      <option value="4">4 Solo Songs</option>
+      <option value="5">5 Solo Songs</option>
+    </select>
 
-      <label for="performance">Performance Type *</label>
-      <select id="performance" required>
-        <option value="Solo">Solo</option>
-        <option value="Duet">Duet</option>
-      </select>
+    <div id="soloSongs"></div>
 
-      <div id="partnerSection" class="hidden">
-        <label for="partnerName">Duet Partner Name *</label>
-        <input id="partnerName" maxlength="60"
-          placeholder="Enter duet partner name">
-      </div>
+    <label for="duetCount">Number of Duet Performances *</label>
+    <select id="duetCount" required>
+      <option value="0">0 - No Duet</option>
+      <option value="1">1 Duet Song</option>
+      <option value="2">2 Duet Songs</option>
+      <option value="3">3 Duet Songs</option>
+      <option value="4">4 Duet Songs</option>
+      <option value="5">5 Duet Songs</option>
+    </select>
 
-      <button id="submitButton" class="submit" type="submit">
-        SUBMIT REGISTRATION
-      </button>
+    <div id="duetSongs"></div>
 
-    </form>
+    <button id="submitButton" class="submit" type="submit">
+      SUBMIT REGISTRATION
+    </button>
 
-    <div id="formMessage" class="message" aria-live="polite"></div>
-  </div>
+  </form>
 
-  <div class="card">
-    <h2>Need Registration Help?</h2>
+  <div id="formMessage" class="message" aria-live="polite"></div>
+</div>
 
-    <p class="muted">
-      If you cannot register online, contact the show host
-      through WhatsApp or phone for manual assistance.
-    </p>
+<div class="card">
+  <h2>Need Registration Help?</h2>
 
-    <a id="whatsappButton"
-       class="contact-button whatsapp hidden"
-       target="_blank"
-       rel="noopener">
-       CONTACT HOST ON WHATSAPP
-    </a>
+  <p class="muted">
+    If you cannot register online, contact the show host
+    through WhatsApp or phone for manual assistance.
+  </p>
 
-    <a id="callButton"
-       class="contact-button call hidden">
-       CALL HOST
-    </a>
+  <a id="whatsappButton"
+     class="contact-button whatsapp hidden"
+     target="_blank" rel="noopener">
+     CONTACT HOST ON WHATSAPP
+  </a>
 
-    <div id="contactMessage" class="muted"></div>
-  </div>
+  <a id="callButton" class="contact-button call hidden">
+     CALL HOST
+  </a>
 
-  <footer>
-    Powered by Melody Magic Music Studio
-  </footer>
+  <div id="contactMessage" class="muted"></div>
+</div>
 
+<footer>Powered by Melody Magic Music Studio</footer>
 </div>
 
 <script type="module">
 
-import {
-  db,
-  connectAuditorium
-} from "./firebase.js";
+import {db,connectAuditorium} from "./firebase.js";
 
 import {
-  ref,
-  get,
-  push,
-  set
+  ref,get,push,set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const showId =
@@ -238,41 +193,27 @@ const form = document.getElementById("registrationForm");
 const submitButton = document.getElementById("submitButton");
 const formMessage = document.getElementById("formMessage");
 
-const performance =
-  document.getElementById("performance");
+const soloCount = document.getElementById("soloCount");
+const duetCount = document.getElementById("duetCount");
+const soloSongs = document.getElementById("soloSongs");
+const duetSongs = document.getElementById("duetSongs");
 
-const partnerSection =
-  document.getElementById("partnerSection");
-
-const partnerName =
-  document.getElementById("partnerName");
-
-const whatsappButton =
-  document.getElementById("whatsappButton");
-
-const callButton =
-  document.getElementById("callButton");
-
-const contactMessage =
-  document.getElementById("contactMessage");
+const whatsappButton = document.getElementById("whatsappButton");
+const callButton = document.getElementById("callButton");
+const contactMessage = document.getElementById("contactMessage");
 
 let selectedShow = null;
 
 function cleanPhone(value){
-  return String(value || "").replace(/\D/g, "");
+  return String(value || "").replace(/\D/g,"");
 }
 
 function formatFee(value){
   if(value === null || value === undefined || value === ""){
     return "Contact host";
   }
-
   const fee = Number(value);
-
-  if(!Number.isFinite(fee)){
-    return "Contact host";
-  }
-
+  if(!Number.isFinite(fee)) return "Contact host";
   return fee === 0 ? "FREE" : "₹" + fee;
 }
 
@@ -282,16 +223,74 @@ function addDetail(label,value){
   return p;
 }
 
-performance.addEventListener("change",()=>{
-  const isDuet = performance.value === "Duet";
+function createSongFields(){
 
-  partnerSection.classList.toggle("hidden",!isDuet);
-  partnerName.required = isDuet;
+  soloSongs.replaceChildren();
+  duetSongs.replaceChildren();
 
-  if(!isDuet){
-    partnerName.value = "";
+  const soloTotal = Number(soloCount.value);
+  const duetTotal = Number(duetCount.value);
+
+  for(let i=1;i<=soloTotal;i++){
+
+    const box = document.createElement("div");
+    box.className = "song-box";
+
+    const label = document.createElement("label");
+    label.textContent = "Solo Song " + i + " *";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 100;
+    input.required = true;
+    input.placeholder = "Enter Solo Song " + i + " name";
+    input.dataset.songType = "solo";
+
+    box.append(label,input);
+    soloSongs.appendChild(box);
   }
-});
+
+  for(let i=1;i<=duetTotal;i++){
+
+    const box = document.createElement("div");
+    box.className = "song-box";
+
+    const label = document.createElement("label");
+    label.textContent = "Duet Song " + i + " *";
+
+    const note = document.createElement("p");
+    note.className = "duet-note";
+    note.textContent =
+      "Duet song will be finalised 2 days before the show, depending on partner availability.";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 100;
+    input.required = true;
+    input.placeholder = "Enter proposed Duet Song " + i + " name";
+    input.dataset.songType = "duet";
+
+    const partnerLabel = document.createElement("label");
+    partnerLabel.textContent = "Duet Partner Name " + i + " *";
+
+    const partnerInput = document.createElement("input");
+    partnerInput.type = "text";
+    partnerInput.maxLength = 60;
+    partnerInput.required = true;
+    partnerInput.placeholder = "Enter duet partner name";
+    partnerInput.dataset.partnerType = "duet";
+
+    box.append(
+      label,note,input,
+      partnerLabel,partnerInput
+    );
+
+    duetSongs.appendChild(box);
+  }
+}
+
+soloCount.addEventListener("change",createSongFields);
+duetCount.addEventListener("change",createSongFields);
 
 async function loadShow(){
 
@@ -303,9 +302,7 @@ async function loadShow(){
       );
     }
 
-    const snapshot = await get(
-      ref(db,"shows/"+showId)
-    );
+    const snapshot = await get(ref(db,"shows/"+showId));
 
     if(!snapshot.exists()){
       throw new Error("This show does not exist.");
@@ -323,7 +320,6 @@ async function loadShow(){
 
     const heading = document.createElement("h3");
     heading.textContent = show.name || show.title || "Singing Show";
-
     showDetails.appendChild(heading);
 
     showDetails.append(
@@ -337,12 +333,12 @@ async function loadShow(){
     const solo = document.createElement("p");
     solo.className = "fee";
     solo.textContent =
-      "Solo Performer Fee: "+formatFee(show.soloEntryFee);
+      "Solo Performer Fee: " + formatFee(show.soloEntryFee);
 
     const duet = document.createElement("p");
     duet.className = "fee";
     duet.textContent =
-      "Duet Performer Fee: "+formatFee(show.duetEntryFee);
+      "Duet Performer Fee: " + formatFee(show.duetEntryFee);
 
     feeDetails.append(solo,duet);
 
@@ -382,7 +378,6 @@ async function loadShow(){
         "Contact the host for manual registration assistance.";
 
     }else{
-
       contactMessage.textContent =
         "The host has not added a contact number.";
     }
@@ -390,10 +385,8 @@ async function loadShow(){
   }catch(error){
 
     console.error(error);
-
     showDetails.className = "error";
     showDetails.textContent = error.message;
-
     form.classList.add("hidden");
     feeDetails.replaceChildren();
   }
@@ -409,22 +402,9 @@ form.addEventListener("submit",async(event)=>{
     return;
   }
 
-  const name =
-    document.getElementById("singerName").value.trim();
-
-  const mobile =
-    document.getElementById("mobile").value.trim();
-
-  const song =
-    document.getElementById("song").value.trim();
-
-  const language =
-    document.getElementById("language").value;
-
-  const type = performance.value;
-
-  const partner =
-    partnerName.value.trim();
+  const name = document.getElementById("singerName").value.trim();
+  const mobile = document.getElementById("mobile").value.trim();
+  const language = document.getElementById("language").value;
 
   if(!/^[6-9][0-9]{9}$/.test(mobile)){
     formMessage.className = "message error";
@@ -433,10 +413,36 @@ form.addEventListener("submit",async(event)=>{
     return;
   }
 
-  if(type === "Duet" && !partner){
+  const soloTotal = Number(soloCount.value);
+  const duetTotal = Number(duetCount.value);
+
+  if(soloTotal === 0 && duetTotal === 0){
     formMessage.className = "message error";
     formMessage.textContent =
-      "Please enter your duet partner's name.";
+      "Please select at least one solo or duet performance.";
+    return;
+  }
+
+  const soloSongInputs =
+    [...soloSongs.querySelectorAll('input[data-song-type="solo"]')];
+
+  const duetSongInputs =
+    [...duetSongs.querySelectorAll('input[data-song-type="duet"]')];
+
+  const partnerInputs =
+    [...duetSongs.querySelectorAll('input[data-partner-type="duet"]')];
+
+  const soloSongList = soloSongInputs.map(input=>input.value.trim());
+  const duetSongList = duetSongInputs.map(input=>input.value.trim());
+  const partnerList = partnerInputs.map(input=>input.value.trim());
+
+  if(soloSongList.some(song=>!song) ||
+     duetSongList.some(song=>!song) ||
+     partnerList.some(name=>!name)){
+
+    formMessage.className = "message error";
+    formMessage.textContent =
+      "Please fill in every selected song name and duet partner name.";
     return;
   }
 
@@ -447,48 +453,73 @@ form.addEventListener("submit",async(event)=>{
 
   try{
 
-    // SIGN IN SINGER ANONYMOUSLY
     const user = await connectAuditorium();
 
-    // CREATE REGISTRATION UNDER THE SELECTED SHOW
     const registrationRef = push(
       ref(db,"showRegistrations/"+showId)
     );
 
+    const allSongs = [
+      ...soloSongList.map((song,index)=>({
+        type:"Solo",
+        number:index+1,
+        song:song
+      })),
+      ...duetSongList.map((song,index)=>({
+        type:"Duet",
+        number:index+1,
+        song:song,
+        partnerName:partnerList[index]
+      }))
+    ];
+
+    const performanceType =
+      soloTotal > 0 && duetTotal > 0 ? "Solo + Duet" :
+      soloTotal > 0 ? "Solo" : "Duet";
+
+    const compatibilitySong =
+      soloSongList[0] || duetSongList[0] || "";
+
     await set(registrationRef,{
 
-      singerUid: user.uid,
-      showId: showId,
+      singerUid:user.uid,
+      showId:showId,
 
-      name: name,
-      mobile: mobile,
+      name:name,
+      mobile:mobile,
 
-      song: song,
-      requestedSong: song,
+      song:compatibilitySong,
+      requestedSong:compatibilitySong,
 
-      language: language,
+      language:language,
 
-      performance: type,
-      performanceType: type,
+      performance:performanceType,
+      performanceType:performanceType,
 
-      duetPartnerName: type === "Duet" ? partner : "",
+      soloCount:soloTotal,
+      duetCount:duetTotal,
 
-      status: "Waiting",
+      soloSongs:soloSongList,
+      duetSongs:duetSongList,
+      duetPartnerNames:partnerList,
+      songs:allSongs,
 
-      createdAt: Date.now()
+      duetPartnerName:partnerList[0] || "",
+
+      status:"Waiting",
+      createdAt:Date.now()
 
     });
 
     formMessage.className = "message success";
     formMessage.textContent =
       "Registration submitted successfully!\n\n"+
-      "Your request is WAITING FOR HOST APPROVAL.\n"+
-      "Please contact the host if you need any assistance.";
+      "Solo performances: "+soloTotal+"\n"+
+      "Duet performances: "+duetTotal+"\n\n"+
+      "Your request is WAITING FOR HOST APPROVAL.";
 
     form.reset();
-
-    partnerSection.classList.add("hidden");
-    partnerName.required = false;
+    createSongFields();
 
     submitButton.textContent = "REGISTRATION SUBMITTED";
 
@@ -507,9 +538,9 @@ form.addEventListener("submit",async(event)=>{
 
 });
 
+createSongFields();
 loadShow();
 
 </script>
-
 </body>
 </html>
