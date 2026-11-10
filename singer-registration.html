@@ -172,6 +172,7 @@ import {
   ref,get,push,set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
+
 const showId = new URLSearchParams(location.search).get("showId");
 
 const showDetails = document.getElementById("showDetails");
@@ -193,6 +194,7 @@ const paymentInstructions = document.getElementById("paymentInstructions");
 
 let selectedShow = null;
 let registrationSubmitted = false;
+
 
 function cleanPhone(value){
   return String(value || "").replace(/\D/g,"");
@@ -225,6 +227,7 @@ function addDetail(label,value){
 }
 
 function getHostNumber(){
+
   const phone = cleanPhone(
     selectedShow?.hostWhatsApp ||
     selectedShow?.hostWhatsapp ||
@@ -236,10 +239,14 @@ function getHostNumber(){
   );
 
   if(phone.length === 10) return "91" + phone;
-  if(phone.length === 12 && phone.startsWith("91")) return phone;
+
+  if(phone.length === 12 && phone.startsWith("91")){
+    return phone;
+  }
 
   return "";
 }
+
 
 /* CREATE SONG AND MOVIE INPUTS */
 
@@ -257,7 +264,8 @@ function createSongFields(){
     box.className = "song-box";
 
     const songLabel = document.createElement("label");
-    songLabel.textContent = type + " Song " + index + " Name *";
+    songLabel.textContent =
+      type + " Song " + index + " Name *";
 
     const songInput = document.createElement("input");
     songInput.type = "text";
@@ -279,10 +287,13 @@ function createSongFields(){
     box.append(songLabel,songInput,movieLabel,movieInput);
 
     if(type === "Duet"){
+
       const note = document.createElement("p");
       note.className = "duet-note";
+
       note.textContent =
         "Duet song selections will be finalised two days prior to the event, subject to partner availability.";
+
       box.appendChild(note);
     }
 
@@ -300,7 +311,6 @@ function createSongFields(){
   updateCalculation();
 }
 
-/* PAYMENT CALCULATION */
 
 function updateCalculation(){
 
@@ -328,13 +338,16 @@ function updateCalculation(){
     (soloTotal > 0 && soloRate === null) ||
     (duetTotal > 0 && duetRate === null)
   ){
+
     document.getElementById("totalAmount").textContent =
       "Rate not set";
+
     return null;
   }
 
   const soloAmount = soloTotal * (soloRate || 0);
   const duetAmount = duetTotal * (duetRate || 0);
+
   const total = soloAmount + duetAmount;
 
   document.getElementById("totalAmount").textContent =
@@ -349,8 +362,10 @@ function updateCalculation(){
   };
 }
 
+
 soloCount.addEventListener("change",createSongFields);
 duetCount.addEventListener("change",createSongFields);
+
 
 /* LOAD SHOW */
 
@@ -381,7 +396,9 @@ async function loadShow(){
     showDetails.replaceChildren();
 
     const heading = document.createElement("h3");
-    heading.textContent = show.name || show.title || "Singing Show";
+
+    heading.textContent =
+      show.name || show.title || "Singing Show";
 
     showDetails.appendChild(heading);
 
@@ -446,6 +463,7 @@ async function loadShow(){
   }
 }
 
+
 /* READ SONGS */
 
 function readSongs(container,type){
@@ -463,12 +481,15 @@ function readSongs(container,type){
   ];
 
   return songInputs.map((input,index)=>({
+
     type,
     number:index+1,
     song:input.value.trim(),
     movieName:movieInputs[index]?.value.trim() || ""
+
   }));
 }
+
 
 /* SUBMIT REGISTRATION */
 
@@ -479,8 +500,11 @@ form.addEventListener("submit",async(event)=>{
   if(registrationSubmitted) return;
 
   if(!selectedShow || !showId){
+
     formMessage.className = "message error";
-    formMessage.textContent = "Show details are not available.";
+    formMessage.textContent =
+      "Show details are not available.";
+
     return;
   }
 
@@ -499,31 +523,46 @@ form.addEventListener("submit",async(event)=>{
   const language =
     document.getElementById("language").value;
 
+
   if(!/^[6-9][0-9]{9}$/.test(mobile)){
+
     formMessage.className = "message error";
+
     formMessage.textContent =
       "Please enter a valid 10-digit Indian WhatsApp number.";
+
     return;
   }
+
 
   const soloTotal = Number(soloCount.value);
   const duetTotal = Number(duetCount.value);
 
+
   if(soloTotal === 0 && duetTotal === 0){
+
     formMessage.className = "message error";
+
     formMessage.textContent =
       "Please select at least one solo or duet song.";
+
     return;
   }
+
 
   const calculation = updateCalculation();
 
+
   if(!calculation){
+
     formMessage.className = "message error";
+
     formMessage.textContent =
       "The host has not set the per-song rate for your selected performance type. Please contact the host.";
+
     return;
   }
+
 
   const soloSongList = readSongs(soloSongs,"Solo");
   const duetSongList = readSongs(duetSongs,"Duet");
@@ -533,25 +572,37 @@ form.addEventListener("submit",async(event)=>{
     ...duetSongList
   ];
 
+
   if(allSongs.some(item=>!item.song || !item.movieName)){
+
     formMessage.className = "message error";
+
     formMessage.textContent =
       "Please enter both song name and movie name for every selected song.";
+
     return;
   }
+
 
   const hostNumber = getHostNumber();
 
+
   if(!hostNumber){
+
     formMessage.className = "message error";
+
     formMessage.textContent =
       "The host has not added a valid WhatsApp number. Please contact the organiser.";
+
     return;
   }
 
+
   submitButton.disabled = true;
   submitButton.textContent = "SUBMITTING...";
+
   formMessage.textContent = "";
+
 
   try{
 
@@ -560,6 +611,7 @@ form.addEventListener("submit",async(event)=>{
     const registrationRef = push(
       ref(db,"showRegistrations/"+showId)
     );
+
 
     const firstSong = allSongs[0];
 
@@ -570,12 +622,18 @@ form.addEventListener("submit",async(event)=>{
           ? "Solo"
           : "Duet";
 
+
     const total = calculation.total;
+
+
+    /* HOST DASHBOARD COMPATIBLE DATABASE RECORD */
 
     const registrationData = {
 
       singerUid:user.uid,
+
       registrationId:registrationRef.key,
+
       showId,
 
       showName:
@@ -583,64 +641,88 @@ form.addEventListener("submit",async(event)=>{
         selectedShow.title ||
         "Music Show",
 
-      /* Host Dashboard fields */
+      /* Main fields used by Host Dashboard */
 
       singerName:name,
+
       mobile,
+
       songName:firstSong.song,
+
       movieName:firstSong.movieName,
+
       performanceType,
 
-      /* Additional singer details */
+      /* Additional registration details */
 
       name,
+
       gender,
+
       location:locationValue,
+
       language,
 
       song:firstSong.song,
+
       requestedSong:firstSong.song,
+
       performance:performanceType,
 
-      /* All selected songs */
-
       soloCount:soloTotal,
+
       duetCount:duetTotal,
+
       soloSongs:soloSongList,
+
       duetSongs:duetSongList,
+
       songs:allSongs,
 
       duetPartnerName:"",
 
-      /* Payment details */
-
       soloRate:calculation.soloRate,
+
       duetRate:calculation.duetRate,
+
       soloAmount:calculation.soloAmount,
+
       duetAmount:calculation.duetAmount,
+
       totalAmount:total,
+
       currency:"INR",
 
+      /* Payment status */
+
       paymentStatus:total > 0 ? "Unpaid" : "Free",
+
       paymentMethod:"External payment - WhatsApp proof",
 
-      /* Host approval workflow */
+      /* Approval workflow */
 
       status:"Pending",
+
       source:"Online Registration",
+
       submittedAt:Date.now(),
+
       createdAt:Date.now()
 
-      /* Karaoke URL is intentionally not supplied by singer */
+      /* No karaokeUrl: host adds it later */
+
     };
 
+
     await set(registrationRef,registrationData);
+
 
     const songLines = allSongs.map(item=>
       item.type + " " + item.number +
       ": " + item.song +
       " (Movie: " + item.movieName + ")"
     ).join("\n");
+
 
     const paymentMessage =
 
@@ -671,12 +753,16 @@ form.addEventListener("submit",async(event)=>{
 
       "Registration ID: " + registrationRef.key;
 
+
     paymentWhatsApp.href =
       "https://wa.me/" + hostNumber +
       "?text=" + encodeURIComponent(paymentMessage);
 
+
     paymentWhatsApp.classList.remove("hidden");
+
     paymentInstructions.classList.remove("hidden");
+
 
     formMessage.className = "message success";
 
@@ -700,8 +786,12 @@ form.addEventListener("submit",async(event)=>{
 
       "Your registration is awaiting host approval. Tap the WhatsApp button below to contact the host for payment details.";
 
+
     registrationSubmitted = true;
-    submitButton.textContent = "REGISTRATION SUBMITTED";
+
+    submitButton.textContent =
+      "REGISTRATION SUBMITTED";
+
 
   }catch(error){
 
@@ -714,12 +804,16 @@ form.addEventListener("submit",async(event)=>{
       (error.code || error.message || "Please try again.");
 
     submitButton.disabled = false;
-    submitButton.textContent = "SUBMIT REGISTRATION";
+
+    submitButton.textContent =
+      "SUBMIT REGISTRATION";
   }
 
 });
 
+
 createSongFields();
+
 loadShow();
 
 </script>
