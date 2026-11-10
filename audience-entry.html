@@ -3,294 +3,795 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Melody Magic - Performer Registration</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Melody Magic Digital Auditorium - Host Dashboard</title>
+<script src="https://upload-widget.cloudinary.com/global/all.js"></script>
 <style>
 *{box-sizing:border-box}
-
-body{
-  margin:0;
-  padding:20px;
-  background:#090807;
-  color:white;
-  font-family:Arial,sans-serif;
-}
-
-.container{
-  max-width:600px;
-  margin:25px auto;
-}
-
-h1,h2{color:#e7bd68}
-
-.card{
-  background:#191510;
-  border:1px solid #705322;
-  border-radius:12px;
-  padding:22px;
-  margin:18px 0;
-}
-
-.muted{
-  color:#c2b7a6;
-  line-height:1.6;
-}
-
-.fee{
-  color:#e7bd68;
-  font-weight:bold;
-  font-size:16px;
-  margin-top:12px;
-}
-
-.contact-button{
-  display:block;
-  width:100%;
-  padding:15px;
-  margin-top:16px;
-  border-radius:7px;
-  text-align:center;
-  text-decoration:none;
-  font-size:16px;
-  font-weight:bold;
-}
-
-.whatsapp{
-  background:#25D366;
-  color:#071b0c;
-}
-
-.call{
-  background:#e7bd68;
-  color:#171009;
-}
-
-.error{
-  color:#ff9999;
-  line-height:1.6;
-}
-
+body{margin:0;padding:12px;background:#090909;color:#fff;font-family:Arial,sans-serif}
+.container{max-width:950px;margin:auto}
+header{padding:18px;text-align:center;background:linear-gradient(135deg,#211500,#090909);border:1px solid #9c762d;border-radius:12px}
+header h1{color:#e9bd55;margin:0 0 7px}
+header p{margin:5px;color:#ccc}
+.card{background:#151515;border:1px solid #393024;border-radius:11px;padding:13px;margin:12px 0}
+h2{font-size:18px;color:#e9bd55;margin:0}
+h3{font-size:16px;color:#e9bd55}
+details.card{padding:0;overflow:hidden}
+details.card>summary{cursor:pointer;list-style:none;padding:16px;font-weight:bold;color:#e9bd55;font-size:17px}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary:after{content:"＋";float:right}
+details.card[open]>summary:after{content:"−"}
+.section-content{padding:0 14px 14px}
+input,textarea,select{display:block;width:100%;padding:11px;margin:7px 0 12px;border-radius:7px;border:1px solid #555;background:#090909;color:white;font-size:14px}
+textarea{min-height:65px}
+label{font-size:13px;color:#ddd}
+button,.btn{display:inline-block;border:0;border-radius:7px;padding:10px 12px;margin:4px 2px;background:#d5a83e;color:#111;font-weight:bold;cursor:pointer;text-decoration:none;font-size:13px}
+.secondary{background:#393939!important;color:white!important}
+.danger{background:#a52d2d!important;color:white!important}
+.success{background:#287c48!important;color:white!important}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+.small{font-size:12px;color:#aaa}
+.status,.show-card,.registration,.queue-item{background:#202020;border:1px solid #454545;padding:12px;border-radius:8px;margin:9px 0}
+.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#393939;font-size:11px;margin:3px}
+.empty{text-align:center;color:#aaa;padding:14px}
 .hidden{display:none!important}
+hr{border:0;border-top:1px solid #444;margin:13px 0}
+#posterCanvas{width:100%;max-width:280px;display:block;margin:12px auto;border:1px solid #555}
+footer{text-align:center;color:#999;padding:20px;font-size:12px}
+.queue-number{display:inline-flex;width:26px;height:26px;border-radius:50%;background:#d5a83e;color:#111;align-items:center;justify-content:center;font-weight:bold;margin-right:7px}
+.track-link{display:inline-block;color:#e9bd55;font-weight:bold;margin:5px 0;word-break:break-all}
 </style>
 </head>
-
 <body>
-
 <div class="container">
 
-  <h1>MELODY MAGIC</h1>
-  <p class="muted">DIGITAL AUDITORIUM</p>
+<header>
+<h1>🎤 Melody Magic</h1>
+<p>Digital Auditorium</p>
+<p>Host Dashboard</p>
+</header>
 
-  <div class="card">
-    <h2>Selected Show</h2>
+<section id="loginSection" class="card">
+<h2>Host Account</h2>
+<div id="loginMessage" class="status">Checking your host account...</div>
+<button id="logoutLoginBtn" class="secondary hidden">Logout</button>
+</section>
 
-    <div id="showDetails" class="muted">
-      Loading show details...
-    </div>
-  </div>
+<main id="dashboard" class="hidden">
 
-  <div class="card">
-    <h2>Performer Registration</h2>
+<section class="card">
+<h2>Host Account Details</h2>
+<p>Host: <strong id="hostName">-</strong></p>
+<p>Status: <span id="hostStatus" class="pill">Checking</span></p>
+<button id="logoutBtn" class="danger">Logout</button>
+</section>
 
-    <p class="muted">
-      Want to perform in this show? Contact the host directly through WhatsApp or call.
-      The host will guide you about registration, performance order and payment, if applicable.
-    </p>
+<!-- NEW SHOW AND POSTERS -->
+<details class="card" open>
+<summary>➕ New Show & Poster Creation</summary>
+<div class="section-content">
 
-    <div id="feeDetails"></div>
+<form id="showForm">
+<label>Show Name</label>
+<input id="showName" required placeholder="Enter show name">
 
-    <a id="whatsappButton"
-       class="contact-button whatsapp hidden"
-       target="_blank"
-       rel="noopener">
-       CONTACT HOST ON WHATSAPP
-    </a>
+<label>Show Description</label>
+<textarea id="showDescription" placeholder="About your show"></textarea>
 
-    <a id="callButton"
-       class="contact-button call hidden">
-       CALL HOST
-    </a>
+<div class="row">
+<div><label>Show Date</label><input type="date" id="showDate" required></div>
+<div><label>Show Time</label><input type="time" id="showTime" required></div>
+</div>
 
-    <div id="contactMessage" class="muted"></div>
-  </div>
+<label>Host WhatsApp Number</label>
+<input id="hostWhatsApp" type="tel" placeholder="10-digit mobile number">
 
+<div class="row">
+<div><label>Solo Song Fee (₹)</label><input type="number" id="soloEntryFee" min="0" value="100"></div>
+<div><label>Duet Song Fee (₹)</label><input type="number" id="duetEntryFee" min="0" value="150"></div>
+</div>
+
+<label>Audience Entry Fee (₹)</label>
+<input type="number" id="audienceFee" min="0" value="0">
+
+<label>Show Type</label>
+<select id="showType">
+<option>Karaoke</option>
+<option>Live Singing</option>
+<option>Music Concert</option>
+<option>Open Mic</option>
+<option>Other</option>
+</select>
+
+<button type="submit" id="createShowBtn">Create & Publish Show</button>
+</form>
+<div id="createMessage" class="small"></div>
+
+<hr>
+<h3>🎨 Generate & Publish Show Poster</h3>
+<p class="small">Generated posters can be published immediately without admin approval.</p>
+
+<label>Select Show</label>
+<select id="generatedPosterSelect"><option value="">Select a show</option></select>
+
+<canvas id="posterCanvas" width="900" height="1200"></canvas>
+
+<div class="row">
+<button id="generatePosterBtn">Generate Poster</button>
+<button id="publishGeneratedPosterBtn" class="success">Publish Generated Poster</button>
+</div>
+<div class="row">
+<button id="downloadPosterBtn" class="secondary">Download Poster</button>
+<button id="sharePosterBtn" class="secondary">Share Poster</button>
+</div>
+<div id="generatedPosterMessage" class="small"></div>
+
+<hr>
+<h3>🖼️ Upload Custom Poster</h3>
+<p class="small">Custom uploaded posters require admin approval before publication. Maximum 5 MB.</p>
+
+<label>Select Show</label>
+<select id="posterShowSelect"><option value="">Select a show</option></select>
+
+<input type="file" id="posterFile" accept="image/*">
+<button id="uploadPosterBtn">Submit Custom Poster for Approval</button>
+<div id="posterUploadMessage" class="small"></div>
+
+</div>
+</details>
+
+<!-- PUBLISHED SHOWS -->
+<details class="card">
+<summary>📢 Published Shows</summary>
+<div class="section-content">
+<div id="showsList" class="empty">Loading published shows...</div>
+</div>
+</details>
+
+<!-- REGISTRATION -->
+<details class="card">
+<summary>🎟️ Performer Registration — Online & Offline</summary>
+<div class="section-content">
+
+<h3>Online Registrations</h3>
+<label>Select Show</label>
+<select id="registrationShowSelect"><option value="">Select a show</option></select>
+<div id="registrationsList" class="empty">Select a show to view online registrations.</div>
+
+<hr>
+<h3>Offline / Walk-in Registration</h3>
+<p class="small">Add the singer's karaoke YouTube link here. It will appear in the performance queue.</p>
+
+<form id="manualQueueForm">
+<label>Select Show</label>
+<select id="offlineShowSelect"><option value="">Select a show</option></select>
+
+<label>Performer Name</label>
+<input id="manualName" required placeholder="Performer name">
+
+<label>Mobile Number</label>
+<input id="manualMobile" placeholder="Mobile number">
+
+<label>Song Name</label>
+<input id="manualSong" placeholder="Song name">
+
+<label>🎵 Karaoke YouTube Link</label>
+<input id="manualKaraokeUrl" type="url" placeholder="Paste singer's karaoke track link">
+
+<label>Performance Type</label>
+<select id="manualType">
+<option>Solo</option>
+<option>Duet</option>
+<option>Group</option>
+</select>
+
+<button type="submit">Register Offline Performer</button>
+</form>
+<div id="offlineMessage" class="small"></div>
+
+</div>
+</details>
+
+<!-- LIVE CONTROL AND QUEUE -->
+<details class="card" open>
+<summary>🔴 Live Show Control & Performance Queue</summary>
+<div class="section-content">
+
+<label>Select Show</label>
+<select id="queueShowSelect"><option value="">Select a show</option></select>
+
+<h3>📺 Show Live Stream Link</h3>
+<p class="small">This is the show's live broadcast link, not an individual singer's karaoke track.</p>
+<input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
+
+<div class="row">
+<button id="saveYoutubeBtn">Save Live Stream Link</button>
+<button id="startLiveBtn" class="success">Start Live</button>
+<button id="stopLiveBtn" class="danger">Stop Live</button>
+</div>
+<div id="liveMessage" class="small"></div>
+<div id="liveLinks" class="small"></div>
+
+<hr>
+<h3>🎤 Performance Queue</h3>
+<p class="small">Approved online performers and offline walk-in performers appear here automatically.</p>
+<div id="queueList" class="empty">Select a show to view its queue.</div>
+
+</div>
+</details>
+
+</main>
+<footer>Powered by Melody Magic Music Studio</footer>
 </div>
 
 <script type="module">
+import {auth,db} from "./firebase-host.js";
+import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {ref,get,set,push,update,remove,onValue,off} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-import { db } from "./firebase.js";
+const CLOUD_NAME="quqojlew";
+const UPLOAD_PRESET="melody_magic_posters";
 
-import {
-  ref,
-  get
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+let currentUser=null,currentHost=null,myShows=[];
+let registrationUnsubscribe=null,queueUnsubscribe=null,liveUnsubscribe=null;
+let currentQueue=[];
+let generatedPosterReady=false;
 
-const showId =
-  new URLSearchParams(window.location.search).get("showId");
+const $=id=>document.getElementById(id);
 
-const showDetails =
-  document.getElementById("showDetails");
+function escapeHTML(value){
+ return String(value??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+ })[c]);
+}
+function money(value){return "₹"+Number(value||0).toLocaleString("en-IN")}
+function normaliseWhatsApp(value){
+ let n=String(value||"").replace(/\D/g,"");
+ if(n.length===10)n="91"+n;
+ return n;
+}
+function message(id,text){$(id).textContent=text}
+function stopRegistrationListener(){
+ if(registrationUnsubscribe){registrationUnsubscribe();registrationUnsubscribe=null}
+}
+function stopQueueListener(){
+ if(queueUnsubscribe){queueUnsubscribe();queueUnsubscribe=null}
+}
+function stopLiveListener(){
+ if(liveUnsubscribe){liveUnsubscribe();liveUnsubscribe=null}
+}
+function baseURL(){return location.href.replace(/[^/]*$/,"")}
 
-const feeDetails =
-  document.getElementById("feeDetails");
-
-const whatsappButton =
-  document.getElementById("whatsappButton");
-
-const callButton =
-  document.getElementById("callButton");
-
-const contactMessage =
-  document.getElementById("contactMessage");
-
-function cleanPhone(value){
-  return String(value || "").replace(/\D/g, "");
+function validYouTubeURL(url){
+ try{
+  const u=new URL(url);
+  return /(^|\.)youtube\.com$/.test(u.hostname)||u.hostname==="youtu.be";
+ }catch(e){return false}
+}
+function youtubeId(url){
+ try{
+  const u=new URL(url);
+  if(u.hostname==="youtu.be")return u.pathname.slice(1);
+  if(u.searchParams.get("v"))return u.searchParams.get("v");
+  const m=u.pathname.match(/\/(embed|live|shorts)\/([^/?]+)/);
+  return m?m[2]:"";
+ }catch(e){return ""}
+}
+function karaokeLink(url){
+ if(!url||!validYouTubeURL(url))return '<span class="small">No karaoke link supplied</span>';
+ return `<a class="track-link" href="${escapeHTML(url)}" target="_blank" rel="noopener">▶ Open Karaoke Track</a>`;
 }
 
-function formatFee(value){
-  if(value === null || value === undefined || value === ""){
-    return "Contact host";
-  }
+/* HOST ACCESS */
+onAuthStateChanged(auth,async user=>{
+ currentUser=user;
+ if(!user){showLogin("Please log in using your host account.");return}
+ try{
+  const snap=await get(ref(db,"hostApplications/"+user.uid));
+  if(!snap.exists()){showLogin("Host application not found. Contact the administrator.");return}
+  const app=snap.val(),now=Date.now();
+  const start=Number(app.subscriptionStartAt||0);
+  const end=Number(app.subscriptionEndAt||0);
+  if(app.status!=="Approved"){showLogin("Your host account is not approved yet.");return}
+  if(!(start<=now&&end>now)){showLogin("Your host subscription is not active.");return}
+  currentHost=app;
+  $("loginSection").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
+  $("hostName").textContent=app.hostName||app.name||user.email||"Host";
+  $("hostStatus").textContent="Approved • Active";
+  await loadShows();
+ }catch(e){console.error(e);showLogin("Unable to verify host: "+e.message)}
+});
 
-  const fee = Number(value);
+function showLogin(text){
+ $("dashboard").classList.add("hidden");
+ $("loginSection").classList.remove("hidden");
+ message("loginMessage",text);
+ $("logoutLoginBtn").classList.remove("hidden");
+}
+async function logout(){await signOut(auth);location.reload()}
+$("logoutBtn").addEventListener("click",logout);
+$("logoutLoginBtn").addEventListener("click",logout);
 
-  if(!Number.isFinite(fee)){
-    return "Contact host";
-  }
-
-  return fee === 0 ? "FREE" : "₹" + fee;
+async function verifyShow(showId){
+ const snap=await get(ref(db,"shows/"+showId));
+ if(!snap.exists()||snap.val().hostUid!==currentUser.uid)
+  throw new Error("Show ownership verification failed.");
+ return snap.val();
 }
 
-function addDetail(label, value){
-  const p = document.createElement("p");
-  p.textContent = label + ": " + value;
-  return p;
+/* CREATE SHOW */
+$("showForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!currentUser||!currentHost)return;
+ const btn=$("createShowBtn");btn.disabled=true;
+ try{
+  const showRef=push(ref(db,"shows"));
+  const data={
+   showId:showRef.key,
+   hostUid:currentUser.uid,
+   hostName:currentHost.hostName||currentHost.name||"Host",
+   hostWhatsApp:normaliseWhatsApp($("hostWhatsApp").value),
+   name:$("showName").value.trim(),
+   description:$("showDescription").value.trim(),
+   date:$("showDate").value,
+   time:$("showTime").value,
+   timeZone:"Asia/Kolkata",
+   soloEntryFee:Number($("soloEntryFee").value||0),
+   duetEntryFee:Number($("duetEntryFee").value||0),
+   audienceFee:Number($("audienceFee").value||0),
+   type:$("showType").value,
+   status:"Published",
+   createdAt:Date.now()
+  };
+  if(!data.name||!data.date||!data.time)throw new Error("Enter show name, date and time.");
+  await set(showRef,data);
+  $("showForm").reset();
+  $("soloEntryFee").value=100;
+  $("duetEntryFee").value=150;
+  $("audienceFee").value=0;
+  message("createMessage","Show published successfully. Now select it below to generate and publish its poster.");
+  await loadShows();
+  $("generatedPosterSelect").value=showRef.key;
+  $("posterShowSelect").value=showRef.key;
+  drawPoster(data);
+  generatedPosterReady=true;
+ }catch(e){message("createMessage","Error: "+e.message)}
+ finally{btn.disabled=false}
+});
+
+/* LOAD SHOWS */
+async function loadShows(){
+ const snap=await get(ref(db,"shows"));
+ const all=snap.exists()?snap.val():{};
+ myShows=Object.entries(all)
+  .filter(([id,s])=>s&&s.hostUid===currentUser.uid&&s.status!=="Deleted")
+  .map(([id,s])=>({...s,showId:id}))
+  .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+ renderShows();
+ populateDropdowns();
 }
 
-async function loadShow(){
+function renderShows(){
+ const box=$("showsList");
+ if(!myShows.length){
+  box.innerHTML='<div class="empty">No published shows yet.</div>';
+  return;
+ }
+ box.innerHTML=myShows.map(s=>{
+  const id=encodeURIComponent(s.showId);
+  const audience=baseURL()+"audience-entry.html?showId="+id;
+  const stage=baseURL()+"live-stage.html?showId="+id;
+  const performance=baseURL()+"live-performance.html?showId="+id;
+  return `<div class="show-card">
+   <h3>${escapeHTML(s.name)}</h3>
+   <p>${escapeHTML(s.description||"")}</p>
+   <p>📅 ${escapeHTML(s.date)} | 🕒 ${escapeHTML(s.time)}</p>
+   <p>${escapeHTML(s.type)} | Solo ${money(s.soloEntryFee)} | Duet ${money(s.duetEntryFee)} | Audience ${money(s.audienceFee)}</p>
+   <span class="pill">${escapeHTML(s.status||"Published")}</span>
+   <div>
+    <a class="btn" href="${stage}" target="_blank">Open Stage</a>
+    <a class="btn secondary" href="${performance}" target="_blank">Performance View</a>
+    <a class="btn secondary" href="${audience}" target="_blank">Audience Page</a>
+   </div>
+   <button class="secondary" data-queue="${escapeHTML(s.showId)}">Open Live Control</button>
+   <button class="danger" data-delete="${escapeHTML(s.showId)}">Delete Show</button>
+  </div>`;
+ }).join("");
 
+ box.querySelectorAll("[data-queue]").forEach(b=>b.onclick=()=>{
+  $("queueShowSelect").value=b.dataset.queue;
+  listenToQueue(b.dataset.queue);
+  listenToLive(b.dataset.queue);
+  $("queueShowSelect").scrollIntoView({behavior:"smooth"});
+  document.querySelectorAll("details.card").forEach(d=>{
+   if(d.querySelector("#queueShowSelect"))d.open=true;
+  });
+ });
+ box.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteShow(b.dataset.delete));
+}
+
+async function deleteShow(id){
+ if(!confirm("Delete this show?"))return;
+ try{
+  await verifyShow(id);
+  await update(ref(db,"shows/"+id),{status:"Deleted",deletedAt:Date.now()});
+  await loadShows();
+ }catch(e){alert("Delete failed: "+e.message)}
+}
+
+/* DROPDOWNS */
+function populateDropdowns(){
+ const ids=["posterShowSelect","generatedPosterSelect","registrationShowSelect","offlineShowSelect","queueShowSelect"];
+ ids.forEach(id=>{
+  const el=$(id),old=el.value;
+  el.innerHTML='<option value="">Select a show</option>';
+  myShows.forEach(s=>{
+   const o=document.createElement("option");
+   o.value=s.showId;o.textContent=s.name+" - "+s.date;el.appendChild(o);
+  });
+  if(myShows.some(s=>s.showId===old))el.value=old;
+ });
+ if($("registrationShowSelect").value)listenToRegistrations($("registrationShowSelect").value);
+ if($("queueShowSelect").value){
+  listenToQueue($("queueShowSelect").value);
+  listenToLive($("queueShowSelect").value);
+ }
+}
+
+/* ONLINE REGISTRATIONS */
+$("registrationShowSelect").addEventListener("change",e=>listenToRegistrations(e.target.value));
+function listenToRegistrations(showId){
+ stopRegistrationListener();
+ if(!showId){$("registrationsList").textContent="Select a show.";return}
+ const r=ref(db,"showRegistrations/"+showId);
+ const cb=onValue(r,s=>renderRegistrations(showId,s.exists()?s.val():{}),e=>{
+  $("registrationsList").textContent="Error: "+e.message;
+ });
+ registrationUnsubscribe=()=>off(r,"value",cb);
+}
+
+function renderRegistrations(showId,data){
+ const box=$("registrationsList");
+ const entries=Object.entries(data||{});
+ if(!entries.length){box.innerHTML='<div class="empty">No registrations yet.</div>';return}
+ box.innerHTML=entries.map(([id,p])=>`
+ <div class="registration">
+ <h3>${escapeHTML(p.singerName||p.name||"Performer")}</h3>
+ <p>Song: ${escapeHTML(p.songName||p.song||"-")} | Mobile: ${escapeHTML(p.mobile||p.phone||"-")}</p>
+ <p>Type: ${escapeHTML(p.performanceType||p.type||"-")}</p>
+ <p>Karaoke Track: ${karaokeLink(p.karaokeUrl||p.karaokeLink||p.youtubeKaraokeUrl)}</p>
+ <p>Status: <span class="pill">${escapeHTML(p.status||"Pending")}</span>
+ Payment: <span class="pill">${escapeHTML(p.paymentStatus||"Unpaid")}</span></p>
+ <button class="success" data-approve="${escapeHTML(id)}">Approve & Add to Queue</button>
+ <button class="danger" data-reject="${escapeHTML(id)}">Reject</button>
+ <button class="secondary" data-paid="${escapeHTML(id)}">Mark Paid</button>
+ <button class="secondary" data-unpaid="${escapeHTML(id)}">Mark Unpaid</button>
+ </div>`).join("");
+
+ box.querySelectorAll("[data-approve]").forEach(b=>b.onclick=async()=>{
   try{
-
-    if(!showId){
-      throw new Error("No show selected. Please select a show from the homepage.");
-    }
-
-    const snapshot = await get(
-      ref(db, "shows/" + showId)
-    );
-
-    if(!snapshot.exists()){
-      throw new Error("This show does not exist.");
-    }
-
-    const show = snapshot.val();
-
-    if(show.status !== "Published"){
-      throw new Error("This show is not currently available.");
-    }
-
-    const title =
-      show.name || show.title || "Singing Show";
-
-    const hostName =
-      show.hostName || "Show Host";
-
-    showDetails.replaceChildren();
-
-    const heading = document.createElement("h3");
-    heading.textContent = title;
-    showDetails.appendChild(heading);
-
-    showDetails.appendChild(
-      addDetail("Date", show.date || "To be announced")
-    );
-
-    showDetails.appendChild(
-      addDetail("Time", show.time || "To be announced")
-    );
-
-    showDetails.appendChild(
-      addDetail("Host", hostName)
-    );
-
-    // DISPLAY SOLO AND DUET FEES
-    feeDetails.replaceChildren();
-
-    const solo = document.createElement("p");
-    solo.className = "fee";
-    solo.textContent =
-      "Solo Performer Fee: " + formatFee(show.soloEntryFee);
-
-    const duet = document.createElement("p");
-    duet.className = "fee";
-    duet.textContent =
-      "Duet Performer Fee: " + formatFee(show.duetEntryFee);
-
-    feeDetails.append(solo, duet);
-
-    // GET HOST CONTACT NUMBER
-    const phone = cleanPhone(
-      show.hostWhatsApp ||
-      show.hostWhatsapp ||
-      show.hostMobile ||
-      show.contactWhatsApp ||
-      show.whatsappNumber ||
-      show.hostPhone ||
-      show.mobile
-    );
-
-    if(!phone){
-      contactMessage.className = "error";
-      contactMessage.textContent =
-        "The host has not added a contact number. Please contact the organiser through another available channel.";
-      return;
-    }
-
-    // FORMAT INDIAN MOBILE NUMBER
-    const whatsappNumber =
-      phone.length === 10 ? "91" + phone : phone;
-
-    // WHATSAPP MESSAGE
-    const message =
-      "Hello " + hostName +
-      ", I want to join as a Performer in your show: " +
-      title +
-      ". Please share the registration details.";
-
-    whatsappButton.href =
-      "https://wa.me/" +
-      whatsappNumber +
-      "?text=" +
-      encodeURIComponent(message);
-
-    whatsappButton.classList.remove("hidden");
-
-    // DIRECT CALL BUTTON
-    const callNumber =
-      phone.length === 10 ? "+91" + phone : "+" + phone;
-
-    callButton.href = "tel:" + callNumber;
-    callButton.classList.remove("hidden");
-
-    contactMessage.textContent =
-      "Contact the host to confirm your participation and performance slot.";
-
-  }catch(error){
-
-    console.error("Show loading error:", error);
-
-    showDetails.className = "error";
-    showDetails.textContent = error.message;
-
-    feeDetails.replaceChildren();
-    contactMessage.textContent = "";
-  }
+   await updatePerformer(showId,b.dataset.approve,{status:"Approved"});
+   await addRegistrationToQueue(showId,b.dataset.approve);
+   alert("Approved and added to live queue.");
+  }catch(e){alert("Approval failed: "+e.message)}
+ });
+ box.querySelectorAll("[data-reject]").forEach(b=>b.onclick=async()=>{
+  try{
+   await updatePerformer(showId,b.dataset.reject,{status:"Rejected"});
+   await remove(ref(db,`performanceQueue/${showId}/${b.dataset.reject}`));
+  }catch(e){alert(e.message)}
+ });
+ box.querySelectorAll("[data-paid]").forEach(b=>b.onclick=async()=>{
+  try{await updatePerformer(showId,b.dataset.paid,{paymentStatus:"Paid"})}
+  catch(e){alert(e.message)}
+ });
+ box.querySelectorAll("[data-unpaid]").forEach(b=>b.onclick=async()=>{
+  try{await updatePerformer(showId,b.dataset.unpaid,{paymentStatus:"Unpaid"})}
+  catch(e){alert(e.message)}
+ });
 }
 
-loadShow();
+async function updatePerformer(showId,id,changes){
+ await verifyShow(showId);
+ const r=ref(db,`showRegistrations/${showId}/${id}`);
+ const s=await get(r);
+ if(!s.exists())throw new Error("Registration not found.");
+ await update(r,{...changes,updatedAt:Date.now()});
+}
 
+/* QUEUE */
+$("queueShowSelect").addEventListener("change",e=>{
+ listenToQueue(e.target.value);listenToLive(e.target.value);
+});
+async function addRegistrationToQueue(showId,id){
+ await verifyShow(showId);
+ const rs=await get(ref(db,`showRegistrations/${showId}/${id}`));
+ if(!rs.exists())throw new Error("Registration not found.");
+ const p=rs.val();
+ if(p.status!=="Approved")throw new Error("Only approved performers can enter the queue.");
+ const qr=ref(db,`performanceQueue/${showId}/${id}`);
+ const existing=await get(qr);
+ if(existing.exists()){
+  await update(qr,{status:"Waiting",updatedAt:Date.now()});return;
+ }
+ const qs=await get(ref(db,`performanceQueue/${showId}`));
+ const data=qs.exists()?qs.val():{};
+ const count=Object.values(data).filter(x=>x&&x.status!=="Removed"&&x.status!=="Rejected").length;
+ await set(qr,{
+  registrationId:id,
+  performerName:p.singerName||p.name||"Performer",
+  mobile:p.mobile||p.phone||"",
+  songName:p.songName||p.song||"",
+  karaokeUrl:p.karaokeUrl||p.karaokeLink||p.youtubeKaraokeUrl||"",
+  performanceType:p.performanceType||p.type||"Solo",
+  status:"Waiting",source:"Online Registration",
+  order:count+1,createdAt:Date.now()
+ });
+}
+
+function listenToQueue(showId){
+ stopQueueListener();
+ if(!showId){$("queueList").textContent="Select a show.";return}
+ const r=ref(db,"performanceQueue/"+showId);
+ const cb=onValue(r,s=>renderQueue(showId,s.exists()?s.val():{}),e=>{
+  $("queueList").textContent="Queue error: "+e.message;
+ });
+ queueUnsubscribe=()=>off(r,"value",cb);
+}
+
+function renderQueue(showId,data){
+ currentQueue=Object.entries(data||{})
+ .map(([id,item])=>({...item,id}))
+ .filter(x=>x.status!=="Removed"&&x.status!=="Rejected")
+ .sort((a,b)=>Number(a.order||0)-Number(b.order||0)||Number(a.createdAt||0)-Number(b.createdAt||0));
+ const box=$("queueList");
+ if(!currentQueue.length){box.innerHTML='<div class="empty">No performers in the queue.</div>';return}
+ box.innerHTML=currentQueue.map((p,i)=>`
+ <div class="queue-item">
+ <h3><span class="queue-number">${i+1}</span>${escapeHTML(p.performerName||"Performer")}</h3>
+ <p>Song: ${escapeHTML(p.songName||"-")} | Mobile: ${escapeHTML(p.mobile||"-")}</p>
+ <p>Type: ${escapeHTML(p.performanceType||"-")} | Source: ${escapeHTML(p.source||"-")}</p>
+ <p>Karaoke Track: ${karaokeLink(p.karaokeUrl||p.karaokeLink||"")}</p>
+ <p>Status: <span class="pill">${escapeHTML(p.status||"Waiting")}</span></p>
+ <button class="secondary" data-up="${escapeHTML(p.id)}" ${i===0?"disabled":""}>↑ Move Up</button>
+ <button class="secondary" data-down="${escapeHTML(p.id)}" ${i===currentQueue.length-1?"disabled":""}>↓ Move Down</button>
+ <button class="danger" data-remove="${escapeHTML(p.id)}">Remove</button>
+ </div>`).join("");
+
+ box.querySelectorAll("[data-up],[data-down]").forEach(b=>b.onclick=async()=>{
+  const id=b.dataset.up||b.dataset.down;
+  const i=currentQueue.findIndex(x=>x.id===id),j=b.dataset.up?i-1:i+1;
+  if(j<0||j>=currentQueue.length)return;
+  const a=currentQueue[i],c=currentQueue[j];
+  const changes={};
+  changes[`performanceQueue/${showId}/${a.id}/order`]=Number(c.order||j+1);
+  changes[`performanceQueue/${showId}/${c.id}/order`]=Number(a.order||i+1);
+  try{await update(ref(db),changes)}catch(e){alert(e.message)}
+ });
+ box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=async()=>{
+  if(!confirm("Remove performer from queue?"))return;
+  try{await remove(ref(db,`performanceQueue/${showId}/${b.dataset.remove}`))}
+  catch(e){alert(e.message)}
+ });
+}
+
+/* OFFLINE REGISTRATION */
+$("manualQueueForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const showId=$("offlineShowSelect").value;
+ if(!showId){message("offlineMessage","Please select a show.");return}
+ const karaokeUrl=$("manualKaraokeUrl").value.trim();
+ if(karaokeUrl&&!validYouTubeURL(karaokeUrl)){
+  message("offlineMessage","Please enter a valid YouTube karaoke link.");return;
+ }
+ try{
+  await verifyShow(showId);
+  const snap=await get(ref(db,`performanceQueue/${showId}`));
+  const data=snap.exists()?snap.val():{};
+  const count=Object.values(data).filter(x=>x&&x.status!=="Removed"&&x.status!=="Rejected").length;
+  const newRef=push(ref(db,`performanceQueue/${showId}`));
+  await set(newRef,{
+   performerName:$("manualName").value.trim(),
+   mobile:$("manualMobile").value.trim(),
+   songName:$("manualSong").value.trim(),
+   karaokeUrl,
+   performanceType:$("manualType").value,
+   status:"Waiting",source:"Offline Walk-in",
+   order:count+1,createdAt:Date.now()
+  });
+  $("manualQueueForm").reset();
+  message("offlineMessage","Offline performer registered and added to the queue.");
+ }catch(e){message("offlineMessage","Could not register: "+e.message)}
+});
+
+/* SHOW LIVE STREAM CONTROL */
+function listenToLive(showId){
+ stopLiveListener();
+ if(!showId){$("youtubeUrl").value="";$("liveLinks").textContent="";return}
+ const r=ref(db,"livePerformance/"+showId);
+ const cb=onValue(r,s=>{
+  const d=s.exists()?s.val():{};
+  $("youtubeUrl").value=d.youtubeUrl||d.videoUrl||"";
+  $("liveMessage").textContent=d.status==="Live"?"Status: LIVE":"Status: "+(d.status||"Not started");
+  $("liveLinks").innerHTML=d.youtubeUrl?
+   `Saved live stream: <a style="color:#e9bd55" target="_blank" href="${escapeHTML(d.youtubeUrl)}">Open YouTube Live</a>`:"";
+ });
+ liveUnsubscribe=()=>off(r,"value",cb);
+}
+async function saveLiveData(status){
+ const showId=$("queueShowSelect").value;
+ if(!showId)throw new Error("Select a show first.");
+ await verifyShow(showId);
+ const url=$("youtubeUrl").value.trim();
+ if(url&&!validYouTubeURL(url))throw new Error("Enter a valid YouTube URL.");
+ const old=await get(ref(db,`livePerformance/${showId}`));
+ const previous=old.exists()?old.val():{};
+ await set(ref(db,`livePerformance/${showId}`),{
+  ...previous,showId,hostUid:currentUser.uid,youtubeUrl:url,status,updatedAt:Date.now(),
+  ...(status==="Live"?{startedAt:Date.now()}:{stoppedAt:Date.now()})
+ });
+}
+$("saveYoutubeBtn").onclick=async()=>{
+ try{await saveLiveData("Ready");message("liveMessage","Live stream link saved.")}
+ catch(e){message("liveMessage","Error: "+e.message)}
+};
+$("startLiveBtn").onclick=async()=>{
+ try{await saveLiveData("Live");message("liveMessage","Live status set. Open Performance View to display the show.")}
+ catch(e){message("liveMessage","Error: "+e.message)}
+};
+$("stopLiveBtn").onclick=async()=>{
+ try{await saveLiveData("Stopped");message("liveMessage","Live show stopped.")}
+ catch(e){message("liveMessage","Error: "+e.message)}
+};
+
+/* CLOUDINARY UPLOAD HELPERS */
+function validCloudinaryURL(url){
+ return typeof url==="string"&&/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
+}
+async function uploadPosterBlob(blob,filename){
+ const fd=new FormData();
+ fd.append("file",blob,filename);
+ fd.append("upload_preset",UPLOAD_PRESET);
+ const response=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{method:"POST",body:fd});
+ const result=await response.json();
+ if(!response.ok||!result.secure_url)throw new Error(result.error?.message||"Cloudinary upload failed.");
+ if(!validCloudinaryURL(result.secure_url))throw new Error("Unexpected image URL.");
+ return result;
+}
+
+/* CUSTOM POSTER - ADMIN APPROVAL REQUIRED */
+$("uploadPosterBtn").onclick=async()=>{
+ const showId=$("posterShowSelect").value;
+ const file=$("posterFile").files[0];
+ if(!showId){alert("Select a show.");return}
+ if(!file){alert("Select a poster image.");return}
+ if(file.size>5*1024*1024){alert("Image must be smaller than 5 MB.");return}
+ try{
+  await verifyShow(showId);
+  message("posterUploadMessage","Uploading custom poster...");
+  const result=await uploadPosterBlob(file,file.name);
+  await set(ref(db,"showPosters/"+showId),{
+   hostUid:currentUser.uid,showId,
+   imageUrl:result.secure_url,
+   publicId:result.public_id||"",
+   posterType:"Custom",
+   status:"Pending",
+   submittedAt:Date.now()
+  });
+  message("posterUploadMessage","Custom poster submitted. It will be published after admin approval.");
+  $("posterFile").value="";
+ }catch(e){message("posterUploadMessage","Upload failed: "+e.message)}
+};
+
+/* POSTER GENERATOR */
+function selectedPosterShow(){
+ return myShows.find(s=>s.showId===$("generatedPosterSelect").value);
+}
+function drawPoster(show){
+ const canvas=$("posterCanvas"),ctx=canvas.getContext("2d");
+ const w=canvas.width,h=canvas.height;
+ const g=ctx.createLinearGradient(0,0,w,h);
+ g.addColorStop(0,"#090909");g.addColorStop(.5,"#332100");g.addColorStop(1,"#090909");
+ ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle="#d6ad50";ctx.lineWidth=12;ctx.strokeRect(30,30,w-60,h-60);
+ ctx.textAlign="center";ctx.fillStyle="#e9bd55";
+ ctx.font="bold 54px Arial";ctx.fillText("MELODY MAGIC",w/2,150);
+ ctx.fillStyle="#fff";ctx.font="32px Arial";ctx.fillText("DIGITAL AUDITORIUM",w/2,205);
+ ctx.strokeStyle="#d6ad50";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(140,250);ctx.lineTo(w-140,250);ctx.stroke();
+
+ ctx.fillStyle="#e9bd55";ctx.font="bold 58px Arial";
+ const words=String(show.name||"LIVE SHOW").split(" ");
+ let lines=[],line="";
+ words.forEach(word=>{
+  const test=line?line+" "+word:word;
+  if(ctx.measureText(test).width>700&&line){lines.push(line);line=word}
+  else line=test;
+ });
+ if(line)lines.push(line);
+ let y=390;
+ lines.slice(0,4).forEach(t=>{ctx.fillText(t,w/2,y);y+=85});
+
+ ctx.fillStyle="#fff";ctx.font="38px Arial";ctx.fillText(show.type||"Karaoke Show",w/2,770);
+ ctx.fillStyle="#e9bd55";ctx.font="bold 42px Arial";ctx.fillText("DATE & TIME",w/2,870);
+ ctx.fillStyle="#fff";ctx.font="38px Arial";ctx.fillText(`${show.date||""} | ${show.time||""}`,w/2,930);
+ ctx.fillStyle="#e9bd55";ctx.font="bold 38px Arial";ctx.fillText("ENTRY DETAILS",w/2,1030);
+ ctx.fillStyle="#fff";ctx.font="34px Arial";
+ ctx.fillText(Number(show.audienceFee||0)===0?"FREE ENTRY":"Entry Fee: "+money(show.audienceFee),w/2,1090);
+ ctx.fillStyle="#ccc";ctx.font="25px Arial";ctx.fillText("Powered by Melody Magic Music Studio",w/2,1150);
+ generatedPosterReady=true;
+}
+function posterBlob(){
+ return new Promise(resolve=>$("posterCanvas").toBlob(resolve,"image/png"));
+}
+$("generatedPosterSelect").addEventListener("change",()=>{
+ const s=selectedPosterShow();
+ generatedPosterReady=false;
+ if(s)drawPoster(s);
+});
+$("generatePosterBtn").onclick=()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+ drawPoster(s);
+ message("generatedPosterMessage","Poster generated. You can download, share, or publish it immediately.");
+};
+
+/* PUBLISH GENERATED POSTER - NO ADMIN APPROVAL */
+$("publishGeneratedPosterBtn").onclick=async()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+ if(!generatedPosterReady)drawPoster(s);
+ const btn=$("publishGeneratedPosterBtn");
+ btn.disabled=true;
+ try{
+  await verifyShow(s.showId);
+  message("generatedPosterMessage","Uploading generated poster for immediate publication...");
+  const blob=await posterBlob();
+  if(!blob)throw new Error("Could not create poster image.");
+  const result=await uploadPosterBlob(blob,"Melody-Magic-Generated-Poster.png");
+  await set(ref(db,"showPosters/"+s.showId),{
+   hostUid:currentUser.uid,
+   showId:s.showId,
+   imageUrl:result.secure_url,
+   publicId:result.public_id||"",
+   posterType:"Generated",
+   status:"Approved",
+   approved:true,
+   submittedAt:Date.now(),
+   approvedAt:Date.now(),
+   publishedAt:Date.now()
+  });
+  message("generatedPosterMessage","Generated poster published successfully. It does not require admin approval.");
+ }catch(e){
+  message("generatedPosterMessage","Poster publication failed: "+e.message);
+ }finally{btn.disabled=false}
+};
+
+$("downloadPosterBtn").onclick=async()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+ drawPoster(s);
+ const blob=await posterBlob();
+ if(!blob){alert("Poster generation failed.");return}
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="Melody-Magic-"+s.name.replace(/[^a-z0-9]/gi,"-")+".png";
+ a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$("sharePosterBtn").onclick=async()=>{
+ const s=selectedPosterShow();
+ if(!s){alert("Select a show.");return}
+ drawPoster(s);
+ const blob=await posterBlob();
+ if(!blob){alert("Poster generation failed.");return}
+ const file=new File([blob],"Melody-Magic-Show.png",{type:"image/png"});
+ if(navigator.canShare&&navigator.canShare({files:[file]})){
+  try{await navigator.share({title:s.name,text:`${s.name} - ${s.date} at ${s.time}`,files:[file]})}
+  catch(e){if(e.name!=="AbortError")alert(e.message)}
+ }else alert("Download the poster and share it manually.");
+};
 </script>
-
 </body>
 </html>
