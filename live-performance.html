@@ -4,510 +4,307 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Melody Magic - Live Performance</title>
+<title>Melody Magic Digital Auditorium - Live</title>
 
 <style>
 *{box-sizing:border-box}
-
-body{
- margin:0;
- background:#080b14;
- color:#fff;
- font-family:Arial,sans-serif;
- text-align:center;
-}
-
-header{
- padding:22px 12px;
- background:#111827;
- border-bottom:2px solid #d4af37;
-}
-
-h1{
- color:#f5d76e;
- margin:0;
- font-size:25px;
-}
-
-.subtitle{
- color:#bbb;
- margin-top:8px;
-}
-
-.container{
- max-width:850px;
- margin:auto;
- padding:18px;
-}
-
-.card{
- background:#151c2b;
- border:1px solid #30394b;
- border-radius:14px;
- padding:18px;
- margin:15px 0;
-}
-
-.status{
- display:inline-block;
- padding:7px 14px;
- border-radius:20px;
- background:#343b4c;
- color:#fff;
- font-size:13px;
- font-weight:bold;
-}
-
-.status.live{
- background:#a71919;
-}
-
-.status.ready{
- background:#287c48;
-}
-
-h2{
- color:#f5d76e;
-}
-
-.performer-name{
- font-size:27px;
- color:#f5d76e;
- font-weight:bold;
- margin:15px 0;
-}
-
-.song-details{
- color:#ddd;
- font-size:17px;
- line-height:1.8;
-}
-
-#player{
- width:100%;
- aspect-ratio:16/9;
- background:#000;
- border-radius:12px;
- overflow:hidden;
-}
-
-#player iframe{
- width:100%;
- height:100%;
- border:0;
-}
-
-button{
- background:#d4af37;
- color:#111;
- border:0;
- padding:13px 22px;
- border-radius:8px;
- font-weight:bold;
- font-size:15px;
- cursor:pointer;
- margin:10px 0;
-}
-
-button:disabled{
- opacity:.5;
- cursor:not-allowed;
-}
-
-.message{
- color:#bbb;
- line-height:1.6;
-}
-
-.hidden{
- display:none!important;
-}
-
-footer{
- padding:20px;
- color:#888;
- font-size:12px;
-}
-
+body{margin:0;background:#080b14;color:#fff;font-family:Arial,sans-serif;text-align:center}
+header{padding:22px 12px;background:#111827;border-bottom:2px solid #d4af37}
+h1{color:#f5d76e;margin:0;font-size:25px}
+.subtitle{color:#bbb;margin-top:8px}
+.container{max-width:1000px;margin:auto;padding:15px}
+.card{background:#151c2b;border:1px solid #30394b;border-radius:14px;padding:18px;margin:15px 0}
+.status{display:inline-block;padding:7px 14px;border-radius:20px;background:#343b4c;color:#fff;font-size:13px;font-weight:bold}
+.status.live{background:#a71919}
+.status.ready{background:#287c48}
+h2{color:#f5d76e}
+.performer-name{font-size:27px;color:#f5d76e;font-weight:bold;margin:15px 0}
+.song-details{color:#ddd;font-size:17px;line-height:1.8}
+.player{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden}
+.player iframe{width:100%;height:100%;border:0}
+button{background:#d4af37;color:#111;border:0;padding:13px 22px;border-radius:8px;font-weight:bold;font-size:15px;cursor:pointer;margin:10px 0}
+.message{color:#bbb;line-height:1.6}
+.hidden{display:none!important}
+footer{padding:20px;color:#888;font-size:12px}
+@media(max-width:600px){.container{padding:10px}.card{padding:14px}h1{font-size:21px}.performer-name{font-size:23px}}
 </style>
 </head>
 
 <body>
 
 <header>
- <h1>MELODY MAGIC</h1>
- <div class="subtitle">
- DIGITAL AUDITORIUM • LIVE PERFORMANCE
- </div>
+<h1>MELODY MAGIC</h1>
+<div class="subtitle">DIGITAL AUDITORIUM • LIVE PERFORMANCE</div>
 </header>
 
 <div class="container">
 
- <div class="card">
+<div class="card">
+<span id="status" class="status">CONNECTING...</span>
+<h2 id="showTitle">Live Performance</h2>
+<p id="stageMessage" class="message">Connecting to the auditorium...</p>
+</div>
 
-  <span id="status" class="status">
-   CONNECTING...
-  </span>
+<div class="card">
+<h2>LIVE SHOW</h2>
+<p class="message">Main video broadcast selected by the host</p>
+<div id="mainPlayer" class="player">
+<p class="message" style="padding:35px 10px">Waiting for the host to start the show.</p>
+</div>
+<button id="mainPlayButton" class="hidden">▶ PLAY LIVE SHOW</button>
+<p id="mainMessage" class="message">The main show video will appear here.</p>
+</div>
 
-  <h2 id="showTitle">
-   Live Performance
-  </h2>
+<div class="card">
+<h2>🎤 NOW PERFORMING</h2>
+<div id="performerName" class="performer-name">Waiting for performer</div>
+<div class="song-details">
+<div>🎵 Song: <strong id="songName">-</strong></div>
+<div>🎬 Movie: <strong id="movieName">-</strong></div>
+<div>🎙️ Type: <strong id="performanceType">-</strong></div>
+</div>
+</div>
 
-  <p id="stageMessage" class="message">
-   Connecting to the auditorium...
-  </p>
+<div class="card">
+<h2>🎵 SINGER KARAOKE TRACK</h2>
+<div id="karaokePlayer" class="player">
+<p class="message" style="padding:35px 10px">Waiting for the host to select a performer.</p>
+</div>
+<button id="karaokePlayButton" class="hidden">▶ PLAY KARAOKE TRACK</button>
+<p id="karaokeMessage" class="message">The host will provide the selected singer's karaoke track.</p>
+</div>
 
- </div>
-
- <div class="card">
-
-  <h2>🎤 NOW PERFORMING</h2>
-
-  <div id="performerName" class="performer-name">
-   Waiting for performer
-  </div>
-
-  <div class="song-details">
-   <div>🎵 Song: <strong id="songName">-</strong></div>
-   <div>🎬 Movie: <strong id="movieName">-</strong></div>
-   <div>🎙️ Type: <strong id="performanceType">-</strong></div>
-  </div>
-
- </div>
-
- <div class="card">
-
-  <h2>▶ KARAOKE PLAYER</h2>
-
-  <div id="player">
-   <p class="message" style="padding:35px 10px">
-    Waiting for the host to select a performer.
-   </p>
-  </div>
-
-  <button id="playButton" class="hidden">
-   ▶ PLAY KARAOKE TRACK
-  </button>
-
-  <p id="playerMessage" class="message">
-   The host will provide the karaoke track.
-  </p>
-
- </div>
-
- <div class="card">
-
-  <h2>Welcome to the Show!</h2>
-
-  <p class="message">
-   Enjoy the performance and support our singers.
-   Please wait while the host manages the stage.
-  </p>
-
- </div>
+<div class="card">
+<h2>Welcome to the Show!</h2>
+<p class="message">Enjoy the performance and support our singers. Please wait while the host manages the stage.</p>
+</div>
 
 </div>
 
-<footer>
- Powered by Melody Magic Music Studio
-</footer>
+<footer>Powered by Melody Magic Music Studio</footer>
 
 <script type="module">
 
 import {db} from "./firebase-host.js";
 
 import {
- ref,
- onValue
+ref,
+onValue
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
-
 
 const params=new URLSearchParams(location.search);
 const showId=params.get("showId");
-
 const $=id=>document.getElementById(id);
 
-let currentVideoId="";
-let currentStatus="";
+let mainVideoId="";
+let karaokeVideoId="";
 let currentPerformerId="";
-let playerLoaded=false;
-
-
-/* YOUTUBE VIDEO ID */
 
 function getVideoId(value){
+if(!value)return "";
 
- if(!value)return "";
+try{
+const url=new URL(value);
+const host=url.hostname.replace(/^www\./,"");
 
- try{
-
-  const url=new URL(value);
-  const host=url.hostname.replace(/^www\./,"");
-
-  if(host==="youtu.be"){
-   return url.pathname.split("/").filter(Boolean)[0]||"";
-  }
-
-  if(
-   host==="youtube.com"||
-   host==="m.youtube.com"||
-   host==="music.youtube.com"
-  ){
-
-   if(url.searchParams.get("v")){
-    return url.searchParams.get("v");
-   }
-
-   const match=url.pathname.match(
-    /^\/(embed|shorts|live)\/([^/?]+)/
-   );
-
-   return match?match[2]:"";
-  }
-
- }catch(e){}
-
- return "";
+if(host==="youtu.be"){
+return url.pathname.split("/").filter(Boolean)[0]||"";
 }
 
+if(["youtube.com","m.youtube.com","music.youtube.com"].includes(host)){
+if(url.searchParams.get("v"))return url.searchParams.get("v");
 
-/* PLAYER PLACEHOLDER */
+const match=url.pathname.match(/^\/(embed|shorts|live)\/([^/?]+)/);
+return match?match[2]:"";
+}
+}catch(e){}
 
-function resetPlayer(text){
-
- $("player").innerHTML=
-  `<p class="message" style="padding:35px 10px">${text}</p>`;
-
- $("playButton").classList.add("hidden");
-
- playerLoaded=false;
+return "";
 }
 
+function showVideo(containerId,videoId){
+const container=$(containerId);
+container.innerHTML="";
 
-/* PLAY TRACK */
+const iframe=document.createElement("iframe");
+iframe.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(videoId)+"?rel=0";
+iframe.allow="autoplay; encrypted-media; picture-in-picture";
+iframe.allowFullscreen=true;
+iframe.title="YouTube Video";
 
-function playTrack(){
-
- if(!currentVideoId){
-  $("playerMessage").textContent=
-   "The host has not added a karaoke track yet.";
-  return;
- }
-
- $("player").innerHTML="";
-
- const iframe=document.createElement("iframe");
-
- iframe.src=
-  "https://www.youtube-nocookie.com/embed/"+
-  encodeURIComponent(currentVideoId)+
-  "?autoplay=1&rel=0";
-
- iframe.allow=
-  "autoplay; encrypted-media; picture-in-picture";
-
- iframe.allowFullscreen=true;
-
- iframe.title="Karaoke Track";
-
- $("player").appendChild(iframe);
-
- $("playButton").classList.remove("hidden");
-
- $("playerMessage").textContent=
-  "Karaoke track is ready. Use the YouTube player controls.";
-
- playerLoaded=true;
+container.appendChild(iframe);
 }
 
-$("playButton").addEventListener("click",playTrack);
+function resetPlayer(containerId,message){
+$(containerId).innerHTML=
+`<p class="message" style="padding:35px 10px">${message}</p>`;
+}
 
+$("mainPlayButton").addEventListener("click",()=>{
+if(!mainVideoId)return;
+showVideo("mainPlayer",mainVideoId);
+$("mainMessage").textContent="Main show video is ready. Use YouTube controls to play.";
+$("mainPlayButton").classList.add("hidden");
+});
 
-/* SHOW DETAILS */
+$("karaokePlayButton").addEventListener("click",()=>{
+if(!karaokeVideoId)return;
+showVideo("karaokePlayer",karaokeVideoId);
+$("karaokeMessage").textContent="Karaoke track is ready. Use YouTube controls to play.";
+$("karaokePlayButton").classList.add("hidden");
+});
 
 if(!showId){
 
- $("status").textContent="SHOW ID MISSING";
-
- $("stageMessage").textContent=
-  "Please open the Performance View using the link provided by the host.";
-
- resetPlayer("Show ID is missing.");
+$("status").textContent="SHOW ID MISSING";
+$("stageMessage").textContent="Please open Performance View using the host's show link.";
+resetPlayer("mainPlayer","Show ID is missing.");
+resetPlayer("karaokePlayer","Show ID is missing.");
 
 }else{
 
- /* LOAD SHOW INFORMATION */
+onValue(ref(db,"shows/"+showId),snapshot=>{
 
- onValue(
-  ref(db,"shows/"+showId),
-  snapshot=>{
+if(!snapshot.exists()){
+$("showTitle").textContent="Show not found";
+return;
+}
 
-   if(!snapshot.exists()){
-    $("showTitle").textContent="Show not found";
-    return;
-   }
+const show=snapshot.val();
+$("showTitle").textContent=show.name||"Melody Magic Live Show";
 
-   const show=snapshot.val();
+},error=>{
+console.error(error);
+$("showTitle").textContent="Unable to load show";
+});
 
-   $("showTitle").textContent=
-    show.name||"Melody Magic Live Show";
+onValue(ref(db,"livePerformance/"+showId),snapshot=>{
 
-  },
-  error=>{
-   console.error(error);
-   $("showTitle").textContent="Unable to load show";
-  }
- );
+const data=snapshot.val();
 
+if(!data){
 
- /* LIVE PERFORMANCE LISTENER */
+$("status").textContent="WAITING";
+$("status").className="status";
+$("stageMessage").textContent="The host has not started the show yet.";
+$("performerName").textContent="Waiting for performer";
+$("songName").textContent="-";
+$("movieName").textContent="-";
+$("performanceType").textContent="-";
 
- onValue(
-  ref(db,"livePerformance/"+showId),
+mainVideoId="";
+karaokeVideoId="";
+currentPerformerId="";
 
-  snapshot=>{
+resetPlayer("mainPlayer","Waiting for the host to start the show.");
+resetPlayer("karaokePlayer","Waiting for the host to select a performer.");
 
-   const data=snapshot.val();
+$("mainPlayButton").classList.add("hidden");
+$("karaokePlayButton").classList.add("hidden");
+return;
+}
 
-   if(!data){
+const status=String(data.status||"").toLowerCase();
 
-    $("status").textContent="WAITING";
-    $("status").className="status";
+if(status==="stopped"){
 
-    $("stageMessage").textContent=
-     "The host has not started the show yet.";
+$("status").textContent="SHOW ENDED";
+$("status").className="status";
+$("stageMessage").textContent="The host has ended the live show.";
 
-    $("performerName").textContent=
-     "Waiting for performer";
+mainVideoId="";
+karaokeVideoId="";
 
-    $("songName").textContent="-";
-    $("movieName").textContent="-";
-    $("performanceType").textContent="-";
+resetPlayer("mainPlayer","The host has ended the show.");
+resetPlayer("karaokePlayer","The show has ended.");
 
-    currentVideoId="";
-    currentPerformerId="";
+$("mainPlayButton").classList.add("hidden");
+$("karaokePlayButton").classList.add("hidden");
+return;
+}
 
-    resetPlayer("Waiting for the host to select a performer.");
+if(status==="live"){
+$("status").textContent="LIVE";
+$("status").className="status live";
+$("stageMessage").textContent="The show is currently live.";
+}else{
+$("status").textContent="READY";
+$("status").className="status ready";
+$("stageMessage").textContent="Waiting for the host to start the live show.";
+}
 
-    return;
-   }
+/* MAIN SHOW VIDEO */
 
+const newMainVideoId=getVideoId(data.youtubeUrl);
 
-   /* SHOW STATUS */
+if(newMainVideoId!==mainVideoId){
 
-   currentStatus=String(data.status||"").toLowerCase();
+mainVideoId=newMainVideoId;
 
-   if(currentStatus==="stopped"){
+if(mainVideoId){
+resetPlayer("mainPlayer","Main show video is ready. Tap Play Live Show.");
+$("mainPlayButton").classList.remove("hidden");
+$("mainMessage").textContent="Main show video provided by the host.";
+}else{
+resetPlayer("mainPlayer","The host has not added a main show video.");
+$("mainPlayButton").classList.add("hidden");
+$("mainMessage").textContent="Waiting for the host's YouTube show link.";
+}
+}
 
-    $("status").textContent="STAGE STOPPED";
-    $("status").className="status";
+/* PERFORMER DETAILS */
 
-    $("stageMessage").textContent=
-     "The host has stopped the live show.";
+const name=data.currentPerformerName||"Waiting for performer";
 
-    $("playButton").classList.add("hidden");
+$("performerName").textContent=name;
+$("songName").textContent=data.currentSongName||"-";
+$("movieName").textContent=data.currentMovieName||"-";
+$("performanceType").textContent=data.currentPerformanceType||"-";
 
-    resetPlayer("The host has stopped the show.");
+/* KARAOKE VIDEO */
 
-    return;
-   }
+const newKaraokeVideoId=
+data.currentKaraokeVideoId||
+getVideoId(data.currentKaraokeUrl);
 
+const performerId=data.currentPerformerId||"";
 
-   if(currentStatus==="live"){
+if(newKaraokeVideoId!==karaokeVideoId||performerId!==currentPerformerId){
 
-    $("status").textContent="LIVE";
-    $("status").className="status live";
+karaokeVideoId=newKaraokeVideoId;
+currentPerformerId=performerId;
 
-    $("stageMessage").textContent=
-     "The show is currently live.";
+if(karaokeVideoId){
 
-   }else{
+resetPlayer("karaokePlayer","Karaoke track is ready. Tap Play Karaoke Track.");
+$("karaokePlayButton").classList.remove("hidden");
+$("karaokeMessage").textContent="Selected performer: "+name;
 
-    $("status").textContent="READY";
-    $("status").className="status ready";
+}else{
 
-    $("stageMessage").textContent=
-     "Waiting for the host to start the live show.";
+resetPlayer("karaokePlayer","Waiting for the host to add the karaoke track.");
+$("karaokePlayButton").classList.add("hidden");
+$("karaokeMessage").textContent="The host will provide the selected singer's karaoke track.";
 
-   }
+}
+}
 
+if(data.performanceStatus==="Ready"){
+$("stageMessage").textContent="The show is live. The selected singer is ready to perform.";
+}
 
-   /* SELECTED PERFORMER */
+},error=>{
 
-   const name=data.currentPerformerName||"Waiting for performer";
+console.error(error);
+$("status").textContent="CONNECTION ERROR";
+$("stageMessage").textContent="Unable to connect: "+error.message;
 
-   $("performerName").textContent=name;
+resetPlayer("mainPlayer","Unable to load the main show video.");
+resetPlayer("karaokePlayer","Unable to load the karaoke track.");
 
-   $("songName").textContent=
-    data.currentSongName||"-";
-
-   $("movieName").textContent=
-    data.currentMovieName||"-";
-
-   $("performanceType").textContent=
-    data.currentPerformanceType||"-";
-
-
-   /* SELECTED KARAOKE TRACK */
-
-   const videoId=
-    data.currentKaraokeVideoId||
-    getVideoId(data.currentKaraokeUrl);
-
-
-   const performerId=data.currentPerformerId||"";
-
-   if(!videoId){
-
-    currentVideoId="";
-    currentPerformerId="";
-
-    resetPlayer("Waiting for the host to add the karaoke track.");
-
-    $("playerMessage").textContent=
-     "The host will paste the selected singer's karaoke link.";
-
-    return;
-   }
-
-
-   /* RESET PLAYER ONLY WHEN TRACK CHANGES */
-
-   if(
-    videoId!==currentVideoId||
-    performerId!==currentPerformerId
-   ){
-
-    currentVideoId=videoId;
-    currentPerformerId=performerId;
-
-    resetPlayer(
-     "Karaoke track is ready. Tap Play to start."
-    );
-
-    $("playButton").classList.remove("hidden");
-
-    $("playerMessage").textContent=
-     "Selected performer: "+name;
-
-   }
-
-  },
-
-  error=>{
-
-   $("status").textContent="CONNECTION ERROR";
-
-   $("stageMessage").textContent=error.message;
-
-   resetPlayer("Unable to connect to the performance.");
-
-  }
- );
-
+});
 }
 
 </script>
-
 </body>
 </html>
