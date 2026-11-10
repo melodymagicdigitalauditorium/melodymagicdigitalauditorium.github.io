@@ -50,8 +50,9 @@ footer{text-align:center;color:#a99b84;font-size:12px;margin:25px 0}
   <h2>Performer Registration</h2>
 
   <p class="muted">
-    Select your solo and duet songs. Your total performance fee
-    will be calculated automatically on a per-song basis.
+    Select your solo and duet songs. Enter the movie name for
+    each song. Your total performance fee will be calculated
+    automatically on a per-song basis.
   </p>
 
   <form id="registrationForm">
@@ -132,9 +133,10 @@ footer{text-align:center;color:#a99b84;font-size:12px;margin:25px 0}
   </a>
 
   <p id="paymentInstructions" class="muted hidden">
-    After making your payment, send the transaction reference number
-    and payment screenshot to the host in the same WhatsApp chat.
-    Your performance will be approved after the host verifies payment.
+    After making your payment, send the transaction reference
+    number and payment screenshot to the host in the same
+    WhatsApp chat. Your performance will be approved after
+    the host verifies payment.
   </p>
 </div>
 
@@ -160,6 +162,7 @@ footer{text-align:center;color:#a99b84;font-size:12px;margin:25px 0}
 </div>
 
 <script type="module">
+
 import {
   db,
   connectAuditorium
@@ -234,61 +237,73 @@ function getHostNumber(){
 
   if(phone.length === 10) return "91" + phone;
   if(phone.length === 12 && phone.startsWith("91")) return phone;
+
   return "";
 }
 
+/* CREATE SONG AND MOVIE INPUTS */
+
 function createSongFields(){
+
   soloSongs.replaceChildren();
   duetSongs.replaceChildren();
 
   const soloTotal = Number(soloCount.value);
   const duetTotal = Number(duetCount.value);
 
-  for(let i=1;i<=soloTotal;i++){
+  function createSongBox(container,type,index){
+
     const box = document.createElement("div");
     box.className = "song-box";
 
-    const label = document.createElement("label");
-    label.textContent = "Solo Song " + i + " *";
+    const songLabel = document.createElement("label");
+    songLabel.textContent = type + " Song " + index + " Name *";
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.maxLength = 100;
-    input.required = true;
-    input.placeholder = "Enter Solo Song " + i + " name";
-    input.dataset.songType = "solo";
+    const songInput = document.createElement("input");
+    songInput.type = "text";
+    songInput.maxLength = 100;
+    songInput.required = true;
+    songInput.placeholder = "Enter song name";
+    songInput.dataset.songType = type.toLowerCase();
 
-    box.append(label,input);
-    soloSongs.appendChild(box);
+    const movieLabel = document.createElement("label");
+    movieLabel.textContent = "Movie Name *";
+
+    const movieInput = document.createElement("input");
+    movieInput.type = "text";
+    movieInput.maxLength = 100;
+    movieInput.required = true;
+    movieInput.placeholder = "Enter movie name";
+    movieInput.dataset.movieType = type.toLowerCase();
+
+    box.append(songLabel,songInput,movieLabel,movieInput);
+
+    if(type === "Duet"){
+      const note = document.createElement("p");
+      note.className = "duet-note";
+      note.textContent =
+        "Duet song selections will be finalised two days prior to the event, subject to partner availability.";
+      box.appendChild(note);
+    }
+
+    container.appendChild(box);
+  }
+
+  for(let i=1;i<=soloTotal;i++){
+    createSongBox(soloSongs,"Solo",i);
   }
 
   for(let i=1;i<=duetTotal;i++){
-    const box = document.createElement("div");
-    box.className = "song-box";
-
-    const label = document.createElement("label");
-    label.textContent = "Duet Song " + i + " *";
-
-    const note = document.createElement("p");
-    note.className = "duet-note";
-    note.textContent =
-      "Duet song selections will be finalised two days prior to the event, subject to partner availability.";
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.maxLength = 100;
-    input.required = true;
-    input.placeholder = "Enter proposed Duet Song " + i + " name";
-    input.dataset.songType = "duet";
-
-    box.append(label,note,input);
-    duetSongs.appendChild(box);
+    createSongBox(duetSongs,"Duet",i);
   }
 
   updateCalculation();
 }
 
+/* PAYMENT CALCULATION */
+
 function updateCalculation(){
+
   const soloTotal = Number(soloCount.value);
   const duetTotal = Number(duetCount.value);
 
@@ -325,7 +340,13 @@ function updateCalculation(){
   document.getElementById("totalAmount").textContent =
     total === 0 ? "FREE" : "₹" + total;
 
-  return {soloAmount,duetAmount,total,soloRate,duetRate};
+  return {
+    soloAmount,
+    duetAmount,
+    total,
+    soloRate,
+    duetRate
+  };
 }
 
 soloCount.addEventListener("change",createSongFields);
@@ -334,7 +355,9 @@ duetCount.addEventListener("change",createSongFields);
 /* LOAD SHOW */
 
 async function loadShow(){
+
   try{
+
     if(!showId){
       throw new Error(
         "No show selected. Please open registration from the homepage."
@@ -359,6 +382,7 @@ async function loadShow(){
 
     const heading = document.createElement("h3");
     heading.textContent = show.name || show.title || "Singing Show";
+
     showDetails.appendChild(heading);
 
     showDetails.append(
@@ -384,6 +408,7 @@ async function loadShow(){
     const number = getHostNumber();
 
     if(number){
+
       const message =
         "Hello " + (show.hostName || "Host") +
         ", I need help with performer registration for your show: " +
@@ -402,6 +427,7 @@ async function loadShow(){
         "Host WhatsApp: +" + number;
 
     }else{
+
       contactMessage.textContent =
         "The host has not added a valid WhatsApp number.";
     }
@@ -409,17 +435,45 @@ async function loadShow(){
     updateCalculation();
 
   }catch(error){
+
     console.error(error);
+
     showDetails.className = "error";
     showDetails.textContent = error.message;
+
     form.classList.add("hidden");
     feeDetails.replaceChildren();
   }
 }
 
+/* READ SONGS */
+
+function readSongs(container,type){
+
+  const songInputs = [
+    ...container.querySelectorAll(
+      'input[data-song-type="' + type.toLowerCase() + '"]'
+    )
+  ];
+
+  const movieInputs = [
+    ...container.querySelectorAll(
+      'input[data-movie-type="' + type.toLowerCase() + '"]'
+    )
+  ];
+
+  return songInputs.map((input,index)=>({
+    type,
+    number:index+1,
+    song:input.value.trim(),
+    movieName:movieInputs[index]?.value.trim() || ""
+  }));
+}
+
 /* SUBMIT REGISTRATION */
 
 form.addEventListener("submit",async(event)=>{
+
   event.preventDefault();
 
   if(registrationSubmitted) return;
@@ -430,11 +484,20 @@ form.addEventListener("submit",async(event)=>{
     return;
   }
 
-  const name = document.getElementById("singerName").value.trim();
-  const gender = document.getElementById("gender").value;
-  const mobile = document.getElementById("mobile").value.trim();
-  const locationValue = document.getElementById("location").value.trim();
-  const language = document.getElementById("language").value;
+  const name =
+    document.getElementById("singerName").value.trim();
+
+  const gender =
+    document.getElementById("gender").value;
+
+  const mobile =
+    document.getElementById("mobile").value.trim();
+
+  const locationValue =
+    document.getElementById("location").value.trim();
+
+  const language =
+    document.getElementById("language").value;
 
   if(!/^[6-9][0-9]{9}$/.test(mobile)){
     formMessage.className = "message error";
@@ -462,17 +525,18 @@ form.addEventListener("submit",async(event)=>{
     return;
   }
 
-  const soloSongList = [
-    ...soloSongs.querySelectorAll('input[data-song-type="solo"]')
-  ].map(input=>input.value.trim());
+  const soloSongList = readSongs(soloSongs,"Solo");
+  const duetSongList = readSongs(duetSongs,"Duet");
 
-  const duetSongList = [
-    ...duetSongs.querySelectorAll('input[data-song-type="duet"]')
-  ].map(input=>input.value.trim());
+  const allSongs = [
+    ...soloSongList,
+    ...duetSongList
+  ];
 
-  if(soloSongList.some(song=>!song) || duetSongList.some(song=>!song)){
+  if(allSongs.some(item=>!item.song || !item.movieName)){
     formMessage.className = "message error";
-    formMessage.textContent = "Please enter every selected song name.";
+    formMessage.textContent =
+      "Please enter both song name and movie name for every selected song.";
     return;
   }
 
@@ -490,54 +554,65 @@ form.addEventListener("submit",async(event)=>{
   formMessage.textContent = "";
 
   try{
+
     const user = await connectAuditorium();
 
     const registrationRef = push(
       ref(db,"showRegistrations/"+showId)
     );
 
-    const allSongs = [
-      ...soloSongList.map((song,index)=>({
-        type:"Solo",number:index+1,song
-      })),
-      ...duetSongList.map((song,index)=>({
-        type:"Duet",number:index+1,song
-      }))
-    ];
+    const firstSong = allSongs[0];
 
     const performanceType =
-      soloTotal > 0 && duetTotal > 0 ? "Solo + Duet" :
-      soloTotal > 0 ? "Solo" : "Duet";
-
-    const compatibilitySong =
-      soloSongList[0] || duetSongList[0] || "";
+      soloTotal > 0 && duetTotal > 0
+        ? "Solo + Duet"
+        : soloTotal > 0
+          ? "Solo"
+          : "Duet";
 
     const total = calculation.total;
 
     const registrationData = {
+
       singerUid:user.uid,
       registrationId:registrationRef.key,
       showId,
-      showName:selectedShow.name || selectedShow.title || "Music Show",
+
+      showName:
+        selectedShow.name ||
+        selectedShow.title ||
+        "Music Show",
+
+      /* Host Dashboard fields */
+
+      singerName:name,
+      mobile,
+      songName:firstSong.song,
+      movieName:firstSong.movieName,
+      performanceType,
+
+      /* Additional singer details */
 
       name,
       gender,
-      mobile,
       location:locationValue,
       language,
 
-      song:compatibilitySong,
-      requestedSong:compatibilitySong,
-
+      song:firstSong.song,
+      requestedSong:firstSong.song,
       performance:performanceType,
-      performanceType,
+
+      /* All selected songs */
 
       soloCount:soloTotal,
       duetCount:duetTotal,
       soloSongs:soloSongList,
       duetSongs:duetSongList,
       songs:allSongs,
+
       duetPartnerName:"",
+
+      /* Payment details */
 
       soloRate:calculation.soloRate,
       duetRate:calculation.duetRate,
@@ -546,35 +621,54 @@ form.addEventListener("submit",async(event)=>{
       totalAmount:total,
       currency:"INR",
 
-      paymentStatus:total > 0 ? "Pending Payment" : "Free",
+      paymentStatus:total > 0 ? "Unpaid" : "Free",
       paymentMethod:"External payment - WhatsApp proof",
-      status:"Waiting",
+
+      /* Host approval workflow */
+
+      status:"Pending",
+      source:"Online Registration",
+      submittedAt:Date.now(),
       createdAt:Date.now()
+
+      /* Karaoke URL is intentionally not supplied by singer */
     };
 
     await set(registrationRef,registrationData);
 
-    const songLines = [
-      ...soloSongList.map((song,index)=>
-        "Solo " + (index+1) + ": " + song
-      ),
-      ...duetSongList.map((song,index)=>
-        "Duet " + (index+1) + ": " + song
-      )
-    ].join("\n");
+    const songLines = allSongs.map(item=>
+      item.type + " " + item.number +
+      ": " + item.song +
+      " (Movie: " + item.movieName + ")"
+    ).join("\n");
 
     const paymentMessage =
+
       "Hello " + (selectedShow.hostName || "Host") + ",\n\n" +
+
       "I have successfully registered for your show.\n\n" +
-      "Show: " + (selectedShow.name || "Music Show") + "\n" +
+
+      "Show: " +
+      (selectedShow.name || "Music Show") + "\n" +
+
       "Performer: " + name + "\n" +
+
       "Mobile: " + mobile + "\n" +
+
       "Performance: " + performanceType + "\n\n" +
+
       "Selected songs:\n" + songLines + "\n\n" +
-      "Solo amount: ₹" + calculation.soloAmount + "\n" +
-      "Duet amount: ₹" + calculation.duetAmount + "\n" +
+
+      "Solo amount: ₹" +
+      calculation.soloAmount + "\n" +
+
+      "Duet amount: ₹" +
+      calculation.duetAmount + "\n" +
+
       "Total payable: ₹" + total + "\n\n" +
+
       "Please share your payment details. I will send the transaction reference and payment screenshot here.\n\n" +
+
       "Registration ID: " + registrationRef.key;
 
     paymentWhatsApp.href =
@@ -585,27 +679,36 @@ form.addEventListener("submit",async(event)=>{
     paymentInstructions.classList.remove("hidden");
 
     formMessage.className = "message success";
+
     formMessage.textContent =
+
       "Thank you, " + name + "!\n\n" +
+
       "Your registration for " +
       (selectedShow.name || "the show") +
       " has been submitted successfully.\n\n" +
+
       "Solo songs: " + soloTotal +
       " × ₹" + calculation.soloRate +
       " = ₹" + calculation.soloAmount + "\n" +
+
       "Duet songs: " + duetTotal +
       " × ₹" + calculation.duetRate +
       " = ₹" + calculation.duetAmount + "\n\n" +
+
       "TOTAL PAYABLE: ₹" + total + "\n\n" +
+
       "Your registration is awaiting host approval. Tap the WhatsApp button below to contact the host for payment details.";
 
     registrationSubmitted = true;
     submitButton.textContent = "REGISTRATION SUBMITTED";
 
   }catch(error){
+
     console.error("Registration error:",error);
 
     formMessage.className = "message error";
+
     formMessage.textContent =
       "Registration could not be submitted.\n" +
       (error.code || error.message || "Please try again.");
@@ -613,6 +716,7 @@ form.addEventListener("submit",async(event)=>{
     submitButton.disabled = false;
     submitButton.textContent = "SUBMIT REGISTRATION";
   }
+
 });
 
 createSongFields();
