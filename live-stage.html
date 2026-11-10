@@ -1,155 +1,500 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Melody Magic Digital Auditorium</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melody Magic Digital Auditorium - Live Stage</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      padding: 16px;
-      background: #080808;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-
-    h2 {
-      text-align: center;
-      color: #f5c542;
-    }
-
-    #karaokeBox {
-      width: 100%;
-      max-width: 850px;
-      margin: 20px auto;
-      padding: 14px;
-      background: #171717;
-      border-radius: 12px;
-    }
-
-    #videoFrame {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      border: 0;
-      border-radius: 8px;
-      background: #000;
-    }
-
-    #videoMessage {
-      text-align: center;
-      color: #ddd;
-      padding: 18px 8px;
-    }
-
-    #livekitArea {
-      width: 100%;
-      max-width: 850px;
-      margin: 20px auto;
-    }
-  </style>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;padding:16px;background:#080808;color:white;
+  font-family:Arial,sans-serif
+}
+h2{text-align:center;color:#f5c542}
+h3{color:#f5c542}
+.container{max-width:900px;margin:auto}
+.card{
+  background:#171717;border:1px solid #51401e;
+  border-radius:12px;padding:15px;margin:18px auto
+}
+#videoFrame{
+  width:100%;aspect-ratio:16/9;border:0;
+  border-radius:8px;background:#000
+}
+#videoMessage{text-align:center;color:#ddd;padding:18px 8px}
+#livekitArea{width:100%;max-width:850px;margin:20px auto}
+button{
+  border:0;border-radius:7px;padding:11px 15px;
+  margin:5px;background:#d4a52f;color:#111;
+  font-weight:bold;cursor:pointer
+}
+button:disabled{opacity:.45;cursor:not-allowed}
+.green{background:#239b56;color:white}
+.red{background:#b52d2d;color:white}
+.blue{background:#286caa;color:white}
+.gray{background:#555;color:white}
+.performer{
+  background:#0c0c0c;border:1px solid #454545;
+  border-radius:9px;padding:12px;margin:10px 0
+}
+.badge{
+  display:inline-block;background:#443719;color:#f5d47b;
+  border-radius:15px;padding:5px 9px;font-size:12px;margin:3px
+}
+.small{font-size:13px;color:#bbb}
+.center{text-align:center}
+footer{text-align:center;color:#999;padding:20px}
+</style>
 </head>
 
 <body>
+<div class="container">
 
-  <h2>Melody Magic Digital Auditorium</h2>
+<h2>🎤 Melody Magic Digital Auditorium</h2>
 
-  <section id="karaokeBox">
-    <h3 id="showTitle">Karaoke Performance</h3>
+<div class="card">
+  <h3 id="showTitle">Loading Auditorium...</h3>
+  <p id="showStatus" class="small">Connecting...</p>
+  <p id="loginStatus" class="small"></p>
+</div>
 
-    <div id="videoMessage">
-      Loading the host's karaoke selection...
-    </div>
+<section class="card">
+  <h3>🎵 Karaoke Performance</h3>
 
-    <iframe
-      id="videoFrame"
-      style="display:none"
-      title="YouTube Karaoke Player"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowfullscreen>
-    </iframe>
-  </section>
+  <div id="videoMessage">
+    Loading the host's karaoke selection...
+  </div>
 
-  <section id="livekitArea">
-    <!-- LiveKit microphone and auditorium controls -->
-  </section>
+  <iframe
+    id="videoFrame"
+    style="display:none"
+    title="YouTube Karaoke Player"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen>
+  </iframe>
+</section>
 
-  <script type="module">
-    import { auth, db } from "./firebase.js";
-    import { onAuthStateChanged } from
-      "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { ref, onValue } from
-      "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+<section class="card">
+  <h3>🎙️ Current Performer</h3>
+  <div id="currentPerformer" class="center">
+    Waiting for the host to start the performance.
+  </div>
+</section>
 
-    const showId = new URLSearchParams(window.location.search)
-      .get("showId");
+<section class="card">
+  <h3>🎤 Singing Queue</h3>
+  <p class="small">Approved performers will appear here automatically.</p>
+  <div id="performerQueue">Loading performers...</div>
+</section>
 
-    const videoFrame = document.getElementById("videoFrame");
-    const videoMessage = document.getElementById("videoMessage");
-    const showTitle = document.getElementById("showTitle");
+<section class="card" id="hostControls" style="display:none">
+  <h3>👑 Host Performance Controls</h3>
+  <p class="small">Only the approved host with an active subscription can manage performances.</p>
 
-    let currentVideoId = "";
+  <button class="green" id="startBtn">▶ Start Next Performer</button>
+  <button class="blue" id="nextBtn">⏭ Finish & Next</button>
+  <button class="red" id="finishBtn">■ Finish Performance</button>
 
-    function displayMessage(message) {
-      videoMessage.textContent = message;
-      videoMessage.style.display = "block";
-      videoFrame.style.display = "none";
+  <p id="hostMessage" class="small"></p>
+</section>
+
+<section id="livekitArea" class="card">
+  <h3>🔊 Live Auditorium</h3>
+  <!-- Existing LiveKit integration -->
+</section>
+
+<footer>
+Powered by Melody Magic Music Studio
+</footer>
+
+</div>
+
+<script type="module">
+import {auth,db} from "./firebase.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+  ref,
+  get,
+  onValue,
+  update
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const showId = new URLSearchParams(location.search).get("showId");
+
+const videoFrame = document.getElementById("videoFrame");
+const videoMessage = document.getElementById("videoMessage");
+const showTitle = document.getElementById("showTitle");
+const showStatus = document.getElementById("showStatus");
+const loginStatus = document.getElementById("loginStatus");
+const performerQueue = document.getElementById("performerQueue");
+const currentPerformer = document.getElementById("currentPerformer");
+const hostControls = document.getElementById("hostControls");
+const hostMessage = document.getElementById("hostMessage");
+
+let currentUser = null;
+let isHost = false;
+let currentVideoId = "";
+let registrations = {};
+let activeRegistration = null;
+let showData = null;
+let registrationUnsubscribe = null;
+let selectionUnsubscribe = null;
+
+const $ = id => document.getElementById(id);
+
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  })[c]);
+}
+
+function message(text){
+  videoMessage.textContent = text;
+  videoMessage.style.display = "block";
+  videoFrame.style.display = "none";
+}
+
+function setHostMessage(text){
+  hostMessage.textContent = text;
+}
+
+function stopListeners(){
+  if(registrationUnsubscribe) registrationUnsubscribe();
+  if(selectionUnsubscribe) selectionUnsubscribe();
+  registrationUnsubscribe = null;
+  selectionUnsubscribe = null;
+}
+
+if(!showId){
+  showStatus.textContent = "Show ID is missing.";
+  message("Please open the auditorium using the correct show link.");
+}
+
+/* AUTHENTICATION */
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+  stopListeners();
+  isHost = false;
+  hostControls.style.display = "none";
+
+  if(!user){
+    loginStatus.textContent = "Please sign in to access the auditorium.";
+    return;
+  }
+
+  loginStatus.textContent = "Connected to auditorium.";
+
+  if(!showId) return;
+
+  try{
+    const showSnapshot = await get(ref(db,"shows/" + showId));
+
+    if(!showSnapshot.exists()){
+      showStatus.textContent = "Show not found.";
+      return;
     }
 
-    if (!showId) {
-      displayMessage("Show ID is missing. Please open the auditorium using the show's join link.");
-    } else {
-      onAuthStateChanged(auth, (user) => {
-        if (!user) {
-          displayMessage("Please sign in to load this show's karaoke selection.");
-          return;
-        }
+    showData = showSnapshot.val();
 
-        const selectionRef = ref(
-          db,
-          "karaokeSelectionsByShow/" + showId
-        );
-
-        onValue(selectionRef, (snapshot) => {
-          if (!snapshot.exists()) {
-            displayMessage("The host has not selected a karaoke video yet.");
-            return;
-          }
-
-          const selection = snapshot.val();
-
-          showTitle.textContent =
-            selection.showTitle || "Karaoke Performance";
-
-          if (!selection.videoId) {
-            displayMessage("No YouTube karaoke video has been selected.");
-            return;
-          }
-
-          if (selection.videoId !== currentVideoId) {
-            currentVideoId = selection.videoId;
-
-            videoFrame.src =
-              "https://www.youtube.com/embed/" +
-              encodeURIComponent(currentVideoId) +
-              "?playsinline=1&rel=0";
-          }
-
-          videoMessage.style.display = "none";
-          videoFrame.style.display = "block";
-        }, (error) => {
-          console.error("Karaoke selection error:", error);
-          displayMessage("Unable to load the karaoke video. Please check your sign-in and show access.");
-        });
-      });
+    if(showData.status !== "Published"){
+      showStatus.textContent = "This show is not currently published.";
+      return;
     }
-  </script>
 
-  <script type="module" src="./livekit.js"></script>
+    showTitle.textContent = showData.name || "Melody Magic Auditorium";
+    showStatus.textContent =
+      "Show date: " + (showData.date || "") +
+      " | Time: " + (showData.time || "");
+
+    await checkHost(user.uid);
+    startKaraokeListener();
+    startRegistrationListener();
+
+  }catch(error){
+    console.error(error);
+    showStatus.textContent = "Unable to connect: " + error.message;
+  }
+});
+
+/* CHECK HOST APPROVAL AND SUBSCRIPTION */
+async function checkHost(uid){
+  try{
+    if(!showData || showData.hostUid !== uid){
+      return;
+    }
+
+    const hostSnapshot = await get(
+      ref(db,"hostApplications/" + uid)
+    );
+
+    if(!hostSnapshot.exists()) return;
+
+    const host = hostSnapshot.val();
+    const now = Date.now();
+
+    const active =
+      host.status === "Approved" &&
+      Number(host.subscriptionStartAt || 0) <= now &&
+      Number(host.subscriptionEndAt || 0) > now;
+
+    if(active){
+      isHost = true;
+      hostControls.style.display = "block";
+      loginStatus.textContent = "You are the approved show host.";
+    }
+
+  }catch(error){
+    console.error("Host check:",error);
+  }
+}
+
+/* LOAD HOST KARAOKE SELECTION */
+function startKaraokeListener(){
+  const selectionRef = ref(
+    db,"karaokeSelectionsByShow/" + showId
+  );
+
+  selectionUnsubscribe = onValue(selectionRef,snapshot=>{
+    if(!snapshot.exists()){
+      message("The host has not selected a karaoke video yet.");
+      return;
+    }
+
+    const selection = snapshot.val();
+
+    showTitle.textContent =
+      selection.showTitle || showData.name || "Karaoke Performance";
+
+    if(!selection.videoId){
+      message("No YouTube karaoke video has been selected.");
+      return;
+    }
+
+    if(selection.videoId !== currentVideoId){
+      currentVideoId = selection.videoId;
+
+      videoFrame.src =
+        "https://www.youtube.com/embed/" +
+        encodeURIComponent(currentVideoId) +
+        "?playsinline=1&rel=0";
+    }
+
+    videoMessage.style.display = "none";
+    videoFrame.style.display = "block";
+
+  },error=>{
+    console.error(error);
+    message("Unable to load karaoke selection. Check your access.");
+  });
+}
+
+/* REAL-TIME PERFORMER REGISTRATIONS */
+function startRegistrationListener(){
+  const registrationRef = ref(
+    db,"showRegistrations/" + showId
+  );
+
+  registrationUnsubscribe = onValue(registrationRef,snapshot=>{
+    registrations = snapshot.val() || {};
+    renderPerformers();
+  },error=>{
+    console.error("Performer listener:",error);
+    performerQueue.textContent =
+      "Unable to load performers: " + error.message;
+  });
+}
+
+/* DISPLAY QUEUE */
+function renderPerformers(){
+  const entries = Object.entries(registrations);
+
+  const queued = entries
+    .filter(([id,p]) => p.status === "Queued")
+    .sort((a,b) =>
+      Number(a[1].updatedAt || a[1].createdAt || 0) -
+      Number(b[1].updatedAt || b[1].createdAt || 0)
+    );
+
+  activeRegistration = queued.length ? queued[0] : null;
+
+  if(activeRegistration){
+    const p = activeRegistration[1];
+
+    currentPerformer.innerHTML = `
+      <h2>${escapeHTML(p.name || "Performer")}</h2>
+      <span class="badge">NOW PERFORMING</span>
+      <p>${escapeHTML(p.language || "")}</p>
+      <p>Solo songs: ${Number(p.soloCount || 0)}</p>
+      <p>Duet songs: ${Number(p.duetCount || 0)}</p>
+    `;
+  }else{
+    currentPerformer.textContent =
+      "No performer is currently on stage.";
+  }
+
+  const visible = entries
+    .filter(([id,p]) =>
+      ["Approved","Queued"].includes(p.status)
+    )
+    .sort((a,b) =>
+      Number(a[1].createdAt || 0) -
+      Number(b[1].createdAt || 0)
+    );
+
+  performerQueue.innerHTML = "";
+
+  if(!visible.length){
+    performerQueue.innerHTML =
+      '<p class="small">No approved performers waiting.</p>';
+  }
+
+  visible.forEach(([id,p])=>{
+    const card = document.createElement("div");
+    card.className = "performer";
+
+    card.innerHTML = `
+      <h3>${escapeHTML(p.name || "Performer")}</h3>
+      <span class="badge">${escapeHTML(p.status || "Waiting")}</span>
+      <p class="small">
+        Language: ${escapeHTML(p.language || "Not specified")}<br>
+        Solo songs: ${Number(p.soloCount || 0)}<br>
+        Duet songs: ${Number(p.duetCount || 0)}
+      </p>
+    `;
+
+    performerQueue.appendChild(card);
+  });
+
+  if(isHost){
+    $("startBtn").disabled =
+      !!activeRegistration || !visible.some(([id,p])=>p.status==="Approved");
+
+    $("nextBtn").disabled = !activeRegistration;
+    $("finishBtn").disabled = !activeRegistration;
+  }
+}
+
+/* UPDATE PERFORMER STATUS */
+async function updatePerformerStatus(registrationId,status){
+  if(!isHost || !currentUser){
+    throw new Error("Only the approved host can manage performers.");
+  }
+
+  const showSnapshot = await get(ref(db,"shows/" + showId));
+
+  if(!showSnapshot.exists() ||
+     showSnapshot.val().hostUid !== currentUser.uid){
+    throw new Error("Host permission could not be verified.");
+  }
+
+  const registration = registrations[registrationId];
+
+  if(!registration){
+    throw new Error("Performer registration not found.");
+  }
+
+  await update(
+    ref(db,"showRegistrations/" + showId + "/" + registrationId),
+    {
+      status:status,
+      updatedAt:Date.now()
+    }
+  );
+}
+
+/* START NEXT PERFORMER */
+$("startBtn").addEventListener("click",async()=>{
+  try{
+    if(activeRegistration){
+      setHostMessage("A performer is already on stage.");
+      return;
+    }
+
+    const next = Object.entries(registrations)
+      .filter(([id,p])=>p.status==="Approved")
+      .sort((a,b)=>
+        Number(a[1].createdAt || 0) -
+        Number(b[1].createdAt || 0)
+      )[0];
+
+    if(!next){
+      setHostMessage("No approved performer is waiting.");
+      return;
+    }
+
+    await updatePerformerStatus(next[0],"Queued");
+    setHostMessage("Performer started successfully.");
+
+  }catch(error){
+    console.error(error);
+    setHostMessage("Could not start performer: " + error.message);
+  }
+});
+
+/* FINISH CURRENT PERFORMER */
+$("finishBtn").addEventListener("click",async()=>{
+  try{
+    if(!activeRegistration) return;
+
+    await updatePerformerStatus(
+      activeRegistration[0],
+      "Completed"
+    );
+
+    setHostMessage("Performance completed.");
+
+  }catch(error){
+    console.error(error);
+    setHostMessage("Could not finish: " + error.message);
+  }
+});
+
+/* FINISH CURRENT AND START NEXT */
+$("nextBtn").addEventListener("click",async()=>{
+  try{
+    if(!activeRegistration) return;
+
+    const currentId = activeRegistration[0];
+
+    await updatePerformerStatus(currentId,"Completed");
+
+    const next = Object.entries(registrations)
+      .filter(([id,p])=>
+        id !== currentId && p.status === "Approved"
+      )
+      .sort((a,b)=>
+        Number(a[1].createdAt || 0) -
+        Number(b[1].createdAt || 0)
+      )[0];
+
+    if(next){
+      await updatePerformerStatus(next[0],"Queued");
+      setHostMessage("Next performer is now on stage.");
+    }else{
+      setHostMessage("Performance completed. No more approved performers.");
+    }
+
+  }catch(error){
+    console.error(error);
+    setHostMessage("Could not advance queue: " + error.message);
+  }
+});
+
+window.addEventListener("beforeunload",stopListeners);
+
+</script>
+
+<script type="module" src="./livekit.js"></script>
 
 </body>
 </html>
