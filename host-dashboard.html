@@ -30,7 +30,7 @@ button,.btn{display:inline-block;border:0;border-radius:7px;padding:10px 12px;ma
 .secondary{background:#393939!important;color:white!important}
 .danger{background:#a52d2d!important;color:white!important}
 .success{background:#287c48!important;color:white!important}
-button:disabled{opacity:.5}
+button:disabled{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1;min-width:120px}
 .small{font-size:12px;color:#aaa}
@@ -42,6 +42,8 @@ hr{border:0;border-top:1px solid #444;margin:13px 0}
 #posterCanvas{width:100%;max-width:280px;display:block;margin:12px auto}
 footer{text-align:center;color:#999;padding:20px;font-size:12px}
 .queue-number{display:inline-flex;width:26px;height:26px;border-radius:50%;background:#d5a83e;color:#111;align-items:center;justify-content:center;font-weight:bold;margin-right:7px}
+.karaoke-box{background:#111;border:1px solid #725a2c;border-radius:8px;padding:10px;margin-top:10px}
+.karaoke-box input{margin-bottom:5px}
 </style>
 </head>
 
@@ -138,7 +140,7 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 </div>
 </details>
 
-<!-- ONLINE AND OFFLINE REGISTRATION -->
+<!-- REGISTRATIONS -->
 <details class="card">
 <summary>🎟️ Performer Registration — Online & Offline</summary>
 <div class="section-content">
@@ -150,7 +152,7 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 
 <hr>
 <h3>Offline / Walk-in Registration</h3>
-<p class="small">Add performers who register directly at your venue. They will enter the live queue immediately.</p>
+<p class="small">Register a performer directly at your venue. Offline performers enter the queue immediately.</p>
 
 <form id="manualQueueForm">
 <label>Select Show</label>
@@ -163,7 +165,10 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 <input id="manualMobile" placeholder="Mobile number">
 
 <label>Song Name</label>
-<input id="manualSong" placeholder="Song name">
+<input id="manualSong" required placeholder="Song name">
+
+<label>Movie Name</label>
+<input id="manualMovie" placeholder="Movie name">
 
 <label>Performance Type</label>
 <select id="manualType">
@@ -186,8 +191,8 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 <label>Select Show</label>
 <select id="queueShowSelect"><option value="">Select a show</option></select>
 
-<h3>▶ YouTube Live / Video Link</h3>
-<p class="small">Paste the YouTube video or live-stream URL for this show.</p>
+<h3>▶ YouTube Live / Show Video Link</h3>
+<p class="small">This is the show's live-stream link, not an individual singer's karaoke link.</p>
 <input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
 
 <div class="row">
@@ -200,7 +205,7 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 
 <hr>
 <h3>🎤 Performance Queue</h3>
-<p class="small">Approved online performers and offline walk-in performers appear here automatically.</p>
+<p class="small">Approve a singer, then paste their selected karaoke track below their queue entry. Only the host can add or change this link.</p>
 <div id="queueList" class="empty">Select a show to view its queue.</div>
 
 </div>
@@ -224,7 +229,6 @@ import {
 
 const CLOUD_NAME="quqojlew";
 const UPLOAD_PRESET="melody_magic_posters";
-const ADMIN_UID="PI8sswS9a3ZBU001D3SBejMBJyO2";
 
 let currentUser=null,currentHost=null,myShows=[];
 let registrationUnsubscribe=null,queueUnsubscribe=null,liveUnsubscribe=null;
@@ -244,6 +248,7 @@ function normaliseWhatsApp(value){
  return n;
 }
 function message(id,text){$(id).textContent=text}
+
 function stopRegistrationListener(){
  if(registrationUnsubscribe){registrationUnsubscribe();registrationUnsubscribe=null}
 }
@@ -258,23 +263,47 @@ function baseURL(){return location.href.replace(/[^/]*$/,"")}
 /* HOST ACCESS */
 onAuthStateChanged(auth,async user=>{
  currentUser=user;
- if(!user){showLogin("Please log in using your host account.");return}
+
+ if(!user){
+  showLogin("Please log in using your host account.");
+  return;
+ }
+
  try{
   const snap=await get(ref(db,"hostApplications/"+user.uid));
-  if(!snap.exists()){showLogin("Host application not found. Contact the administrator.");return}
+
+  if(!snap.exists()){
+   showLogin("Host application not found. Contact the administrator.");
+   return;
+  }
+
   const app=snap.val(),now=Date.now();
   const start=Number(app.subscriptionStartAt||0);
   const end=Number(app.subscriptionEndAt||0);
-  if(app.status!=="Approved"){showLogin("Your host account is not approved yet.");return}
-  if(!(start<=now&&end>now)){showLogin("Your host subscription is not active.");return}
+
+  if(app.status!=="Approved"){
+   showLogin("Your host account is not approved yet.");
+   return;
+  }
+
+  if(!(start<=now&&end>now)){
+   showLogin("Your host subscription is not active.");
+   return;
+  }
 
   currentHost=app;
+
   $("loginSection").classList.add("hidden");
   $("dashboard").classList.remove("hidden");
   $("hostName").textContent=app.hostName||app.name||user.email||"Host";
   $("hostStatus").textContent="Approved • Active";
+
   await loadShows();
- }catch(e){console.error(e);showLogin("Unable to verify host: "+e.message)}
+
+ }catch(e){
+  console.error(e);
+  showLogin("Unable to verify host: "+e.message);
+ }
 });
 
 function showLogin(text){
@@ -283,25 +312,38 @@ function showLogin(text){
  message("loginMessage",text);
  $("logoutLoginBtn").classList.remove("hidden");
 }
-async function logout(){await signOut(auth);location.reload()}
+
+async function logout(){
+ await signOut(auth);
+ location.reload();
+}
+
 $("logoutBtn").addEventListener("click",logout);
 $("logoutLoginBtn").addEventListener("click",logout);
 
 /* OWNERSHIP CHECK */
 async function verifyShow(showId){
  const snap=await get(ref(db,"shows/"+showId));
- if(!snap.exists()||snap.val().hostUid!==currentUser.uid)
+
+ if(!snap.exists()||snap.val().hostUid!==currentUser.uid){
   throw new Error("Show ownership verification failed.");
+ }
+
  return snap.val();
 }
 
 /* CREATE SHOW */
 $("showForm").addEventListener("submit",async e=>{
  e.preventDefault();
+
  if(!currentUser||!currentHost)return;
- const btn=$("createShowBtn");btn.disabled=true;
+
+ const btn=$("createShowBtn");
+ btn.disabled=true;
+
  try{
   const showRef=push(ref(db,"shows"));
+
   const data={
    showId:showRef.key,
    hostUid:currentUser.uid,
@@ -319,41 +361,56 @@ $("showForm").addEventListener("submit",async e=>{
    status:"Published",
    createdAt:Date.now()
   };
-  if(!data.name||!data.date||!data.time)throw new Error("Enter show name, date and time.");
+
+  if(!data.name||!data.date||!data.time){
+   throw new Error("Enter show name, date and time.");
+  }
+
   await set(showRef,data);
+
   $("showForm").reset();
   $("soloEntryFee").value=100;
   $("duetEntryFee").value=150;
   $("audienceFee").value=0;
+
   message("createMessage","Show published successfully!");
   await loadShows();
- }catch(e){message("createMessage","Error: "+e.message)}
- finally{btn.disabled=false}
+
+ }catch(e){
+  message("createMessage","Error: "+e.message);
+ }finally{
+  btn.disabled=false;
+ }
 });
 
 /* LOAD PUBLISHED SHOWS */
 async function loadShows(){
  const snap=await get(ref(db,"shows"));
  const all=snap.exists()?snap.val():{};
+
  myShows=Object.entries(all)
   .filter(([id,s])=>s&&s.hostUid===currentUser.uid&&s.status!=="Deleted")
   .map(([id,s])=>({...s,showId:id}))
   .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+
  renderShows();
  populateDropdowns();
 }
 
 function renderShows(){
  const box=$("showsList");
+
  if(!myShows.length){
   box.innerHTML='<div class="empty">No published shows yet.</div>';
   return;
  }
+
  box.innerHTML=myShows.map(s=>{
   const id=encodeURIComponent(s.showId);
   const audience=baseURL()+"audience-entry.html?showId="+id;
   const stage=baseURL()+"live-stage.html?showId="+id;
   const performance=baseURL()+"live-performance.html?showId="+id;
+
   return `<div class="show-card">
    <h3>${escapeHTML(s.name)}</h3>
    <p>${escapeHTML(s.description||"")}</p>
@@ -374,15 +431,19 @@ function renderShows(){
  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
   try{
    await navigator.clipboard.writeText(b.dataset.copy);
-   alert("Audience link copied");
-  }catch(e){prompt("Copy audience link:",b.dataset.copy)}
+   alert("Audience link copied.");
+  }catch(e){
+   prompt("Copy audience link:",b.dataset.copy);
+  }
  });
 
  box.querySelectorAll("[data-queue]").forEach(b=>b.onclick=()=>{
   $("queueShowSelect").value=b.dataset.queue;
   listenToQueue(b.dataset.queue);
   listenToLive(b.dataset.queue);
+
   $("queueShowSelect").scrollIntoView({behavior:"smooth"});
+
   document.querySelectorAll("details.card").forEach(d=>{
    if(d.querySelector("#queueShowSelect"))d.open=true;
   });
@@ -393,11 +454,17 @@ function renderShows(){
 
 async function deleteShow(id){
  if(!confirm("Delete this show?"))return;
+
  try{
   await verifyShow(id);
-  await update(ref(db,"shows/"+id),{status:"Deleted",deletedAt:Date.now()});
+  await update(ref(db,"shows/"+id),{
+   status:"Deleted",
+   deletedAt:Date.now()
+  });
   await loadShows();
- }catch(e){alert("Delete failed: "+e.message)}
+ }catch(e){
+  alert("Delete failed: "+e.message);
+ }
 }
 
 /* DROPDOWNS */
@@ -409,19 +476,26 @@ function populateDropdowns(){
   "offlineShowSelect",
   "queueShowSelect"
  ];
+
  ids.forEach(id=>{
   const el=$(id),old=el.value;
+
   el.innerHTML='<option value="">Select a show</option>';
+
   myShows.forEach(s=>{
    const o=document.createElement("option");
    o.value=s.showId;
    o.textContent=s.name+" - "+s.date;
    el.appendChild(o);
   });
+
   if(myShows.some(s=>s.showId===old))el.value=old;
  });
- if($("registrationShowSelect").value)
+
+ if($("registrationShowSelect").value){
   listenToRegistrations($("registrationShowSelect").value);
+ }
+
  if($("queueShowSelect").value){
   listenToQueue($("queueShowSelect").value);
   listenToLive($("queueShowSelect").value);
@@ -429,26 +503,33 @@ function populateDropdowns(){
 }
 
 /* ONLINE REGISTRATIONS */
-$("registrationShowSelect").addEventListener("change",e=>listenToRegistrations(e.target.value));
+$("registrationShowSelect").addEventListener("change",e=>{
+ listenToRegistrations(e.target.value);
+});
 
 function listenToRegistrations(showId){
  stopRegistrationListener();
+
  if(!showId){
   $("registrationsList").textContent="Select a show.";
   return;
  }
+
  const r=ref(db,"showRegistrations/"+showId);
+
  const cb=onValue(r,s=>{
   renderRegistrations(showId,s.exists()?s.val():{});
  },e=>{
   $("registrationsList").textContent="Error: "+e.message;
  });
+
  registrationUnsubscribe=()=>off(r,"value",cb);
 }
 
 function renderRegistrations(showId,data){
  const box=$("registrationsList");
  const entries=Object.entries(data||{});
+
  if(!entries.length){
   box.innerHTML='<div class="empty">No registrations yet.</div>';
   return;
@@ -456,48 +537,65 @@ function renderRegistrations(showId,data){
 
  box.innerHTML=entries.map(([id,p])=>`
  <div class="registration">
- <h3>${escapeHTML(p.singerName||p.name||"Performer")}</h3>
- <p>Song: ${escapeHTML(p.songName||p.song||"-")} | Mobile: ${escapeHTML(p.mobile||p.phone||"-")}</p>
- <p>Type: ${escapeHTML(p.performanceType||p.type||"-")}</p>
- <p>Status: <span class="pill">${escapeHTML(p.status||"Pending")}</span>
- Payment: <span class="pill">${escapeHTML(p.paymentStatus||"Unpaid")}</span></p>
- <button class="success" data-approve="${escapeHTML(id)}">Approve & Add to Queue</button>
- <button class="danger" data-reject="${escapeHTML(id)}">Reject</button>
- <button class="secondary" data-paid="${escapeHTML(id)}">Mark Paid</button>
- <button class="secondary" data-unpaid="${escapeHTML(id)}">Mark Unpaid</button>
- </div>`).join("");
+  <h3>${escapeHTML(p.singerName||p.name||"Performer")}</h3>
+  <p>Mobile: ${escapeHTML(p.mobile||p.phone||"-")}</p>
+  <p>Song: ${escapeHTML(p.songName||p.song||"-")}</p>
+  <p>Movie: ${escapeHTML(p.movieName||p.movie||"-")}</p>
+  <p>Performance Type: ${escapeHTML(p.performanceType||p.type||"-")}</p>
+  <p>Status: <span class="pill">${escapeHTML(p.status||"Pending")}</span>
+  Payment: <span class="pill">${escapeHTML(p.paymentStatus||"Unpaid")}</span></p>
+
+  <button class="success" data-approve="${escapeHTML(id)}">Approve & Add to Queue</button>
+  <button class="danger" data-reject="${escapeHTML(id)}">Reject</button>
+  <button class="secondary" data-paid="${escapeHTML(id)}">Mark Paid</button>
+  <button class="secondary" data-unpaid="${escapeHTML(id)}">Mark Unpaid</button>
+ </div>
+ `).join("");
 
  box.querySelectorAll("[data-approve]").forEach(b=>b.onclick=async()=>{
   try{
    await updatePerformer(showId,b.dataset.approve,{status:"Approved"});
    await addRegistrationToQueue(showId,b.dataset.approve);
-   alert("Approved and added to live queue.");
-  }catch(e){alert("Approval failed: "+e.message)}
+   alert("Performer approved and added to queue.");
+  }catch(e){
+   alert("Approval failed: "+e.message);
+  }
  });
 
  box.querySelectorAll("[data-reject]").forEach(b=>b.onclick=async()=>{
   try{
    await updatePerformer(showId,b.dataset.reject,{status:"Rejected"});
    await remove(ref(db,`performanceQueue/${showId}/${b.dataset.reject}`));
-  }catch(e){alert(e.message)}
+  }catch(e){
+   alert(e.message);
+  }
  });
 
  box.querySelectorAll("[data-paid]").forEach(b=>b.onclick=async()=>{
-  try{await updatePerformer(showId,b.dataset.paid,{paymentStatus:"Paid"})}
-  catch(e){alert(e.message)}
+  try{
+   await updatePerformer(showId,b.dataset.paid,{paymentStatus:"Paid"});
+  }catch(e){
+   alert(e.message);
+  }
  });
 
  box.querySelectorAll("[data-unpaid]").forEach(b=>b.onclick=async()=>{
-  try{await updatePerformer(showId,b.dataset.unpaid,{paymentStatus:"Unpaid"})}
-  catch(e){alert(e.message)}
+  try{
+   await updatePerformer(showId,b.dataset.unpaid,{paymentStatus:"Unpaid"});
+  }catch(e){
+   alert(e.message);
+  }
  });
 }
 
 async function updatePerformer(showId,id,changes){
  await verifyShow(showId);
+
  const r=ref(db,`showRegistrations/${showId}/${id}`);
  const s=await get(r);
+
  if(!s.exists())throw new Error("Registration not found.");
+
  await update(r,{...changes,updatedAt:Date.now()});
 }
 
@@ -509,30 +607,46 @@ $("queueShowSelect").addEventListener("change",e=>{
 
 async function addRegistrationToQueue(showId,id){
  await verifyShow(showId);
+
  const rs=await get(ref(db,`showRegistrations/${showId}/${id}`));
+
  if(!rs.exists())throw new Error("Registration not found.");
+
  const p=rs.val();
- if(p.status!=="Approved")throw new Error("Only approved performers can enter the queue.");
+
+ if(p.status!=="Approved"){
+  throw new Error("Only approved performers can enter the queue.");
+ }
 
  const qr=ref(db,`performanceQueue/${showId}/${id}`);
  const existing=await get(qr);
+
+ const queueData={
+  registrationId:id,
+  performerName:p.singerName||p.name||"Performer",
+  mobile:p.mobile||p.phone||"",
+  songName:p.songName||p.song||"",
+  movieName:p.movieName||p.movie||"",
+  performanceType:p.performanceType||p.type||"Solo",
+  status:"Waiting",
+  source:"Online Registration",
+  updatedAt:Date.now()
+ };
+
  if(existing.exists()){
-  await update(qr,{status:"Waiting",updatedAt:Date.now()});
+  await update(qr,queueData);
   return;
  }
 
  const qs=await get(ref(db,`performanceQueue/${showId}`));
  const data=qs.exists()?qs.val():{};
- const count=Object.values(data).filter(x=>x&&x.status!=="Removed"&&x.status!=="Rejected").length;
+
+ const count=Object.values(data).filter(x=>
+  x&&x.status!=="Removed"&&x.status!=="Rejected"
+ ).length;
 
  await set(qr,{
-  registrationId:id,
-  performerName:p.singerName||p.name||"Performer",
-  mobile:p.mobile||p.phone||"",
-  songName:p.songName||p.song||"",
-  performanceType:p.performanceType||p.type||"Solo",
-  status:"Waiting",
-  source:"Online Registration",
+  ...queueData,
   order:count+1,
   createdAt:Date.now()
  });
@@ -540,26 +654,34 @@ async function addRegistrationToQueue(showId,id){
 
 function listenToQueue(showId){
  stopQueueListener();
+
  if(!showId){
   $("queueList").textContent="Select a show.";
   return;
  }
+
  const r=ref(db,"performanceQueue/"+showId);
+
  const cb=onValue(r,s=>{
   renderQueue(showId,s.exists()?s.val():{});
  },e=>{
   $("queueList").textContent="Queue error: "+e.message;
  });
+
  queueUnsubscribe=()=>off(r,"value",cb);
 }
 
 function renderQueue(showId,data){
  currentQueue=Object.entries(data||{})
- .map(([id,item])=>({...item,id}))
- .filter(x=>x.status!=="Removed"&&x.status!=="Rejected")
- .sort((a,b)=>Number(a.order||0)-Number(b.order||0)||Number(a.createdAt||0)-Number(b.createdAt||0));
+  .map(([id,item])=>({...item,id}))
+  .filter(x=>x.status!=="Removed"&&x.status!=="Rejected")
+  .sort((a,b)=>
+   Number(a.order||0)-Number(b.order||0)||
+   Number(a.createdAt||0)-Number(b.createdAt||0)
+  );
 
  const box=$("queueList");
+
  if(!currentQueue.length){
   box.innerHTML='<div class="empty">No performers in the queue.</div>';
   return;
@@ -567,58 +689,186 @@ function renderQueue(showId,data){
 
  box.innerHTML=currentQueue.map((p,i)=>`
  <div class="queue-item">
- <h3><span class="queue-number">${i+1}</span>${escapeHTML(p.performerName||"Performer")}</h3>
- <p>Song: ${escapeHTML(p.songName||"-")} | Mobile: ${escapeHTML(p.mobile||"-")}</p>
- <p>Type: ${escapeHTML(p.performanceType||"-")} | Source: ${escapeHTML(p.source||"-")}</p>
- <p>Status: <span class="pill">${escapeHTML(p.status||"Waiting")}</span></p>
- <button class="secondary" data-up="${escapeHTML(p.id)}" ${i===0?"disabled":""}>↑ Move Up</button>
- <button class="secondary" data-down="${escapeHTML(p.id)}" ${i===currentQueue.length-1?"disabled":""}>↓ Move Down</button>
- <button class="danger" data-remove="${escapeHTML(p.id)}">Remove</button>
- </div>`).join("");
+  <h3><span class="queue-number">${i+1}</span>${escapeHTML(p.performerName||"Performer")}</h3>
 
+  <p>Song: ${escapeHTML(p.songName||"-")}</p>
+  <p>Movie: ${escapeHTML(p.movieName||"-")}</p>
+  <p>Mobile: ${escapeHTML(p.mobile||"-")}</p>
+  <p>Type: ${escapeHTML(p.performanceType||"-")} | Source: ${escapeHTML(p.source||"-")}</p>
+  <p>Status: <span class="pill">${escapeHTML(p.status||"Waiting")}</span></p>
+
+  <div class="karaoke-box">
+   <label>Host: Paste YouTube Karaoke Link for this performer</label>
+   <input
+    type="url"
+    data-karaoke-input="${escapeHTML(p.id)}"
+    value="${escapeHTML(p.karaokeUrl||"")}"
+    placeholder="https://www.youtube.com/watch?v=..."
+   >
+   <button class="success" data-save-karaoke="${escapeHTML(p.id)}">Save Karaoke Link</button>
+   <button class="success" data-play-performer="${escapeHTML(p.id)}">▶ Play Performer</button>
+   ${p.karaokeUrl?`<p><a style="color:#e9bd55" target="_blank" rel="noopener" href="${escapeHTML(p.karaokeUrl)}">Open Karaoke Track</a></p>`:""}
+  </div>
+
+  <button class="secondary" data-up="${escapeHTML(p.id)}" ${i===0?"disabled":""}>↑ Move Up</button>
+  <button class="secondary" data-down="${escapeHTML(p.id)}" ${i===currentQueue.length-1?"disabled":""}>↓ Move Down</button>
+  <button class="danger" data-remove="${escapeHTML(p.id)}">Remove</button>
+ </div>
+ `).join("");
+
+ /* SAVE KARAOKE LINK */
+ box.querySelectorAll("[data-save-karaoke]").forEach(b=>b.onclick=async()=>{
+  const id=b.dataset.saveKaraoke;
+  const input=box.querySelector(`[data-karaoke-input="${CSS.escape(id)}"]`);
+  const url=input.value.trim();
+
+  if(!url||!youtubeId(url)){
+   alert("Please enter a valid YouTube karaoke URL.");
+   return;
+  }
+
+  try{
+   await verifyShow(showId);
+
+   const qr=ref(db,`performanceQueue/${showId}/${id}`);
+   const snap=await get(qr);
+
+   if(!snap.exists())throw new Error("Queue performer not found.");
+
+   await update(qr,{
+    karaokeUrl:url,
+    karaokeUpdatedAt:Date.now(),
+    karaokeUpdatedBy:currentUser.uid
+   });
+
+   alert("Karaoke link saved for this performer.");
+  }catch(e){
+   alert("Could not save karaoke link: "+e.message);
+  }
+ });
+
+ /* PLAY PERFORMER */
+ box.querySelectorAll("[data-play-performer]").forEach(b=>b.onclick=async()=>{
+  const id=b.dataset.playPerformer;
+
+  try{
+   await verifyShow(showId);
+
+   const qr=ref(db,`performanceQueue/${showId}/${id}`);
+   const snap=await get(qr);
+
+   if(!snap.exists())throw new Error("Performer not found.");
+
+   const p=snap.val();
+
+   if(!p.karaokeUrl||!youtubeId(p.karaokeUrl)){
+    throw new Error("First paste and save this performer's YouTube karaoke link.");
+   }
+
+   const updates={};
+
+   updates[`livePerformance/${showId}/currentPerformerId`]=id;
+   updates[`livePerformance/${showId}/currentPerformerName`]=p.performerName||"Performer";
+   updates[`livePerformance/${showId}/currentSongName`]=p.songName||"";
+   updates[`livePerformance/${showId}/currentMovieName`]=p.movieName||"";
+   updates[`livePerformance/${showId}/currentPerformanceType`]=p.performanceType||"Solo";
+   updates[`livePerformance/${showId}/currentKaraokeUrl`]=p.karaokeUrl;
+   updates[`livePerformance/${showId}/currentKaraokeVideoId`]=youtubeId(p.karaokeUrl);
+   updates[`livePerformance/${showId}/performanceStatus`]="Ready";
+   updates[`livePerformance/${showId}/selectedAt`]=Date.now();
+   updates[`performanceQueue/${showId}/${id}/status`]="Playing";
+
+   await update(ref(db),updates);
+
+   alert("Performer selected. Open Performance View to play the karaoke track.");
+
+  }catch(e){
+   alert("Unable to select performer: "+e.message);
+  }
+ });
+
+ /* REORDER */
  box.querySelectorAll("[data-up],[data-down]").forEach(b=>b.onclick=async()=>{
   const id=b.dataset.up||b.dataset.down;
   const i=currentQueue.findIndex(x=>x.id===id);
   const j=b.dataset.up?i-1:i+1;
+
   if(j<0||j>=currentQueue.length)return;
 
   const a=currentQueue[i],c=currentQueue[j];
-  const ao=Number(a.order||i+1),co=Number(c.order||j+1);
+  const ao=Number(a.order||i+1);
+  const co=Number(c.order||j+1);
+
   const changes={};
   changes[`performanceQueue/${showId}/${a.id}/order`]=co;
   changes[`performanceQueue/${showId}/${c.id}/order`]=ao;
 
-  try{await update(ref(db),changes)}
-  catch(e){alert(e.message)}
+  try{
+   await verifyShow(showId);
+   await update(ref(db),changes);
+  }catch(e){
+   alert(e.message);
+  }
  });
 
+ /* REMOVE */
  box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=async()=>{
   if(!confirm("Remove performer from queue?"))return;
+
   try{
-   await remove(ref(db,`performanceQueue/${showId}/${b.dataset.remove}`));
-  }catch(e){alert(e.message)}
+   await verifyShow(showId);
+
+   const id=b.dataset.remove;
+   await remove(ref(db,`performanceQueue/${showId}/${id}`));
+
+   const liveSnap=await get(ref(db,`livePerformance/${showId}`));
+
+   if(liveSnap.exists()&&liveSnap.val().currentPerformerId===id){
+    await update(ref(db,`livePerformance/${showId}`),{
+     currentPerformerId:"",
+     currentPerformerName:"",
+     currentSongName:"",
+     currentMovieName:"",
+     currentKaraokeUrl:"",
+     currentKaraokeVideoId:"",
+     performanceStatus:"Waiting",
+     selectedAt:Date.now()
+    });
+   }
+  }catch(e){
+   alert(e.message);
+  }
  });
 }
 
 /* OFFLINE REGISTRATION */
 $("manualQueueForm").addEventListener("submit",async e=>{
  e.preventDefault();
+
  const showId=$("offlineShowSelect").value;
+
  if(!showId){
   message("offlineMessage","Please select a show.");
   return;
  }
+
  try{
   await verifyShow(showId);
+
   const snap=await get(ref(db,`performanceQueue/${showId}`));
   const data=snap.exists()?snap.val():{};
-  const count=Object.values(data).filter(x=>x&&x.status!=="Removed"&&x.status!=="Rejected").length;
+
+  const count=Object.values(data).filter(x=>
+   x&&x.status!=="Removed"&&x.status!=="Rejected"
+  ).length;
+
   const newRef=push(ref(db,`performanceQueue/${showId}`));
 
   await set(newRef,{
    performerName:$("manualName").value.trim(),
    mobile:$("manualMobile").value.trim(),
    songName:$("manualSong").value.trim(),
+   movieName:$("manualMovie").value.trim(),
    performanceType:$("manualType").value,
    status:"Waiting",
    source:"Offline Walk-in",
@@ -627,54 +877,79 @@ $("manualQueueForm").addEventListener("submit",async e=>{
   });
 
   $("manualQueueForm").reset();
-  message("offlineMessage","Offline performer registered and added to the live queue.");
+
+  message("offlineMessage","Offline performer registered and added to the queue.");
+
  }catch(e){
   message("offlineMessage","Could not register: "+e.message);
  }
 });
 
-/* YOUTUBE LIVE CONTROL */
+/* YOUTUBE URL HELPERS */
 function youtubeId(url){
  try{
   const u=new URL(url);
-  if(u.hostname.includes("youtu.be"))return u.pathname.slice(1);
-  if(u.searchParams.get("v"))return u.searchParams.get("v");
-  const m=u.pathname.match(/\/(embed|live|shorts)\/([^/?]+)/);
-  return m?m[2]:"";
- }catch(e){return ""}
+  const host=u.hostname.replace(/^www\./,"");
+
+  if(host==="youtu.be")return u.pathname.split("/").filter(Boolean)[0]||"";
+
+  if(host==="youtube.com"||host==="m.youtube.com"||host==="music.youtube.com"){
+   if(u.searchParams.get("v"))return u.searchParams.get("v");
+
+   const m=u.pathname.match(/^\/(embed|live|shorts)\/([^/?]+)/);
+   return m?m[2]:"";
+  }
+
+  return "";
+ }catch(e){
+  return "";
+ }
 }
 
+/* YOUTUBE LIVE CONTROL */
 function listenToLive(showId){
  stopLiveListener();
+
  if(!showId){
   $("youtubeUrl").value="";
   $("liveLinks").textContent="";
   return;
  }
+
  const r=ref(db,"livePerformance/"+showId);
+
  const cb=onValue(r,s=>{
   const d=s.exists()?s.val():{};
+
   $("youtubeUrl").value=d.youtubeUrl||d.videoUrl||"";
-  $("liveMessage").textContent=d.status==="Live"?"Status: LIVE":"Status: "+(d.status||"Not started");
+  $("liveMessage").textContent=
+   d.status==="Live"?"Status: LIVE":"Status: "+(d.status||"Not started");
+
   $("liveLinks").innerHTML=d.youtubeUrl?
-   `Saved link: <a style="color:#e9bd55" target="_blank" href="${escapeHTML(d.youtubeUrl)}">Open YouTube</a>`:"";
+   `Saved show link: <a style="color:#e9bd55" target="_blank" rel="noopener" href="${escapeHTML(d.youtubeUrl)}">Open YouTube</a>`:"";
  });
+
  liveUnsubscribe=()=>off(r,"value",cb);
 }
 
 async function saveLiveData(status){
  const showId=$("queueShowSelect").value;
+
  if(!showId)throw new Error("Select a show first.");
+
  await verifyShow(showId);
 
  const url=$("youtubeUrl").value.trim();
- if(url&&!youtubeId(url))throw new Error("Enter a valid YouTube video or live URL.");
 
- const old=await get(ref(db,`livePerformance/${showId}`));
+ if(url&&!youtubeId(url)){
+  throw new Error("Enter a valid YouTube video or live URL.");
+ }
+
+ const liveRef=ref(db,`livePerformance/${showId}`);
+ const old=await get(liveRef);
  const previous=old.exists()?old.val():{};
 
- await set(ref(db,`livePerformance/${showId}`),{
-  ...previous,
+ await update(liveRef,{
   showId,
   hostUid:currentUser.uid,
   youtubeUrl:url,
@@ -687,27 +962,34 @@ async function saveLiveData(status){
 $("saveYoutubeBtn").onclick=async()=>{
  try{
   await saveLiveData("Ready");
-  message("liveMessage","YouTube link saved.");
- }catch(e){message("liveMessage","Error: "+e.message)}
+  message("liveMessage","Show YouTube link saved.");
+ }catch(e){
+  message("liveMessage","Error: "+e.message);
+ }
 };
 
 $("startLiveBtn").onclick=async()=>{
  try{
   await saveLiveData("Live");
-  message("liveMessage","Live show control set to LIVE. Open Performance View to display the show.");
- }catch(e){message("liveMessage","Error: "+e.message)}
+  message("liveMessage","Show status is LIVE. Open Performance View to display the show.");
+ }catch(e){
+  message("liveMessage","Error: "+e.message);
+ }
 };
 
 $("stopLiveBtn").onclick=async()=>{
  try{
   await saveLiveData("Stopped");
   message("liveMessage","Live show stopped.");
- }catch(e){message("liveMessage","Error: "+e.message)}
+ }catch(e){
+  message("liveMessage","Error: "+e.message);
+ }
 };
 
 /* CLOUDINARY CUSTOM POSTER */
 function validCloudinaryURL(url){
- return typeof url==="string"&&/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
+ return typeof url==="string"&&
+ /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
 }
 
 $("uploadPosterBtn").onclick=async()=>{
@@ -720,22 +1002,27 @@ $("uploadPosterBtn").onclick=async()=>{
 
  try{
   await verifyShow(showId);
+
   message("posterUploadMessage","Uploading poster...");
 
   const fd=new FormData();
   fd.append("file",file);
   fd.append("upload_preset",UPLOAD_PRESET);
 
-  const response=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
-   method:"POST",body:fd
-  });
+  const response=await fetch(
+   `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+   {method:"POST",body:fd}
+  );
+
   const result=await response.json();
 
-  if(!response.ok||!result.secure_url)
+  if(!response.ok||!result.secure_url){
    throw new Error(result.error?.message||"Upload failed.");
+  }
 
-  if(!validCloudinaryURL(result.secure_url))
+  if(!validCloudinaryURL(result.secure_url)){
    throw new Error("Unexpected image URL.");
+  }
 
   await set(ref(db,"showPosters/"+showId),{
    hostUid:currentUser.uid,
@@ -747,6 +1034,7 @@ $("uploadPosterBtn").onclick=async()=>{
   });
 
   message("posterUploadMessage","Poster uploaded and submitted for admin review.");
+
  }catch(e){
   message("posterUploadMessage","Upload failed: "+e.message);
  }
@@ -769,6 +1057,7 @@ function drawPoster(show){
 
  ctx.fillStyle=g;
  ctx.fillRect(0,0,w,h);
+
  ctx.strokeStyle="#d6ad50";
  ctx.lineWidth=12;
  ctx.strokeRect(30,30,w-60,h-60);
@@ -797,14 +1086,19 @@ function drawPoster(show){
 
  words.forEach(word=>{
   const test=line?line+" "+word:word;
+
   if(ctx.measureText(test).width>700&&line){
    lines.push(line);
    line=word;
-  }else line=test;
+  }else{
+   line=test;
+  }
  });
+
  if(line)lines.push(line);
 
  let y=390;
+
  lines.slice(0,4).forEach(t=>{
   ctx.fillText(t,w/2,y);
   y+=85;
@@ -829,7 +1123,8 @@ function drawPoster(show){
  ctx.fillStyle="#fff";
  ctx.font="34px Arial";
  ctx.fillText(
-  Number(show.audienceFee||0)===0?"FREE ENTRY":"Entry Fee: "+money(show.audienceFee),
+  Number(show.audienceFee||0)===0?
+   "FREE ENTRY":"Entry Fee: "+money(show.audienceFee),
   w/2,1090
  );
 
@@ -844,32 +1139,42 @@ function posterBlob(){
 
 $("generatePosterBtn").onclick=()=>{
  const s=selectedPosterShow();
+
  if(!s){alert("Select a show.");return}
+
  drawPoster(s);
 };
 
 $("downloadPosterBtn").onclick=async()=>{
  const s=selectedPosterShow();
+
  if(!s){alert("Select a show.");return}
 
  drawPoster(s);
+
  const blob=await posterBlob();
+
  if(!blob){alert("Poster generation failed.");return}
 
  const url=URL.createObjectURL(blob);
  const a=document.createElement("a");
+
  a.href=url;
  a.download="Melody-Magic-"+s.name.replace(/[^a-z0-9]/gi,"-")+".png";
  a.click();
+
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 
 $("sharePosterBtn").onclick=async()=>{
  const s=selectedPosterShow();
+
  if(!s){alert("Select a show.");return}
 
  drawPoster(s);
+
  const blob=await posterBlob();
+
  if(!blob){alert("Poster generation failed.");return}
 
  const file=new File([blob],"Melody-Magic-Show.png",{type:"image/png"});
