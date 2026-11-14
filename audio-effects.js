@@ -3,6 +3,8 @@ export class VirtualAudioEffects {
   constructor() {
     this.monitorLevel = 0.35;
     this.monitorEnabled = false;
+    this.muted = true;
+
     this.context = null;
     this.source = null;
     this.destination = null;
@@ -14,7 +16,22 @@ export class VirtualAudioEffects {
 
   async start(inputTrack) {
     try {
-      this.context = new AudioContext();
+      if (!inputTrack || inputTrack.kind !== "audio") {
+        throw new Error("A valid microphone audio track is required.");
+      }
+
+      this.stop();
+
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContextClass) {
+        throw new Error("Your browser does not support AudioContext.");
+      }
+
+      this.context = new AudioContextClass({
+        latencyHint: "interactive"
+      });
 
       if (this.context.state === "suspended") {
         await this.context.resume();
@@ -22,8 +39,11 @@ export class VirtualAudioEffects {
 
       const stream = new MediaStream([inputTrack]);
 
-      this.source = this.context.createMediaStreamSource(stream);
-      this.destination = this.context.createMediaStreamDestination();
+      this.source =
+        this.context.createMediaStreamSource(stream);
+
+      this.destination =
+        this.context.createMediaStreamDestination();
 
       const dry = this.context.createGain();
 
@@ -39,7 +59,7 @@ export class VirtualAudioEffects {
       const wetBus = this.context.createGain();
       const outputGain = this.context.createGain();
 
-      // Create a 2-second reverb impulse
+      // Create a 2-second reverb impulse.
       const length = this.context.sampleRate * 2;
 
       const impulse = this.context.createBuffer(
@@ -60,32 +80,33 @@ export class VirtualAudioEffects {
 
       convolver.buffer = impulse;
 
-      // Dry vocal
+      // Dry vocal.
       this.source.connect(dry);
 
-      // Echo
+      // Echo effect.
       this.source.connect(echoSend);
       echoSend.connect(echoDelay);
       echoDelay.connect(echoFeedback);
       echoFeedback.connect(echoDelay);
       echoDelay.connect(echoReturn);
 
-      // Reverb
+      // Reverb effect.
       this.source.connect(reverbSend);
       reverbSend.connect(convolver);
       convolver.connect(reverbReturn);
 
-      // Combine effects
+      // Combine wet effects.
       echoReturn.connect(wetBus);
       reverbReturn.connect(wetBus);
 
+      // Final vocal output.
       dry.connect(outputGain);
       wetBus.connect(outputGain);
 
-      // Send processed voice to LiveKit
+      // Send processed audio to LiveKit.
       outputGain.connect(this.destination);
 
-      // Separate local headphone monitoring
+      // Local headphone monitoring.
       this.monitorGain = this.context.createGain();
       this.monitorGain.gain.value = 0;
 
@@ -109,26 +130,43 @@ export class VirtualAudioEffects {
         outputGain
       };
 
-      // Initial settings
+      // Initial settings.
       this.setEcho(20);
       this.setReverb(20);
       this.setMix(25);
       this.setVolume(80);
       this.setMonitorVolume(35);
+
+      // Microphone starts muted.
+      this.setMuted(true);
+
       await this.setMonitor(false);
 
       return this.processedTrack;
 
     } catch (error) {
       this.stop();
+      console.error("Audio effects error:", error);
       throw error;
     }
   }
 
+  // Microphone mute/unmute.
+  setMuted(muted) {
+    this.muted = Boolean(muted);
+
+    if (this.processedTrack) {
+      this.processedTrack.enabled = !this.muted;
+    }
+  }
+
+  // Echo control: 0 to 100.
   setEcho(value) {
     if (!this.context || !this.nodes) return;
 
-    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
+
     const now = this.context.currentTime;
 
     this.nodes.echoDelay.delayTime.setTargetAtTime(
@@ -150,10 +188,12 @@ export class VirtualAudioEffects {
     );
   }
 
+  // Reverb control: 0 to 100.
   setReverb(value) {
     if (!this.context || !this.nodes) return;
 
-    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
 
     this.nodes.reverbSend.gain.setTargetAtTime(
       amount * 0.6,
@@ -162,10 +202,12 @@ export class VirtualAudioEffects {
     );
   }
 
+  // Dry/wet mix control: 0 to 100.
   setMix(value) {
     if (!this.context || !this.nodes) return;
 
-    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
 
     this.nodes.dry.gain.setTargetAtTime(
       1 - amount * 0.5,
@@ -180,10 +222,12 @@ export class VirtualAudioEffects {
     );
   }
 
+  // Processed vocal volume: 0 to 100.
   setVolume(value) {
     if (!this.context || !this.nodes) return;
 
-    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
 
     this.nodes.outputGain.gain.setTargetAtTime(
       amount,
@@ -192,34 +236,40 @@ export class VirtualAudioEffects {
     );
   }
 
+  // Headphone monitoring volume: 0 to 100.
   setMonitorVolume(value) {
-  if (!this.context || !this.monitorGain) return;
+    if (!this.context || !this.monitorGain) return;
 
-  const amount = Math.max(0, Math.min(100, Number(value))) / 100;
-  this.monitorLevel = amount;
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
 
-  this.monitorGain.gain.setTargetAtTime(
-    this.monitorEnabled ? amount : 0,
-    this.context.currentTime,
-    0.03
-  );
-}
+    this.monitorLevel = amount;
 
-async setMonitor(enabled) {
-  if (!this.context || !this.monitorGain) return;
-
-  if (this.context.state === "suspended") {
-    await this.context.resume();
+    this.monitorGain.gain.setTargetAtTime(
+      this.monitorEnabled ? amount : 0,
+      this.context.currentTime,
+      0.03
+    );
   }
 
-  this.monitorEnabled = enabled;
+  // Enable or disable local monitoring.
+  async setMonitor(enabled) {
+    if (!this.context || !this.monitorGain) return;
 
-  this.monitorGain.gain.setTargetAtTime(
-    enabled ? this.monitorLevel : 0,
-    this.context.currentTime,
-    0.05
-  );
-}
+    if (this.context.state === "suspended") {
+      await this.context.resume();
+    }
+
+    this.monitorEnabled = Boolean(enabled);
+
+    this.monitorGain.gain.setTargetAtTime(
+      this.monitorEnabled ? this.monitorLevel : 0,
+      this.context.currentTime,
+      0.05
+    );
+  }
+
+  // Stop and release all audio resources.
   stop() {
     try {
       if (this.source) {
@@ -245,6 +295,7 @@ async setMonitor(enabled) {
       if (this.context && this.context.state !== "closed") {
         this.context.close();
       }
+
     } catch (error) {
       console.error("Audio effects cleanup error:", error);
     }
@@ -256,5 +307,7 @@ async setMonitor(enabled) {
     this.processedTrack = null;
     this.monitorGain = null;
     this.nodes = null;
+    this.monitorEnabled = false;
+    this.muted = true;
   }
 }
