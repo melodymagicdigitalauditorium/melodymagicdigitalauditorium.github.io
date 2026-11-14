@@ -71,7 +71,6 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 <button id="logoutBtn" class="danger">Logout</button>
 </section>
 
-<!-- NEW SHOW -->
 <details class="card" open>
 <summary>➕ New Show</summary>
 <div class="section-content">
@@ -132,7 +131,6 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 </div>
 </details>
 
-<!-- PUBLISHED SHOWS -->
 <details class="card">
 <summary>📢 Published Shows</summary>
 <div class="section-content">
@@ -140,7 +138,6 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 </div>
 </details>
 
-<!-- REGISTRATIONS -->
 <details class="card">
 <summary>🎟️ Performer Registration — Online & Offline</summary>
 <div class="section-content">
@@ -183,7 +180,6 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 </div>
 </details>
 
-<!-- SIMPLIFIED LIVE CONTROL -->
 <details class="card" open>
 <summary>🔴 Live Show Control & Performance Queue</summary>
 <div class="section-content">
@@ -277,6 +273,18 @@ function stopLiveListener(){
 
 function baseURL(){
  return location.href.replace(/[^/]*$/,"");
+}
+
+/* OPEN THE HOST CONTROL ROOM */
+function openHostStage(showId){
+ if(!showId){
+  alert("Please select a show first.");
+  return;
+ }
+
+ const page=new URL("live-stage.html",location.href);
+ page.searchParams.set("showId",showId);
+ window.location.href=page.href;
 }
 
 /* HOST ACCESS */
@@ -438,7 +446,7 @@ function renderShows(){
    <p>${escapeHTML(s.type)} | Solo ${money(s.soloEntryFee)} | Duet ${money(s.duetEntryFee)} | Audience ${money(s.audienceFee)}</p>
    <span class="pill">${escapeHTML(s.status||"Published")}</span>
    <div>
-    <a class="btn" href="${stage}" target="_blank">Open Stage</a>
+    <a class="btn" href="${stage}">Open Host Control Room</a>
     <a class="btn secondary" href="${performance}" target="_blank">Performance View</a>
     <a class="btn secondary" href="${audience}" target="_blank">Audience Link</a>
    </div>
@@ -458,15 +466,7 @@ function renderShows(){
  });
 
  box.querySelectorAll("[data-queue]").forEach(b=>b.onclick=()=>{
-  $("queueShowSelect").value=b.dataset.queue;
-  listenToQueue(b.dataset.queue);
-  listenToLive(b.dataset.queue);
-
-  $("queueShowSelect").scrollIntoView({behavior:"smooth"});
-
-  document.querySelectorAll("details.card").forEach(d=>{
-   if(d.querySelector("#queueShowSelect"))d.open=true;
-  });
+  openHostStage(b.dataset.queue);
  });
 
  box.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteShow(b.dataset.delete));
@@ -738,7 +738,7 @@ function renderQueue(showId,data){
  </div>
  `).join("");
 
- /* SAVE KARAOKE LINK AND START PERFORMANCE */
+ /* SAVE KARAOKE LINK, SELECT SINGER, OPEN HOST CONTROL ROOM */
  box.querySelectorAll("[data-start-performance]").forEach(b=>{
   b.onclick=async()=>{
    const id=b.dataset.startPerformance;
@@ -785,11 +785,7 @@ function renderQueue(showId,data){
 
     await update(ref(db),updates);
 
-    alert("Singer selected. Opening Performance View.");
-
-    const page=new URL("live-performance.html",location.href);
-    page.searchParams.set("showId",showId);
-    window.location.href=page.href;
+    openHostStage(showId);
 
    }catch(e){
     alert("Unable to start performance: "+e.message);
@@ -961,8 +957,6 @@ async function saveLiveData(status){
  }
 
  const liveRef=ref(db,`livePerformance/${showId}`);
- const old=await get(liveRef);
- const previous=old.exists()?old.val():{};
 
  await update(liveRef,{
   showId,
@@ -974,7 +968,7 @@ async function saveLiveData(status){
  });
 }
 
-/* START LIVE SHOW: SAVE MAIN LINK AND OPEN PERFORMANCE VIEW */
+/* START LIVE SHOW: OPEN HOST CONTROL ROOM */
 $("startLiveBtn").onclick=async()=>{
  const showId=$("queueShowSelect").value;
 
@@ -987,11 +981,9 @@ $("startLiveBtn").onclick=async()=>{
 
   await saveLiveData("Live");
 
-  message("liveMessage","Show is LIVE. Opening Performance View...");
+  message("liveMessage","Show is LIVE. Opening Host Control Room...");
 
-  const page=new URL("live-performance.html",location.href);
-  page.searchParams.set("showId",showId);
-  window.location.href=page.href;
+  openHostStage(showId);
 
  }catch(e){
   message("liveMessage","Error: "+e.message);
