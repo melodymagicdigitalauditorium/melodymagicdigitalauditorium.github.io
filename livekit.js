@@ -2,6 +2,7 @@
 import {
   Room,
   RoomEvent,
+  Track,
   createLocalAudioTrack,
   createLocalVideoTrack
 } from "https://esm.sh/livekit-client@2";
@@ -259,6 +260,7 @@ function setupVocalEffectControls() {
 
       if (vocalEffects) {
         await vocalEffects.setMonitor(monitor.checked);
+
         vocalEffects.setMonitorVolume(
           monitor.checked
             ? vocalEffectSettings.monitorVolume
@@ -750,7 +752,8 @@ async function startCamera() {
     });
 
     await room.localParticipant.publishTrack(localCamera, {
-      name: "camera"
+      name: "camera",
+      source: Track.Source.Camera
     });
 
   } else if (localCamera.isMuted) {
@@ -869,14 +872,23 @@ async function startMicrophone() {
           localMic.mediaStreamTrack
         );
 
+        if (!processedMicTrack) {
+          throw new Error("Vocal effects did not return an audio track.");
+        }
+
         applyVocalEffectSettings();
 
         await room.localParticipant.publishTrack(
           processedMicTrack,
-          { name: "microphone" }
+          {
+            name: "microphone",
+            source: Track.Source.Microphone
+          }
         );
 
       } catch (error) {
+        console.error("Host microphone publishing failed:", error);
+
         vocalEffects?.stop();
         vocalEffects = null;
         processedMicTrack = null;
@@ -889,7 +901,10 @@ async function startMicrophone() {
     }
 
     hostMicMuted = false;
-    vocalEffects.setMuted(false);
+
+    if (vocalEffects) {
+      vocalEffects.setMuted(false);
+    }
 
   } else {
     if (!localMic) {
@@ -899,9 +914,16 @@ async function startMicrophone() {
         autoGainControl: true
       });
 
-      await room.localParticipant.publishTrack(localMic, {
-        name: "microphone"
-      });
+      try {
+        await room.localParticipant.publishTrack(localMic, {
+          name: "microphone",
+          source: Track.Source.Microphone
+        });
+      } catch (error) {
+        localMic.stop();
+        localMic = null;
+        throw error;
+      }
 
     } else if (localMic.isMuted) {
       await localMic.unmute();
@@ -961,7 +983,7 @@ async function toggleMicrophone() {
     alert(
       "Unable to start microphone.\n\n" +
       error.message +
-      "\n\nCheck your browser microphone permission."
+      "\n\nCheck your browser microphone permission and LiveKit publishing permission."
     );
 
   } finally {
@@ -1440,7 +1462,23 @@ async function joinAuditorium() {
 
     currentRole = tokenData.role || "unknown";
 
-    const canPublish = isHost ||
+    // The browser and Worker must agree that this account is the host.
+    if (isHost && currentRole !== "host") {
+      throw new Error(
+        "Host role mismatch. The Worker returned role: " +
+        currentRole +
+        ". Please check the host approval and subscription in Firebase."
+      );
+    }
+
+    if (!isHost && currentRole === "host") {
+      throw new Error(
+        "The Worker returned a host token, but this account is not verified as host on this page. Please refresh and sign in again."
+      );
+    }
+
+    const canPublish =
+      currentRole === "host" ||
       currentRole === "selected-singer" ||
       currentRole === "waiting-singer";
 
