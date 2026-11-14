@@ -19,6 +19,8 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
+import { VirtualAudioEffects } from "./audio-effects.js";
+
 /* =========================================
    MELODY MAGIC LIVEKIT CONFIGURATION
 ========================================= */
@@ -45,6 +47,10 @@ let currentRole = "unknown";
 let localMic = null;
 let localCamera = null;
 
+let vocalEffects = null;
+let processedMicTrack = null;
+let hostMicMuted = true;
+
 let micAllowed = false;
 let cameraAllowed = false;
 
@@ -61,6 +67,15 @@ const remoteAudioElements = new Map();
 let joining = false;
 let leaving = false;
 let permissionBusy = false;
+
+const vocalEffectSettings = {
+  echo: 20,
+  reverb: 20,
+  mix: 25,
+  volume: 80,
+  monitor: false,
+  monitorVolume: 35
+};
 
 /* =========================================
    HELPERS
@@ -193,6 +208,74 @@ async function workerRequest(data) {
 }
 
 /* =========================================
+   VOCAL EFFECT SETTINGS
+========================================= */
+
+function applyVocalEffectSettings() {
+  if (!vocalEffects) return;
+
+  vocalEffects.setEcho(vocalEffectSettings.echo);
+  vocalEffects.setReverb(vocalEffectSettings.reverb);
+  vocalEffects.setMix(vocalEffectSettings.mix);
+  vocalEffects.setVolume(vocalEffectSettings.volume);
+  vocalEffects.setMonitorVolume(
+    vocalEffectSettings.monitor
+      ? vocalEffectSettings.monitorVolume
+      : 0
+  );
+}
+
+function setupVocalEffectControls() {
+  const controls = [
+    ["echoControl", "echoValue", "echo"],
+    ["reverbControl", "reverbValue", "reverb"],
+    ["mixControl", "mixValue", "mix"],
+    ["volumeControl", "volumeValue", "volume"],
+    ["monitorVolumeControl", "monitorVolumeValue", "monitorVolume"]
+  ];
+
+  controls.forEach(([controlId, valueId, setting]) => {
+    const control = $(controlId);
+    const value = $(valueId);
+
+    if (!control) return;
+
+    control.addEventListener("input", () => {
+      vocalEffectSettings[setting] = Number(control.value);
+
+      if (value) {
+        value.textContent = control.value + "%";
+      }
+
+      applyVocalEffectSettings();
+    });
+  });
+
+  const monitor = $("monitorControl");
+
+  if (monitor) {
+    monitor.addEventListener("change", async () => {
+      vocalEffectSettings.monitor = monitor.checked;
+
+      if (vocalEffects) {
+        await vocalEffects.setMonitor(monitor.checked);
+        vocalEffects.setMonitorVolume(
+          monitor.checked
+            ? vocalEffectSettings.monitorVolume
+            : 0
+        );
+      }
+
+      setStatus(
+        monitor.checked
+          ? "Headphone monitoring enabled. Use headphones to avoid feedback."
+          : "Headphone monitoring disabled."
+      );
+    });
+  }
+}
+
+/* =========================================
    CREATE LIVEKIT PANEL
 ========================================= */
 
@@ -262,7 +345,7 @@ function createPanel() {
         </button>
 
         <button id="leaveButton" disabled
-          style="background:#555;color:white;padding:13px 18px;border:0;border-radius:8px;font-weight:bold;cursor:pointer">
+          style="background:#555;color:white;padding:13px 18px;border:0;border-radius:8px;cursor:pointer">
           LEAVE
         </button>
 
@@ -270,6 +353,61 @@ function createPanel() {
 
       <div id="localPermissionMessage"
         style="color:#e5bd62;font-size:13px;margin-top:12px">
+      </div>
+
+    </div>
+
+    <div id="hostVocalEffects"
+      style="display:none;background:#202020;padding:14px;border-radius:10px;margin-top:15px">
+
+      <h3 style="color:#e5bd62;margin-top:0">
+        🎚️ HOST VOCAL EFFECTS
+      </h3>
+
+      <p style="font-size:13px;color:#ccc">
+        These effects apply to the host microphone only.
+      </p>
+
+      <label for="echoControl">Echo / Delay:
+        <strong id="echoValue">20%</strong>
+      </label>
+      <input id="echoControl" type="range" min="0" max="100" value="20"
+        style="width:100%;margin:10px 0 18px">
+
+      <label for="reverbControl">Reverb:
+        <strong id="reverbValue">20%</strong>
+      </label>
+      <input id="reverbControl" type="range" min="0" max="100" value="20"
+        style="width:100%;margin:10px 0 18px">
+
+      <label for="mixControl">Wet / Dry Mix:
+        <strong id="mixValue">25%</strong>
+      </label>
+      <input id="mixControl" type="range" min="0" max="100" value="25"
+        style="width:100%;margin:10px 0 18px">
+
+      <label for="volumeControl">Microphone Output:
+        <strong id="volumeValue">80%</strong>
+      </label>
+      <input id="volumeControl" type="range" min="0" max="100" value="80"
+        style="width:100%;margin:10px 0 18px">
+
+      <div style="border-top:1px solid #555;padding-top:14px;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:9px">
+          <input id="monitorControl" type="checkbox">
+          Headphone monitoring
+        </label>
+
+        <p style="font-size:12px;color:#ccc">
+          Use headphones. Monitoring through speakers can cause feedback.
+        </p>
+
+        <label for="monitorVolumeControl">
+          Headphone Volume:
+          <strong id="monitorVolumeValue">35%</strong>
+        </label>
+        <input id="monitorVolumeControl" type="range"
+          min="0" max="100" value="35" style="width:100%">
       </div>
 
     </div>
@@ -352,6 +490,8 @@ function createPanel() {
   });
 
   $("makeStageButton").addEventListener("click", selectMainSingers);
+
+  setupVocalEffectControls();
 }
 
 /* =========================================
@@ -714,26 +854,71 @@ async function startMicrophone() {
     throw new Error("The host has not enabled your microphone.");
   }
 
-  if (!localMic) {
-    localMic = await createLocalAudioTrack({
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    });
+  if (isHost) {
+    if (!localMic) {
+      localMic = await createLocalAudioTrack({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      });
 
-    await room.localParticipant.publishTrack(localMic, {
-      name: "microphone"
-    });
+      vocalEffects = new VirtualAudioEffects();
 
-  } else if (localMic.isMuted) {
-    await localMic.unmute();
+      try {
+        processedMicTrack = await vocalEffects.start(
+          localMic.mediaStreamTrack
+        );
+
+        applyVocalEffectSettings();
+
+        await room.localParticipant.publishTrack(
+          processedMicTrack,
+          { name: "microphone" }
+        );
+
+      } catch (error) {
+        vocalEffects?.stop();
+        vocalEffects = null;
+        processedMicTrack = null;
+
+        localMic.stop();
+        localMic = null;
+
+        throw error;
+      }
+    }
+
+    hostMicMuted = false;
+    vocalEffects.setMuted(false);
+
+  } else {
+    if (!localMic) {
+      localMic = await createLocalAudioTrack({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      });
+
+      await room.localParticipant.publishTrack(localMic, {
+        name: "microphone"
+      });
+
+    } else if (localMic.isMuted) {
+      await localMic.unmute();
+    }
   }
 
   updateMicButton();
 }
 
 async function stopMicrophone() {
-  if (localMic && !localMic.isMuted) {
+  if (isHost) {
+    hostMicMuted = true;
+
+    if (vocalEffects) {
+      vocalEffects.setMuted(true);
+    }
+  } else if (localMic && !localMic.isMuted) {
     await localMic.mute();
   }
 
@@ -755,7 +940,11 @@ async function toggleMicrophone() {
   button.disabled = true;
 
   try {
-    if (localMic && !localMic.isMuted) {
+    const currentlyEnabled = isHost
+      ? !hostMicMuted
+      : Boolean(localMic && !localMic.isMuted);
+
+    if (currentlyEnabled) {
       await stopMicrophone();
       setStatus("Microphone turned OFF.");
     } else {
@@ -763,6 +952,7 @@ async function toggleMicrophone() {
       await startMicrophone();
       setStatus("Microphone turned ON.");
     }
+
   } catch (error) {
     console.error("Microphone error:", error);
 
@@ -773,6 +963,7 @@ async function toggleMicrophone() {
       error.message +
       "\n\nCheck your browser microphone permission."
     );
+
   } finally {
     updateMicButton();
   }
@@ -782,7 +973,9 @@ function updateMicButton() {
   const button = $("micButton");
   if (!button) return;
 
-  const enabled = Boolean(localMic && !localMic.isMuted);
+  const enabled = isHost
+    ? Boolean(vocalEffects && !hostMicMuted)
+    : Boolean(localMic && !localMic.isMuted);
 
   button.textContent = enabled
     ? "🎙️ MICROPHONE ON"
@@ -1254,6 +1447,7 @@ async function joinAuditorium() {
     if (isHost) {
       cameraAllowed = true;
       micAllowed = true;
+      hostMicMuted = true;
     } else {
       cameraAllowed = tokenData.cameraAllowed === true;
       micAllowed = tokenData.microphoneAllowed === true;
@@ -1377,13 +1571,27 @@ async function leaveAuditorium() {
     stopListener(stopPermissionListener);
     stopPermissionListener = null;
 
-    if (room && localMic) {
+    if (room && isHost && processedMicTrack) {
+      try {
+        await room.localParticipant.unpublishTrack(processedMicTrack);
+      } catch (error) {
+        console.warn("Processed microphone unpublish:", error);
+      }
+    } else if (room && localMic) {
       try {
         await room.localParticipant.unpublishTrack(localMic);
       } catch (error) {
         console.warn(error);
       }
     }
+
+    if (vocalEffects) {
+      vocalEffects.stop();
+      vocalEffects = null;
+    }
+
+    processedMicTrack = null;
+    hostMicMuted = true;
 
     if (localMic) {
       localMic.stop();
@@ -1490,10 +1698,11 @@ async function initializeShow() {
 
     if (isHost) {
       $("hostStageControls").style.display = "block";
+      $("hostVocalEffects").style.display = "block";
       $("liveSingerName").value = "Show Host";
 
       $("localPermissionMessage").textContent =
-        "Host access verified. Your camera and microphone controls are available above.";
+        "Host access verified. Your camera, microphone and vocal effects are available.";
 
       setStatus(
         "Approved host verified. Join the auditorium to activate your camera."
