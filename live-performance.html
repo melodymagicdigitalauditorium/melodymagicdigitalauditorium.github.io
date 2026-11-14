@@ -3,418 +3,530 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Melody Magic Digital Auditorium - Live</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Melody Magic Digital Auditorium - Audience</title>
 <style>
 *{box-sizing:border-box}
 body{
-  margin:0;
-  background:#080b14;
-  color:#fff;
-  font-family:Arial,sans-serif;
-  text-align:center
+  margin:0;background:#080808;color:#fff;
+  font-family:Arial,sans-serif;padding:12px
 }
-header{
-  padding:22px 12px;
-  background:#111827;
-  border-bottom:2px solid #d4af37
-}
-h1{color:#f5d76e;margin:0;font-size:25px}
-.subtitle{color:#bbb;margin-top:8px}
-.container{max-width:1000px;margin:auto;padding:15px}
+.container{max-width:1000px;margin:auto}
+header{text-align:center;padding:12px}
+h2,h3{color:#e5bd62}
 .card{
-  background:#151c2b;
-  border:1px solid #30394b;
-  border-radius:14px;
-  padding:18px;
-  margin:15px 0
+  background:#171717;border:1px solid #51401e;
+  border-radius:12px;padding:14px;margin:14px 0
 }
-.status{
-  display:inline-block;
-  padding:7px 14px;
-  border-radius:20px;
-  background:#343b4c;
-  color:#fff;
-  font-size:13px;
-  font-weight:bold
+#status{
+  color:#e5bd62;text-align:center;
+  font-size:13px;padding:10px
 }
-.status.live{background:#a71919}
-.status.ready{background:#287c48}
-h2{color:#f5d76e}
-.performer-name{
-  font-size:27px;
-  color:#f5d76e;
-  font-weight:bold;
-  margin:15px 0
+#karaokeFrame{
+  display:none;width:100%;aspect-ratio:16/9;
+  border:0;border-radius:8px;background:#000
 }
-.song-details{color:#ddd;font-size:17px;line-height:1.8}
-.player{
-  width:100%;
-  aspect-ratio:16/9;
-  background:#000;
-  border-radius:12px;
-  overflow:hidden
+#karaokeMessage{
+  padding:45px 10px;text-align:center;color:#bbb;
+  background:#050505;border-radius:8px
 }
-.player iframe{width:100%;height:100%;border:0}
-button{
-  background:#d4af37;
-  color:#111;
-  border:0;
-  padding:13px 22px;
-  border-radius:8px;
-  font-weight:bold;
-  font-size:15px;
-  cursor:pointer;
-  margin:10px 0
+#singerVideo{
+  width:100%;max-height:650px;aspect-ratio:16/9;
+  object-fit:contain;background:#000;border-radius:8px
 }
-.message{color:#bbb;line-height:1.6}
-.hidden{display:none!important}
-footer{padding:20px;color:#888;font-size:12px}
-@media(max-width:600px){
-  .container{padding:10px}
-  .card{padding:14px}
-  h1{font-size:21px}
-  .performer-name{font-size:23px}
+#singerMessage{
+  padding:45px 10px;text-align:center;color:#bbb;
+  background:#050505;border-radius:8px
 }
+#performerName{text-align:center;font-size:22px}
+#performanceDetails{text-align:center;color:#ccc;font-size:14px}
+footer{text-align:center;color:#888;padding:18px;font-size:12px}
+a{color:#e5bd62}
 </style>
 </head>
-
 <body>
-
-<header>
-  <h1>MELODY MAGIC</h1>
-  <div class="subtitle">DIGITAL AUDITORIUM • LIVE PERFORMANCE</div>
-</header>
-
 <div class="container">
 
-  <div class="card">
-    <span id="status" class="status">CONNECTING...</span>
-    <h2 id="showTitle">Live Performance</h2>
-    <p id="stageMessage" class="message">
-      Connecting to the auditorium...
-    </p>
-  </div>
+<header>
+  <h2>🎤 Melody Magic Digital Auditorium</h2>
+  <div id="status">Connecting to the auditorium...</div>
+</header>
 
-  <div class="card">
-    <h2>🎬 LIVE VIDEO</h2>
+<section class="card">
+  <h3>🎵 Live Karaoke Video</h3>
+  <div id="karaokeMessage">Waiting for the host to select a karaoke video...</div>
+  <iframe
+    id="karaokeFrame"
+    title="Live Karaoke Video"
+    allow="autoplay; encrypted-media; picture-in-picture"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen>
+  </iframe>
+</section>
 
-    <p id="videoLabel" class="message">
-      Waiting for the host to select a video.
-    </p>
-
-    <div id="videoPlayer" class="player">
-      <p class="message" style="padding:35px 10px">
-        Waiting for the host to start the show.
-      </p>
-    </div>
-
-    <button id="playButton" class="hidden">
-      ▶ PLAY VIDEO
-    </button>
-
-    <p id="videoMessage" class="message">
-      The live video will appear here.
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>🎤 NOW PERFORMING</h2>
-
-    <div id="performerName" class="performer-name">
-      Waiting for performer
-    </div>
-
-    <div class="song-details">
-      <div>🎵 Song: <strong id="songName">-</strong></div>
-      <div>🎬 Movie: <strong id="movieName">-</strong></div>
-      <div>🎙️ Type: <strong id="performanceType">-</strong></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Welcome to the Show!</h2>
-    <p class="message">
-      Enjoy the performance and support our singers.
-      Please wait while the host manages the stage.
-    </p>
-  </div>
-
-</div>
+<section class="card">
+  <h3>🎙️ Live Singer</h3>
+  <div id="performerName">Waiting for the singer...</div>
+  <div id="performanceDetails"></div>
+  <div id="singerMessage">The singer's live camera will appear here when the host selects the stage performer.</div>
+  <video id="singerVideo" autoplay playsinline></video>
+</section>
 
 <footer>Powered by Melody Magic Music Studio</footer>
+</div>
 
 <script type="module">
-
-import {db} from "./firebase-host.js";
+import {auth,db,connectAuditorium} from "./firebase.js";
 
 import {
-  ref,
-  onValue
+  ref,get,onValue,set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-const params = new URLSearchParams(location.search);
-const showId = params.get("showId");
+import {
+  Room,RoomEvent
+} from "https://esm.sh/livekit-client@2";
 
+const LIVEKIT_URL =
+  "wss://melody-magic-auditorium-wrgjlqio.livekit.cloud";
+
+const TOKEN_SERVER =
+  "https://lucky-night-b9bfmelody-magic-token-server.akbusinessenterprisess.workers.dev/";
+
+const showId = new URLSearchParams(location.search).get("showId");
 const $ = id => document.getElementById(id);
 
-let selectedVideoId = "";
-let selectedVideoSource = "";
-let playerLoaded = false;
+let currentUser=null;
+let currentShow=null;
+let room=null;
+let currentPerformance={};
+let stageSingerUids=[];
+let remoteTracks=new Map();
+let audioElements=new Map();
+let stopFunctions=[];
+let currentVideoId="";
 
-function getVideoId(value){
+function setStatus(message,error=false){
+  $("status").textContent=message;
+  $("status").style.color=error?"#ff7777":"#e5bd62";
+}
 
-  if(!value) return "";
+function stopAllListeners(){
+  stopFunctions.forEach(stop=>{
+    try{stop()}catch(e){}
+  });
+  stopFunctions=[];
+}
+
+function getYouTubeVideoId(value){
+  const input=String(value||"").trim();
+  if(!input)return "";
+
+  if(/^[a-zA-Z0-9_-]{11}$/.test(input))return input;
 
   try{
-    const url = new URL(value);
-    const host = url.hostname.replace(/^www\./,"");
+    const url=new URL(input);
 
-    if(host === "youtu.be"){
-      return url.pathname.split("/").filter(Boolean)[0] || "";
+    if(url.hostname.includes("youtu.be")){
+      return url.pathname.split("/").filter(Boolean)[0]||"";
     }
 
-    if([
-      "youtube.com",
-      "m.youtube.com",
-      "music.youtube.com"
-    ].includes(host)){
+    if(url.hostname.includes("youtube.com")){
+      const videoId=url.searchParams.get("v");
+      if(videoId)return videoId;
 
-      if(url.searchParams.get("v")){
-        return url.searchParams.get("v");
-      }
-
-      const match = url.pathname.match(
-        /^\/(embed|shorts|live)\/([^/?]+)/
+      const parts=url.pathname.split("/").filter(Boolean);
+      const index=parts.findIndex(part=>
+        ["embed","shorts","live"].includes(part)
       );
 
-      return match ? match[2] : "";
+      if(index>=0)return parts[index+1]||"";
     }
-
-  }catch(error){}
+  }catch(e){}
 
   return "";
 }
 
-function resetPlayer(message){
-
-  $("videoPlayer").innerHTML =
-    `<p class="message" style="padding:35px 10px">${message}</p>`;
-
-  $("playButton").classList.add("hidden");
-  playerLoaded = false;
-}
-
-function prepareVideo(videoId, source, label){
-
-  if(
-    videoId === selectedVideoId &&
-    source === selectedVideoSource
-  ){
-    return;
-  }
-
-  selectedVideoId = videoId;
-  selectedVideoSource = source;
-  playerLoaded = false;
+function updateKaraokeVideo(value){
+  const videoId=getYouTubeVideoId(value);
 
   if(!videoId){
-    resetPlayer("Waiting for the host to select a video.");
-    $("videoLabel").textContent = "No video selected";
-    $("videoMessage").textContent = "Waiting for a YouTube video.";
+    currentVideoId="";
+    $("karaokeFrame").removeAttribute("src");
+    $("karaokeFrame").style.display="none";
+    $("karaokeMessage").style.display="block";
+    $("karaokeMessage").textContent=
+      "Waiting for the host to select a karaoke video...";
     return;
   }
 
-  resetPlayer("Video is ready. Tap Play Video.");
+  if(videoId===currentVideoId)return;
+  currentVideoId=videoId;
 
-  $("playButton").classList.remove("hidden");
-  $("videoLabel").textContent = label;
-  $("videoMessage").textContent =
-    "The selected YouTube video is ready to play.";
+  $("karaokeFrame").src=
+    "https://www.youtube.com/embed/"+encodeURIComponent(videoId)+
+    "?autoplay=1&controls=0&playsinline=1&rel=0";
+
+  $("karaokeMessage").style.display="none";
+  $("karaokeFrame").style.display="block";
 }
 
-function playSelectedVideo(){
+function renderPerformer(data){
+  const name=
+    data?.currentPerformerName ||
+    data?.name ||
+    "Waiting for the singer...";
 
-  if(!selectedVideoId) return;
+  $("performerName").textContent=name;
 
-  $("videoPlayer").innerHTML = "";
+  const details=[];
+  const language=data?.language||data?.currentLanguage;
+  const song=data?.currentSongName||data?.songName;
+  const movie=data?.currentMovieName||data?.movieName;
 
-  const iframe = document.createElement("iframe");
+  if(language)details.push("Language: "+language);
+  if(song)details.push("Song: "+song);
+  if(movie)details.push("Movie: "+movie);
 
-  iframe.src =
-    "https://www.youtube-nocookie.com/embed/" +
-    encodeURIComponent(selectedVideoId) +
-    "?autoplay=1&rel=0";
-
-  iframe.allow =
-    "autoplay; encrypted-media; picture-in-picture";
-
-  iframe.allowFullscreen = true;
-  iframe.title = "Melody Magic Live Video";
-
-  $("videoPlayer").appendChild(iframe);
-
-  $("playButton").classList.add("hidden");
-
-  $("videoMessage").textContent =
-    "Video player is ready. Use YouTube controls to play.";
-
-  playerLoaded = true;
+  $("performanceDetails").textContent=details.join(" • ");
 }
 
-$("playButton").addEventListener("click", playSelectedVideo);
+function getStageUids(data){
+  if(Array.isArray(data?.singerUids)){
+    return data.singerUids.filter(Boolean);
+  }
 
-if(!showId){
+  if(data?.singerUid)return [data.singerUid];
 
-  $("status").textContent = "SHOW ID MISSING";
-  $("stageMessage").textContent =
-    "Please open the page using the host's show link.";
+  if(currentPerformance?.singerUid){
+    return [currentPerformance.singerUid];
+  }
 
-  resetPlayer("Show ID is missing.");
+  if(currentPerformance?.singerUids &&
+     Array.isArray(currentPerformance.singerUids)){
+    return currentPerformance.singerUids.filter(Boolean);
+  }
 
-}else{
+  return [];
+}
 
-  onValue(ref(db,"shows/"+showId),snapshot=>{
+function renderSingerVideo(){
+  const video=$("singerVideo");
+  const message=$("singerMessage");
 
-    if(!snapshot.exists()){
-      $("showTitle").textContent = "Show not found";
-      return;
+  const selectedTrack=stageSingerUids
+    .map(uid=>remoteTracks.get(uid))
+    .find(track=>track && track.kind==="video");
+
+  if(!selectedTrack){
+    video.pause();
+    video.srcObject=null;
+    video.style.display="none";
+    message.style.display="block";
+    return;
+  }
+
+  try{
+    const attached=selectedTrack.attach();
+
+    if(attached instanceof HTMLVideoElement){
+      attached.autoplay=true;
+      attached.playsInline=true;
+      attached.muted=true;
+      attached.style.cssText=
+        "width:100%;max-height:650px;aspect-ratio:16/9;object-fit:contain;background:#000;border-radius:8px";
+
+      video.replaceWith(attached);
+      attached.id="singerVideo";
+      attached.style.display="block";
+      $("singerMessage").style.display="none";
     }
+  }catch(error){
+    console.error("Singer video display:",error);
+  }
+}
 
-    const show = snapshot.val();
+function updateAudienceAudio(){
+  const allowedUids=new Set(stageSingerUids);
 
-    $("showTitle").textContent =
-      show.name || "Melody Magic Live Show";
+  // The host microphone can also be heard by the audience.
+  if(currentShow?.hostUid){
+    allowedUids.add(currentShow.hostUid);
+  }
 
+  for(const [uid,track] of remoteTracks.entries()){
+    if(track.kind!=="audio")continue;
+
+    if(allowedUids.has(uid)){
+      if(!audioElements.has(uid)){
+        const audio=track.attach();
+        audio.autoplay=true;
+        audio.dataset.audienceAudio="true";
+        audio.style.display="none";
+        document.body.appendChild(audio);
+        audioElements.set(uid,audio);
+
+        audio.play().catch(error=>{
+          console.warn("Browser audio autoplay restriction:",error);
+        });
+      }
+    }else{
+      const audio=audioElements.get(uid);
+      if(audio){
+        track.detach(audio);
+        audio.remove();
+        audioElements.delete(uid);
+      }
+    }
+  }
+}
+
+function updateStage(data){
+  stageSingerUids=getStageUids(data);
+  renderSingerVideo();
+  updateAudienceAudio();
+}
+
+function listenToShow(){
+  const stop=onValue(ref(db,"livePerformance/"+showId),snapshot=>{
+    currentPerformance=snapshot.val()||{};
+    renderPerformer(currentPerformance);
+
+    const video=
+      currentPerformance.currentKaraokeUrl ||
+      currentPerformance.currentKaraokeVideoId ||
+      currentPerformance.karaokeUrl ||
+      currentPerformance.youtubeUrl ||
+      "";
+
+    if(video)updateKaraokeVideo(video);
+    else if(!currentVideoId)updateKaraokeVideo("");
+
+    // If the stage data has not yet arrived, use the performer UID.
+    if(!stageSingerUids.length && currentPerformance.singerUid){
+      stageSingerUids=[currentPerformance.singerUid];
+      renderSingerVideo();
+      updateAudienceAudio();
+    }
   },error=>{
     console.error(error);
-    $("showTitle").textContent = "Unable to load show";
+    setStatus("Could not load live performance data.",true);
   });
 
-  onValue(ref(db,"livePerformance/"+showId),snapshot=>{
-
-    const data = snapshot.val();
-
-    if(!data){
-
-      $("status").textContent = "WAITING";
-      $("status").className = "status";
-
-      $("stageMessage").textContent =
-        "The host has not started the show yet.";
-
-      $("performerName").textContent = "Waiting for performer";
-      $("songName").textContent = "-";
-      $("movieName").textContent = "-";
-      $("performanceType").textContent = "-";
-
-      prepareVideo("", "", "");
-
-      return;
-    }
-
-    const status = String(data.status || "").toLowerCase();
-
-    if(status === "stopped"){
-
-      $("status").textContent = "SHOW ENDED";
-      $("status").className = "status";
-
-      $("stageMessage").textContent =
-        "The host has ended the live show.";
-
-      $("performerName").textContent = "Show ended";
-      $("songName").textContent = "-";
-      $("movieName").textContent = "-";
-      $("performanceType").textContent = "-";
-
-      prepareVideo("", "", "");
-
-      return;
-    }
-
-    if(status === "live"){
-
-      $("status").textContent = "LIVE";
-      $("status").className = "status live";
-
-      $("stageMessage").textContent =
-        "The show is currently live.";
-
-    }else{
-
-      $("status").textContent = "READY";
-      $("status").className = "status ready";
-
-      $("stageMessage").textContent =
-        "Waiting for the host to start the live show.";
-    }
-
-    const performerId = data.currentPerformerId || "";
-    const performerName =
-      data.currentPerformerName || "";
-
-    $("performerName").textContent =
-      performerName || "Waiting for performer";
-
-    $("songName").textContent =
-      data.currentSongName || "-";
-
-    $("movieName").textContent =
-      data.currentMovieName || "-";
-
-    $("performanceType").textContent =
-      data.currentPerformanceType || "-";
-
-    const karaokeId =
-      data.currentKaraokeVideoId ||
-      getVideoId(data.currentKaraokeUrl);
-
-    const mainId = getVideoId(data.youtubeUrl);
-
-    // Karaoke takes priority when a performer and track are selected.
-    if(performerId && karaokeId){
-
-      prepareVideo(
-        karaokeId,
-        "karaoke-" + performerId,
-        "🎤 Karaoke Track: " + performerName
-      );
-
-    }else if(mainId){
-
-      prepareVideo(
-        mainId,
-        "main",
-        "🎬 Main Live Show Video"
-      );
-
-    }else{
-
-      prepareVideo("", "", "");
-    }
-
-    if(data.performanceStatus === "Ready"){
-      $("stageMessage").textContent =
-        "The show is live. The selected singer is ready to perform.";
-    }
-
-  },error=>{
-
-    console.error(error);
-
-    $("status").textContent = "CONNECTION ERROR";
-
-    $("stageMessage").textContent =
-      "Unable to connect: " + error.message;
-
-    resetPlayer("Unable to load the video.");
-
-  });
-
+  stopFunctions.push(stop);
 }
 
+function listenToStage(){
+  const stop=onValue(ref(db,"liveStage/"+showId),snapshot=>{
+    updateStage(snapshot.val()||{});
+  },error=>console.error("Stage listener:",error));
+
+  stopFunctions.push(stop);
+}
+
+function listenToKaraokeSelection(){
+  const stop=onValue(ref(db,"karaokeSelectionsByShow/"+showId),snapshot=>{
+    const data=snapshot.val();
+    if(!data)return;
+
+    const selected=
+      data.videoId ||
+      data.youtubeUrl ||
+      data.karaokeUrl ||
+      "";
+
+    if(selected)updateKaraokeVideo(selected);
+  },error=>console.error("Karaoke listener:",error));
+
+  stopFunctions.push(stop);
+}
+
+async function getAudienceToken(){
+  const idToken=await currentUser.getIdToken();
+
+  const response=await fetch(TOKEN_SERVER,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+idToken
+    },
+    body:JSON.stringify({
+      action:"join",
+      showId,
+      name:"Audience"
+    })
+  });
+
+  const result=await response.json().catch(()=>({}));
+
+  if(!response.ok || result.success===false){
+    throw new Error(
+      result.error||result.message||"Could not get audience access token."
+    );
+  }
+
+  if(!result.token){
+    throw new Error("Live server did not return an audience token.");
+  }
+
+  return result;
+}
+
+async function connectAudienceLiveKit(){
+  const tokenData=await getAudienceToken();
+
+  room=new Room({
+    adaptiveStream:true,
+    dynacast:true
+  });
+
+  room.on(RoomEvent.TrackSubscribed,(track,publication,participant)=>{
+    const uid=participant.identity;
+
+    remoteTracks.set(uid,track);
+
+    if(track.kind==="audio"){
+      updateAudienceAudio();
+    }
+
+    if(track.kind==="video"){
+      renderSingerVideo();
+    }
+  });
+
+  room.on(RoomEvent.TrackUnsubscribed,(track,publication,participant)=>{
+    const uid=participant.identity;
+
+    if(track.kind==="audio"){
+      const audio=audioElements.get(uid);
+      if(audio){
+        track.detach(audio);
+        audio.remove();
+        audioElements.delete(uid);
+      }
+    }
+
+    remoteTracks.delete(uid);
+
+    if(track.kind==="video"){
+      renderSingerVideo();
+    }
+  });
+
+  room.on(RoomEvent.ParticipantDisconnected,participant=>{
+    const uid=participant.identity;
+    remoteTracks.delete(uid);
+
+    const audio=audioElements.get(uid);
+    if(audio){
+      audio.remove();
+      audioElements.delete(uid);
+    }
+
+    renderSingerVideo();
+  });
+
+  room.on(RoomEvent.Disconnected,()=>{
+    setStatus("Live connection ended. Refresh the page to reconnect.",true);
+  });
+
+  await room.connect(tokenData.url||LIVEKIT_URL,tokenData.token);
+
+  // Handle tracks that were already published before the audience joined.
+  room.remoteParticipants.forEach(participant=>{
+    participant.trackPublications.forEach(publication=>{
+      if(publication.track){
+        remoteTracks.set(participant.identity,publication.track);
+      }
+    });
+  });
+
+  renderSingerVideo();
+  updateAudienceAudio();
+}
+
+async function initializeAudience(){
+  if(!showId){
+    setStatus("Show ID is missing from the page link.",true);
+    return;
+  }
+
+  try{
+    setStatus("Connecting securely...");
+
+    currentUser=auth.currentUser || await connectAuditorium();
+
+    const showSnapshot=await get(ref(db,"shows/"+showId));
+
+    if(!showSnapshot.exists()){
+      throw new Error("Show not found.");
+    }
+
+    currentShow=showSnapshot.val();
+
+    if(!["Published","Live"].includes(currentShow.status)){
+      throw new Error("This show is not currently available.");
+    }
+
+    const blockSnapshot=await get(
+      ref(db,`audienceBlocks/${showId}/${currentUser.uid}`)
+    );
+
+    if(blockSnapshot.exists() && blockSnapshot.val()===true){
+      throw new Error("Your access to this show has been blocked by the host.");
+    }
+
+    const fee=Number(currentShow.audienceFee||0);
+
+    if(fee<=0){
+      const accessRef=ref(
+        db,`audienceAccess/${showId}/${currentUser.uid}`
+      );
+
+      const accessSnapshot=await get(accessRef);
+
+      if(!accessSnapshot.exists()){
+        await set(accessRef,true);
+      }
+    }else{
+      const accessSnapshot=await get(
+        ref(db,`audienceAccess/${showId}/${currentUser.uid}`)
+      );
+
+      if(!accessSnapshot.exists() || accessSnapshot.val()!==true){
+        document.body.innerHTML=`
+          <div style="max-width:600px;margin:50px auto;padding:20px;background:#171717;color:white;border:1px solid #9b7939;border-radius:12px;font-family:Arial;text-align:center">
+            <h2 style="color:#e5bd62">Audience Approval Required</h2>
+            <p>This is a paid show. Your registration must be approved by the host before you can watch.</p>
+            <p>Please complete your registration and payment confirmation.</p>
+            <a style="color:#e5bd62" href="audience-entry.html?showId=${encodeURIComponent(showId)}">Go to audience registration</a>
+          </div>`;
+        return;
+      }
+    }
+
+    $("status").textContent=
+      "Connected • "+(currentShow.name||"Live Show");
+
+    listenToShow();
+    listenToStage();
+    listenToKaraokeSelection();
+
+    await connectAudienceLiveKit();
+
+    setStatus("You are watching the live auditorium.");
+
+  }catch(error){
+    console.error("Audience initialization:",error);
+    setStatus(error.message||"Unable to enter the auditorium.",true);
+  }
+}
+
+window.addEventListener("beforeunload",()=>{
+  stopAllListeners();
+  if(room)room.disconnect();
+});
+
+initializeAudience();
 </script>
 </body>
 </html>
