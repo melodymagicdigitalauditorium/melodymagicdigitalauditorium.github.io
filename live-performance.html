@@ -142,16 +142,16 @@ a{color:#e5bd62}
 </section>
 
 <section class="card">
-  <h3>🎙️ Live Singer</h3>
+  <h3>🎙️ Live Performance</h3>
 
   <div id="performerName">
-    Waiting for the singer...
+    Waiting for the performer...
   </div>
 
   <div id="performanceDetails"></div>
 
   <div id="singerMessage">
-    The singer's live camera will appear here when the host selects the stage performer.
+    Waiting for the host or selected singer's live camera...
   </div>
 
   <video id="singerVideo" autoplay playsinline></video>
@@ -228,7 +228,6 @@ function stopAllListeners(){
   stopFunctions.forEach(stop=>{
     try{stop()}catch(e){}
   });
-
   stopFunctions = [];
 }
 
@@ -282,7 +281,6 @@ function updateKaraokeVideo(value){
     $("karaokeFrame").style.display = "none";
 
     $("karaokeMessage").style.display = "block";
-
     $("karaokeMessage").textContent =
       "Waiting for the host to select a karaoke video...";
 
@@ -307,7 +305,7 @@ function renderPerformer(data){
   const name =
     data?.currentPerformerName ||
     data?.name ||
-    "Waiting for the singer...";
+    "Waiting for the performer...";
 
   $("performerName").textContent = name;
 
@@ -354,15 +352,45 @@ function getStageUids(data){
   return [];
 }
 
+/*
+  VIDEO DISPLAY PRIORITY:
+
+  1. Selected stage singer camera.
+  2. Host camera, if no selected singer camera is available.
+
+  The host and singer must publish their camera to LiveKit.
+*/
+
 function renderSingerVideo(){
 
   const video = $("singerVideo");
   const message = $("singerMessage");
 
-  const selectedTrack = stageSingerUids
-    .map(uid=>remoteTracks.get(uid))
-    .find(track=>track && track.kind==="video");
+  let selectedTrack = null;
 
+  // First try the selected stage singer.
+  for(const uid of stageSingerUids){
+
+    const track = remoteTracks.get(uid);
+
+    if(track && track.kind==="video"){
+      selectedTrack = track;
+      break;
+    }
+  }
+
+  // If singer camera is unavailable, try host camera.
+  if(!selectedTrack && currentShow?.hostUid){
+
+    const hostTrack =
+      remoteTracks.get(currentShow.hostUid);
+
+    if(hostTrack && hostTrack.kind==="video"){
+      selectedTrack = hostTrack;
+    }
+  }
+
+  // No camera available.
   if(!selectedTrack){
 
     if(activeVideoTrack){
@@ -379,10 +407,12 @@ function renderSingerVideo(){
     return;
   }
 
-  if(
-    activeVideoTrack &&
-    activeVideoTrack!==selectedTrack
-  ){
+  // Avoid attaching the same track repeatedly.
+  if(activeVideoTrack === selectedTrack){
+    return;
+  }
+
+  if(activeVideoTrack){
     activeVideoTrack.detach(video);
   }
 
@@ -401,7 +431,7 @@ function renderSingerVideo(){
 
   }catch(error){
 
-    console.error("Singer video display:",error);
+    console.error("Camera display error:",error);
   }
 }
 
@@ -409,7 +439,7 @@ function updateAudienceAudio(){
 
   const allowedUids = new Set(stageSingerUids);
 
-  // Allow host microphone audio.
+  // Host microphone audio.
   if(currentShow?.hostUid){
     allowedUids.add(currentShow.hostUid);
   }
@@ -483,22 +513,16 @@ function listenToShow(){
 
       updateKaraokeVideo(video);
 
-      if(!stageSingerUids.length &&
-         currentPerformance.singerUid){
-
-        stageSingerUids = [
-          currentPerformance.singerUid
-        ];
-
-        renderSingerVideo();
-        updateAudienceAudio();
+      if(!stageSingerUids.length){
+        stageSingerUids = getStageUids({});
       }
+
+      renderSingerVideo();
+      updateAudienceAudio();
     },
 
     error=>{
-
       console.error(error);
-
       setStatus(
         "Could not load live performance data.",
         true
@@ -558,9 +582,7 @@ function listenToKaraokeSelection(){
   stopFunctions.push(stop);
 }
 
-// AUDIENCE QUEUE COUNTER
-// Only counts Waiting entries.
-// Does not display singer names or registration details.
+// Audience sees only the number of waiting singers.
 
 function listenToSingerQueue(){
 
@@ -590,13 +612,11 @@ function listenToSingerQueue(){
       });
 
       $("queueCount").textContent = waitingCount;
-
     },
 
     error=>{
 
       console.error("Singer queue listener:",error);
-
       $("queueCount").textContent = "--";
     }
   );
@@ -637,7 +657,6 @@ async function getAudienceToken(){
   }
 
   if(!result.token){
-
     throw new Error(
       "Live server did not return an audience token."
     );
@@ -652,7 +671,8 @@ async function connectAudienceLiveKit(){
 
   room = new Room({
     adaptiveStream:true,
-    dynacast:true
+    dynacast:true,
+    autoSubscribe:true
   });
 
   room.on(
@@ -719,20 +739,22 @@ async function connectAudienceLiveKit(){
     }
   );
 
-  room.on(RoomEvent.Disconnected,()=>{
-
-    setStatus(
-      "Live connection ended. Refresh the page to reconnect.",
-      true
-    );
-  });
+  room.on(
+    RoomEvent.Disconnected,
+    ()=>{
+      setStatus(
+        "Live connection ended. Refresh the page to reconnect.",
+        true
+      );
+    }
+  );
 
   await room.connect(
     tokenData.url||LIVEKIT_URL,
     tokenData.token
   );
 
-  // Tracks already subscribed when the audience connects.
+  // Process tracks already subscribed when audience joined.
   room.remoteParticipants.forEach(participant=>{
 
     participant.trackPublications.forEach(publication=>{
