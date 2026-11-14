@@ -5,29 +5,109 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Melody Magic Digital Auditorium - Live Stage</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:16px;background:#080808;color:white;font-family:Arial,sans-serif}
+
+body{
+  margin:0;
+  padding:16px;
+  background:#080808;
+  color:white;
+  font-family:Arial,sans-serif;
+}
+
 h2{text-align:center;color:#f5c542}
 h3{color:#f5c542}
-.container{max-width:900px;margin:auto}
-.card{background:#171717;border:1px solid #51401e;border-radius:12px;padding:15px;margin:18px auto}
-#videoFrame{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;background:#000}
-#videoMessage{text-align:center;color:#ddd;padding:18px 8px}
-#livekitArea{width:100%;max-width:850px;margin:20px auto}
-button{border:0;border-radius:7px;padding:11px 15px;margin:5px;background:#d4a52f;color:#111;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.45;cursor:not-allowed}
+
+.container{
+  max-width:900px;
+  margin:auto;
+}
+
+.card{
+  background:#171717;
+  border:1px solid #51401e;
+  border-radius:12px;
+  padding:15px;
+  margin:18px auto;
+}
+
+#videoFrame{
+  display:none;
+  width:100%;
+  aspect-ratio:16/9;
+  border:0;
+  border-radius:8px;
+  background:#000;
+}
+
+#videoMessage{
+  text-align:center;
+  color:#ddd;
+  padding:18px 8px;
+}
+
+#livekitArea{
+  width:100%;
+  max-width:850px;
+  margin:20px auto;
+}
+
+button{
+  border:0;
+  border-radius:7px;
+  padding:11px 15px;
+  margin:5px;
+  background:#d4a52f;
+  color:#111;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
 .green{background:#239b56;color:white}
 .red{background:#b52d2d;color:white}
 .blue{background:#286caa;color:white}
 .gray{background:#555;color:white}
-.performer{background:#0c0c0c;border:1px solid #454545;border-radius:9px;padding:12px;margin:10px 0}
-.badge{display:inline-block;background:#443719;color:#f5d47b;border-radius:15px;padding:5px 9px;font-size:12px;margin:3px}
-.small{font-size:13px;color:#bbb}
+
+.performer{
+  background:#0c0c0c;
+  border:1px solid #454545;
+  border-radius:9px;
+  padding:12px;
+  margin:10px 0;
+}
+
+.badge{
+  display:inline-block;
+  background:#443719;
+  color:#f5d47b;
+  border-radius:15px;
+  padding:5px 9px;
+  font-size:12px;
+  margin:3px;
+}
+
+.small{
+  font-size:13px;
+  color:#bbb;
+}
+
 .center{text-align:center}
-footer{text-align:center;color:#999;padding:20px}
+
+footer{
+  text-align:center;
+  color:#999;
+  padding:20px;
+}
 </style>
 </head>
+
 <body>
 <div class="container">
 
@@ -39,17 +119,25 @@ footer{text-align:center;color:#999;padding:20px}
   <p id="loginStatus" class="small"></p>
 </div>
 
-<section class="card">
+<!-- KARAOKE: ONE YOUTUBE PLAYER ONLY -->
+<section class="card" id="karaokeSection">
   <h3>🎵 Karaoke Performance</h3>
-  <div id="videoMessage">Loading the host's karaoke selection...</div>
-  <iframe id="videoFrame" style="display:none"
+
+  <div id="videoMessage">
+    Loading the host's karaoke selection...
+  </div>
+
+  <iframe
+    id="videoFrame"
     title="YouTube Karaoke Player"
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-    allowfullscreen></iframe>
+    allowfullscreen>
+  </iframe>
 </section>
 
 <section class="card">
   <h3>🎙️ Current Performer</h3>
+
   <div id="currentPerformer" class="center">
     Waiting for the host to start the performance.
   </div>
@@ -57,16 +145,34 @@ footer{text-align:center;color:#999;padding:20px}
 
 <section class="card">
   <h3>🎤 Singing Queue</h3>
-  <p class="small">Approved performers will appear here automatically.</p>
-  <div id="performerQueue">Loading performers...</div>
+  <p class="small">
+    Approved performers will appear here automatically.
+  </p>
+
+  <div id="performerQueue">
+    Loading performers...
+  </div>
 </section>
 
 <section class="card" id="hostControls" style="display:none">
   <h3>👑 Host Performance Controls</h3>
-  <p class="small">Only the approved host with an active subscription can manage performances.</p>
-  <button class="green" id="startBtn">▶ Start Next Performer</button>
-  <button class="blue" id="nextBtn">⏭ Finish & Next</button>
-  <button class="red" id="finishBtn">■ Finish Performance</button>
+
+  <p class="small">
+    Only the approved host with an active subscription can manage performances.
+  </p>
+
+  <button class="green" id="startBtn">
+    ▶ Start Next Performer
+  </button>
+
+  <button class="blue" id="nextBtn">
+    ⏭ Finish & Next
+  </button>
+
+  <button class="red" id="finishBtn">
+    ■ Finish Performance
+  </button>
+
   <p id="hostMessage" class="small"></p>
 </section>
 
@@ -75,368 +181,701 @@ footer{text-align:center;color:#999;padding:20px}
 </section>
 
 <footer>Powered by Melody Magic Music Studio</footer>
+
 </div>
 
 <script type="module">
 import {auth,db} from "./firebase.js";
-import {onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
 import {
-  ref,get,onValue,update,set
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+  ref,
+  get,
+  onValue,
+  update,
+  set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-const showId = new URLSearchParams(location.search).get("showId");
+
+/* ---------------- CONFIGURATION ---------------- */
+
+const showId =
+  new URLSearchParams(location.search).get("showId");
+
 const $ = id => document.getElementById(id);
+
+
+/* ---------------- APPLICATION STATE ---------------- */
 
 let currentUser = null;
 let isHost = false;
 let showData = null;
 let registrations = {};
 let activeRegistration = null;
+
 let currentVideoId = "";
 let stops = [];
 
+let authInitialized = false;
+let actionRunning = false;
+
+
+/* ---------------- LISTENER CLEANUP ---------------- */
+
 function stopListeners(){
-  stops.forEach(stop => {
-    try { stop(); } catch(e) {}
+  stops.forEach(stop=>{
+    try{
+      stop();
+    }catch(error){
+      console.warn("Listener cleanup:",error);
+    }
   });
+
   stops = [];
 }
 
+
+/* ---------------- HTML SAFETY ---------------- */
+
 function escapeHTML(value){
   return String(value ?? "").replace(/[&<>"']/g,c=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
   })[c]);
 }
 
-function setMessage(text){
-  $("hostMessage").textContent = text;
+
+/* ---------------- MESSAGES ---------------- */
+
+function setMessage(message){
+  $("hostMessage").textContent = message;
 }
 
-function showVideoMessage(text){
-  $("videoMessage").textContent = text;
+function showVideoMessage(message){
+  $("videoMessage").textContent = message;
   $("videoMessage").style.display = "block";
   $("videoFrame").style.display = "none";
 }
 
-async function checkHost(uid){
-  if(!showData || showData.hostUid !== uid) return false;
+function setActionButtonsDisabled(disabled){
+  $("startBtn").disabled = disabled;
+  $("nextBtn").disabled = disabled;
+  $("finishBtn").disabled = disabled;
+}
 
-  const snap = await get(ref(db,"hostApplications/" + uid));
-  if(!snap.exists()) return false;
+
+/* ---------------- YOUTUBE PLAYER ---------------- */
+
+/*
+  This page contains one fixed iframe.
+  Never create another iframe when Firebase changes.
+*/
+
+function getYouTubeVideoId(value){
+  const input = String(value || "").trim();
+
+  if(!input) return "";
+
+  // Accept a plain YouTube video ID.
+  if(/^[a-zA-Z0-9_-]{11}$/.test(input)){
+    return input;
+  }
+
+  // Accept common YouTube URL formats.
+  try{
+    const url = new URL(input);
+
+    if(url.hostname.includes("youtu.be")){
+      return url.pathname.split("/").filter(Boolean)[0] || "";
+    }
+
+    if(url.hostname.includes("youtube.com")){
+      if(url.searchParams.get("v")){
+        return url.searchParams.get("v");
+      }
+
+      const parts = url.pathname.split("/").filter(Boolean);
+
+      const embedIndex = parts.indexOf("embed");
+
+      if(embedIndex >= 0){
+        return parts[embedIndex + 1] || "";
+      }
+
+      const shortsIndex = parts.indexOf("shorts");
+
+      if(shortsIndex >= 0){
+        return parts[shortsIndex + 1] || "";
+      }
+    }
+  }catch(error){
+    return "";
+  }
+
+  return "";
+}
+
+
+function updateYouTubePlayer(videoValue){
+  const videoId = getYouTubeVideoId(videoValue);
+
+  if(!videoId){
+    currentVideoId = "";
+    $("videoFrame").removeAttribute("src");
+
+    showVideoMessage(
+      "No valid YouTube karaoke video has been selected."
+    );
+
+    return;
+  }
+
+  // Do not reload the same video on repeated Firebase updates.
+  if(videoId === currentVideoId){
+    $("videoMessage").style.display = "none";
+    $("videoFrame").style.display = "block";
+    return;
+  }
+
+  currentVideoId = videoId;
+
+  const newURL =
+    "https://www.youtube.com/embed/" +
+    encodeURIComponent(videoId) +
+    "?playsinline=1&rel=0";
+
+  $("videoFrame").src = newURL;
+
+  $("videoMessage").style.display = "none";
+  $("videoFrame").style.display = "block";
+}
+
+
+function startKaraokeListener(){
+  const karaokeRef =
+    ref(db,"karaokeSelectionsByShow/" + showId);
+
+  const stop = onValue(
+    karaokeRef,
+    snap=>{
+      const selection = snap.val();
+
+      if(!selection){
+        currentVideoId = "";
+        $("videoFrame").removeAttribute("src");
+
+        showVideoMessage(
+          "The host has not selected a karaoke video yet."
+        );
+
+        return;
+      }
+
+      if(selection.showTitle){
+        $("showTitle").textContent = selection.showTitle;
+      }
+
+      updateYouTubePlayer(selection.videoId);
+    },
+    error=>{
+      console.error("Karaoke listener:",error);
+
+      showVideoMessage(
+        "Unable to load karaoke selection: " + error.message
+      );
+    }
+  );
+
+  stops.push(stop);
+}
+
+
+/* ---------------- HOST VERIFICATION ---------------- */
+
+async function checkHost(uid){
+  if(!showData || showData.hostUid !== uid){
+    return false;
+  }
+
+  const snap = await get(
+    ref(db,"hostApplications/" + uid)
+  );
+
+  if(!snap.exists()){
+    return false;
+  }
 
   const app = snap.val();
   const now = Date.now();
 
-  return app.status === "Approved" &&
+  return (
+    app.status === "Approved" &&
     Number(app.subscriptionStartAt || 0) <= now &&
-    Number(app.subscriptionEndAt || 0) > now;
+    Number(app.subscriptionEndAt || 0) > now
+  );
 }
 
-function startKaraokeListener(){
-  const stop = onValue(ref(db,"karaokeSelectionsByShow/" + showId),snap=>{
-    const selection = snap.val();
 
-    if(!selection){
-      showVideoMessage("The host has not selected a karaoke video yet.");
-      return;
-    }
+/* ---------------- PUBLIC PERFORMANCE ---------------- */
 
-    if(selection.showTitle){
-      $("showTitle").textContent = selection.showTitle;
-    }
+function displayPerformance(performance){
+  if(!performance || !performance.name){
+    $("currentPerformer").textContent =
+      "No performer is currently on stage.";
 
-    const id = String(selection.videoId || "").trim();
+    return;
+  }
 
-    if(!id){
-      showVideoMessage("No YouTube karaoke video has been selected.");
-      return;
-    }
+  $("currentPerformer").innerHTML = `
+    <h2>${escapeHTML(performance.name)}</h2>
 
-    if(id !== currentVideoId){
-      currentVideoId = id;
-      $("videoFrame").src =
-        "https://www.youtube.com/embed/" +
-        encodeURIComponent(id) +
-        "?playsinline=1&rel=0";
-    }
+    <span class="badge">NOW PERFORMING</span>
 
-    $("videoMessage").style.display = "none";
-    $("videoFrame").style.display = "block";
-  },error=>{
-    console.error(error);
-    showVideoMessage("Unable to load karaoke selection: " + error.message);
-  });
+    <p>${escapeHTML(performance.language || "")}</p>
 
-  stops.push(stop);
+    <p>Solo songs: ${Number(performance.soloCount || 0)}</p>
+
+    <p>Duet songs: ${Number(performance.duetCount || 0)}</p>
+  `;
 }
 
-function startHostRegistrationListener(){
-  const stop = onValue(ref(db,"showRegistrations/" + showId),snap=>{
-    registrations = snap.val() || {};
-    renderQueue();
-  },error=>{
-    console.error(error);
-    $("performerQueue").textContent =
-      "Unable to load host queue: " + error.message;
-  });
-
-  stops.push(stop);
-}
 
 function startPublicPerformanceListener(){
-  const stop = onValue(ref(db,"livePerformance/" + showId),snap=>{
-    const performance = snap.val();
+  const performanceRef =
+    ref(db,"livePerformance/" + showId);
 
-    if(!performance || !performance.name){
-      $("currentPerformer").textContent =
-        "No performer is currently on stage.";
-      return;
+  const stop = onValue(
+    performanceRef,
+    snap=>{
+      displayPerformance(snap.val());
+    },
+    error=>{
+      console.error("Public performance listener:",error);
     }
-
-    $("currentPerformer").innerHTML = `
-      <h2>${escapeHTML(performance.name)}</h2>
-      <span class="badge">NOW PERFORMING</span>
-      <p>${escapeHTML(performance.language || "")}</p>
-      <p>Solo songs: ${Number(performance.soloCount || 0)}</p>
-      <p>Duet songs: ${Number(performance.duetCount || 0)}</p>
-    `;
-  },error=>{
-    console.error("Public performance listener:",error);
-  });
+  );
 
   stops.push(stop);
 }
 
-function renderQueue(){
-  const entries = Object.entries(registrations);
 
-  const queued = entries
-    .filter(([,p])=>p && p.status === "Queued")
-    .sort((a,b)=>Number(a[1].updatedAt || a[1].createdAt || 0) -
-                 Number(b[1].updatedAt || b[1].createdAt || 0));
+/* ---------------- HOST REGISTRATION LISTENER ---------------- */
+
+function startHostRegistrationListener(){
+  const registrationRef =
+    ref(db,"showRegistrations/" + showId);
+
+  const stop = onValue(
+    registrationRef,
+    snap=>{
+      registrations = snap.val() || {};
+      renderQueue();
+    },
+    error=>{
+      console.error("Host registration listener:",error);
+
+      $("performerQueue").textContent =
+        "Unable to load host queue: " + error.message;
+    }
+  );
+
+  stops.push(stop);
+}
+
+
+/* ---------------- QUEUE DISPLAY ---------------- */
+
+function getSortedRegistrations(){
+  return Object.entries(registrations)
+    .filter(([,person])=>person)
+    .sort((a,b)=>
+      Number(a[1].createdAt || 0) -
+      Number(b[1].createdAt || 0)
+    );
+}
+
+
+function renderQueue(){
+  const entries = getSortedRegistrations();
+
+  const queued = entries.filter(
+    ([,person])=>person.status === "Queued"
+  );
 
   activeRegistration = queued[0] || null;
 
   if(activeRegistration){
-    const p = activeRegistration[1];
-    $("currentPerformer").innerHTML = `
-      <h2>${escapeHTML(p.name || "Performer")}</h2>
-      <span class="badge">NOW PERFORMING</span>
-      <p>${escapeHTML(p.language || "")}</p>
-      <p>Solo songs: ${Number(p.soloCount || 0)}</p>
-      <p>Duet songs: ${Number(p.duetCount || 0)}</p>
-    `;
-  }else if(isHost){
-    $("currentPerformer").textContent = "No performer is currently on stage.";
+    displayPerformance({
+      ...activeRegistration[1],
+      name:activeRegistration[1].name || "Performer"
+    });
+  }else{
+    $("currentPerformer").textContent =
+      "No performer is currently on stage.";
   }
 
-  const visible = entries
-    .filter(([,p])=>p && ["Approved","Queued"].includes(p.status))
-    .sort((a,b)=>Number(a[1].createdAt || 0)-Number(b[1].createdAt || 0));
+  const visible = entries.filter(
+    ([,person])=>
+      ["Approved","Queued"].includes(person.status)
+  );
 
   const container = $("performerQueue");
   container.innerHTML = "";
 
   if(!visible.length){
-    container.innerHTML = '<p class="small">No approved performers waiting.</p>';
+    container.innerHTML =
+      '<p class="small">No approved performers waiting.</p>';
   }
 
-  visible.forEach(([id,p])=>{
+  visible.forEach(([id,person])=>{
     const card = document.createElement("div");
+
     card.className = "performer";
+
     card.innerHTML = `
-      <h3>${escapeHTML(p.name || "Performer")}</h3>
-      <span class="badge">${escapeHTML(p.status || "Waiting")}</span>
+      <h3>${escapeHTML(person.name || "Performer")}</h3>
+
+      <span class="badge">
+        ${escapeHTML(person.status || "Waiting")}
+      </span>
+
       <p class="small">
-        Language: ${escapeHTML(p.language || "Not specified")}<br>
-        Solo songs: ${Number(p.soloCount || 0)}<br>
-        Duet songs: ${Number(p.duetCount || 0)}
-      </p>`;
+        Language: ${escapeHTML(person.language || "Not specified")}<br>
+        Solo songs: ${Number(person.soloCount || 0)}<br>
+        Duet songs: ${Number(person.duetCount || 0)}
+      </p>
+    `;
+
     container.appendChild(card);
   });
 
   if(isHost){
     $("startBtn").disabled =
+      actionRunning ||
       !!activeRegistration ||
-      !visible.some(([,p])=>p.status === "Approved");
-    $("nextBtn").disabled = !activeRegistration;
-    $("finishBtn").disabled = !activeRegistration;
+      !visible.some(([,person])=>person.status === "Approved");
+
+    $("nextBtn").disabled =
+      actionRunning || !activeRegistration;
+
+    $("finishBtn").disabled =
+      actionRunning || !activeRegistration;
   }
 }
 
+
+/* ---------------- DATABASE ACTIONS ---------------- */
+
 async function updateRegistrationStatus(id,status){
-  if(!isHost || !currentUser) {
-    throw new Error("Only the active approved host can manage performers.");
+  if(!isHost || !currentUser){
+    throw new Error(
+      "Only the active approved host can manage performers."
+    );
   }
 
-  const item = registrations[id];
-  if(!item) throw new Error("Performer registration not found.");
+  if(!registrations[id]){
+    throw new Error("Performer registration not found.");
+  }
 
   await update(
     ref(db,"showRegistrations/" + showId + "/" + id),
-    {status,updatedAt:Date.now()}
+    {
+      status,
+      updatedAt:Date.now()
+    }
   );
 }
 
-async function publishCurrentPerformer(item,id){
-  await set(ref(db,"livePerformance/" + showId),{
-    registrationId:id,
-    singerUid:item.singerUid || "",
-    name:item.name || "Performer",
-    language:item.language || "",
-    soloCount:Number(item.soloCount || 0),
-    duetCount:Number(item.duetCount || 0),
-    status:"Performing",
-    updatedAt:Date.now()
-  });
+
+async function publishCurrentPerformer(person,id){
+  await set(
+    ref(db,"livePerformance/" + showId),
+    {
+      registrationId:id,
+      singerUid:person.singerUid || "",
+      name:person.name || "Performer",
+      language:person.language || "",
+      soloCount:Number(person.soloCount || 0),
+      duetCount:Number(person.duetCount || 0),
+      status:"Performing",
+      updatedAt:Date.now()
+    }
+  );
 }
+
 
 async function clearPublicPerformer(){
-  await set(ref(db,"livePerformance/" + showId),{
-    name:"",
-    status:"Waiting",
-    updatedAt:Date.now()
-  });
+  await set(
+    ref(db,"livePerformance/" + showId),
+    {
+      name:"",
+      status:"Waiting",
+      updatedAt:Date.now()
+    }
+  );
 }
+
 
 async function clearLiveStage(){
-  await set(ref(db,"liveStage/" + showId),{
-    mode:"solo",
-    registrationIds:[],
-    singerUids:[],
-    singerNames:[],
-    updatedAt:Date.now()
-  });
+  await set(
+    ref(db,"liveStage/" + showId),
+    {
+      mode:"solo",
+      registrationIds:[],
+      singerUids:[],
+      singerNames:[],
+      updatedAt:Date.now()
+    }
+  );
 }
 
-$("startBtn").addEventListener("click",async()=>{
-  try{
-    if(!isHost || activeRegistration) return;
 
-    const next = Object.entries(registrations)
-      .filter(([,p])=>p && p.status === "Approved")
-      .sort((a,b)=>Number(a[1].createdAt || 0)-Number(b[1].createdAt || 0))[0];
+function findNextApproved(excludeId = ""){
+  return getSortedRegistrations()
+    .filter(([id,person])=>
+      id !== excludeId &&
+      person.status === "Approved"
+    )[0] || null;
+}
+
+
+/* ---------------- START NEXT PERFORMER ---------------- */
+
+$("startBtn").addEventListener("click",async()=>{
+  if(actionRunning || !isHost) return;
+
+  actionRunning = true;
+  renderQueue();
+
+  try{
+    if(activeRegistration){
+      throw new Error("Finish the current performance first.");
+    }
+
+    const next = findNextApproved();
 
     if(!next){
       setMessage("No approved performer is waiting.");
       return;
     }
 
-    await updateRegistrationStatus(next[0],"Queued");
-    await publishCurrentPerformer(next[1],next[0]);
+    const [id,person] = next;
+
+    await updateRegistrationStatus(id,"Queued");
+
+    await publishCurrentPerformer(person,id);
+
     await clearLiveStage();
 
-    setMessage("Performer started. Select the connected singer in the Live Auditorium stage controls.");
+    setMessage(
+      "Performer started. Select the connected singer in the Live Auditorium stage controls."
+    );
+
   }catch(error){
     console.error(error);
     setMessage("Could not start performer: " + error.message);
+
+  }finally{
+    actionRunning = false;
+    renderQueue();
   }
 });
+
+
+/* ---------------- FINISH PERFORMANCE ---------------- */
 
 $("finishBtn").addEventListener("click",async()=>{
+  if(actionRunning || !isHost || !activeRegistration) return;
+
+  actionRunning = true;
+  renderQueue();
+
   try{
-    if(!isHost || !activeRegistration) return;
-
-    await updateRegistrationStatus(activeRegistration[0],"Completed");
-    await clearLiveStage();
-    await clearPublicPerformer();
-
-    setMessage("Performance completed.");
-  }catch(error){
-    console.error(error);
-    setMessage("Could not finish: " + error.message);
-  }
-});
-
-$("nextBtn").addEventListener("click",async()=>{
-  try{
-    if(!isHost || !activeRegistration) return;
-
     const oldId = activeRegistration[0];
 
     await updateRegistrationStatus(oldId,"Completed");
+
     await clearLiveStage();
 
-    const next = Object.entries(registrations)
-      .filter(([id,p])=>id !== oldId && p && p.status === "Approved")
-      .sort((a,b)=>Number(a[1].createdAt || 0)-Number(b[1].createdAt || 0))[0];
+    await clearPublicPerformer();
 
-    if(next){
-      await updateRegistrationStatus(next[0],"Queued");
-      await publishCurrentPerformer(next[1],next[0]);
-      setMessage("Next performer started. Select them in the Live Auditorium stage controls.");
-    }else{
-      await clearPublicPerformer();
-      setMessage("Performance completed. No more approved performers.");
-    }
+    setMessage("Performance completed.");
+
   }catch(error){
     console.error(error);
-    setMessage("Could not advance queue: " + error.message);
+    setMessage("Could not finish: " + error.message);
+
+  }finally{
+    actionRunning = false;
+    renderQueue();
   }
 });
 
-async function initialize(){
-  if(!showId){
-    $("showStatus").textContent = "Show ID is missing.";
-    showVideoMessage("Please open the auditorium using the correct show link.");
+
+/* ---------------- FINISH AND NEXT ---------------- */
+
+$("nextBtn").addEventListener("click",async()=>{
+  if(actionRunning || !isHost || !activeRegistration) return;
+
+  actionRunning = true;
+  renderQueue();
+
+  try{
+    const oldId = activeRegistration[0];
+
+    await updateRegistrationStatus(oldId,"Completed");
+
+    await clearLiveStage();
+
+    // Use the current local registrations, excluding the old performer.
+    const next = findNextApproved(oldId);
+
+    if(next){
+      const [nextId,nextPerson] = next;
+
+      await updateRegistrationStatus(nextId,"Queued");
+
+      await publishCurrentPerformer(nextPerson,nextId);
+
+      setMessage(
+        "Next performer started. Select them in the Live Auditorium stage controls."
+      );
+
+    }else{
+      await clearPublicPerformer();
+
+      setMessage(
+        "Performance completed. No more approved performers."
+      );
+    }
+
+  }catch(error){
+    console.error(error);
+    setMessage("Could not advance queue: " + error.message);
+
+  }finally{
+    actionRunning = false;
+    renderQueue();
+  }
+});
+
+
+/* ---------------- INITIALIZATION ---------------- */
+
+async function initializeForUser(user){
+  stopListeners();
+
+  currentUser = user;
+  isHost = false;
+  showData = null;
+  registrations = {};
+  activeRegistration = null;
+
+  $("hostControls").style.display = "none";
+  $("performerQueue").textContent = "Loading performers...";
+
+  if(!user){
+    $("loginStatus").textContent =
+      "Please sign in to access the auditorium.";
+
+    $("showStatus").textContent = "Sign-in required.";
+
     return;
   }
 
-  onAuthStateChanged(auth,async user=>{
-    stopListeners();
-    currentUser = user;
-    isHost = false;
-    $("hostControls").style.display = "none";
+  $("loginStatus").textContent =
+    "Connected to auditorium.";
 
-    if(!user){
-      $("loginStatus").textContent = "Please sign in to access the auditorium.";
+  try{
+    const showSnap = await get(
+      ref(db,"shows/" + showId)
+    );
+
+    if(!showSnap.exists()){
+      $("showStatus").textContent = "Show not found.";
       return;
     }
 
-    $("loginStatus").textContent = "Connected to auditorium.";
+    showData = showSnap.val();
 
-    try{
-      const snap = await get(ref(db,"shows/" + showId));
-      if(!snap.exists()){
-        $("showStatus").textContent = "Show not found.";
-        return;
-      }
-
-      showData = snap.val();
-
-      if(showData.status !== "Published"){
-        $("showStatus").textContent = "This show is not currently published.";
-        return;
-      }
-
-      $("showTitle").textContent = showData.name || "Melody Magic Auditorium";
+    if(showData.status !== "Published"){
       $("showStatus").textContent =
-        "Show date: " + (showData.date || "") +
-        " | Time: " + (showData.time || "");
+        "This show is not currently published.";
 
-      isHost = await checkHost(user.uid);
-
-      if(isHost){
-        $("hostControls").style.display = "block";
-        $("loginStatus").textContent = "Approved host with active subscription.";
-        startHostRegistrationListener();
-      }else{
-        $("loginStatus").textContent = "You are viewing the live auditorium.";
-        startPublicPerformanceListener();
-      }
-
-      startKaraokeListener();
-    }catch(error){
-      console.error(error);
-      $("showStatus").textContent = "Unable to connect: " + error.message;
+      return;
     }
+
+    $("showTitle").textContent =
+      showData.name || "Melody Magic Auditorium";
+
+    $("showStatus").textContent =
+      "Show date: " + (showData.date || "") +
+      " | Time: " + (showData.time || "");
+
+    isHost = await checkHost(user.uid);
+
+    if(isHost){
+      $("hostControls").style.display = "block";
+
+      $("loginStatus").textContent =
+        "Approved host with active subscription.";
+
+      startHostRegistrationListener();
+
+    }else{
+      $("loginStatus").textContent =
+        "You are viewing the live auditorium.";
+
+      $("performerQueue").innerHTML =
+        '<p class="small">The host manages the private singing queue.</p>';
+
+      startPublicPerformanceListener();
+    }
+
+    startKaraokeListener();
+
+  }catch(error){
+    console.error("Initialization error:",error);
+
+    $("showStatus").textContent =
+      "Unable to connect: " + error.message;
+  }
+}
+
+
+function initialize(){
+  if(!showId){
+    $("showStatus").textContent = "Show ID is missing.";
+
+    showVideoMessage(
+      "Please open the auditorium using the correct show link."
+    );
+
+    return;
+  }
+
+  if(authInitialized) return;
+  authInitialized = true;
+
+  onAuthStateChanged(auth,user=>{
+    initializeForUser(user);
   });
 }
 
+
 window.addEventListener("beforeunload",stopListeners);
+
 initialize();
+
 </script>
 
+<!-- Keep this as a separate script file. Do not copy its code into this page. -->
 <script type="module" src="./livekit.js"></script>
+
 </body>
 </html>
