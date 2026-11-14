@@ -4,374 +4,284 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Audience Registration - Melody Magic Digital Auditorium</title>
-
+<title>Audience Entry | Melody Magic Digital Auditorium</title>
 <style>
 *{box-sizing:border-box}
-
-body{
- margin:0;
- padding:18px;
- background:#090909;
- color:white;
- font-family:Arial,sans-serif;
-}
-
-.container{
- max-width:520px;
- margin:25px auto;
-}
-
-header{
- text-align:center;
- padding:24px 15px;
- background:linear-gradient(135deg,#302000,#090909);
- border:1px solid #b38a35;
- border-radius:14px;
-}
-
-header h1{
- color:#e9bd55;
- margin:0 0 8px;
-}
-
-header p{color:#ccc;margin:5px}
-
-.card{
- background:#151515;
- border:1px solid #49402e;
- border-radius:12px;
- padding:18px;
- margin-top:15px;
-}
-
-h2{
- color:#e9bd55;
- font-size:19px;
- margin-top:0;
-}
-
-.show-info{
- background:#202020;
- border-radius:8px;
- padding:13px;
- margin:12px 0;
- line-height:1.7;
-}
-
-label{
- display:block;
- color:#ddd;
- font-size:14px;
- margin-top:13px;
-}
-
-input{
- width:100%;
- padding:13px;
- margin-top:6px;
- border-radius:7px;
- border:1px solid #555;
- background:#090909;
- color:white;
- font-size:15px;
-}
-
-button,.btn{
- display:block;
- width:100%;
- padding:13px;
- margin-top:16px;
- border:0;
- border-radius:8px;
- background:#d5a83e;
- color:#111;
- font-weight:bold;
- font-size:15px;
- cursor:pointer;
- text-align:center;
- text-decoration:none;
-}
-
-button:disabled{
- opacity:.5;
- cursor:not-allowed;
-}
-
-.secondary{
- background:#383838;
- color:white;
-}
-
-.status{
- padding:12px;
- margin-top:12px;
- border-radius:7px;
- background:#222;
- color:#ddd;
- font-size:13px;
- line-height:1.5;
-}
-
-.hidden{display:none!important}
-
-footer{
- text-align:center;
- color:#999;
- padding:22px 5px;
- font-size:12px;
-}
+body{margin:0;padding:20px;background:#090909;color:#fff;font-family:Arial,sans-serif}
+.card{max-width:520px;margin:35px auto;padding:25px;background:#171717;border:1px solid #b58b35;border-radius:14px}
+h1{color:#e8bd62;text-align:center;font-size:25px}
+p{line-height:1.5;color:#ddd}
+input,textarea{width:100%;padding:13px;margin:7px 0 14px;background:#090909;color:#fff;border:1px solid #555;border-radius:7px}
+button,.btn{display:block;width:100%;padding:14px;margin:12px 0;border:0;border-radius:8px;background:#d6a943;color:#111;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.whatsapp{background:#168b50;color:white}
+.status{padding:12px;background:#252525;border-radius:8px;margin:14px 0;white-space:pre-wrap}
+label{display:block;margin:10px 0;color:#ddd}
+.small{font-size:13px;color:#aaa}
+.hidden{display:none}
 </style>
 </head>
-
 <body>
+<div class="card">
+<h1>Melody Magic Digital Auditorium</h1>
+<div id="message" class="status">Connecting...</div>
 
-<div class="container">
+<div id="showInfo" class="hidden">
+<h2 id="showName"></h2>
+<p id="showDescription"></p>
+<p><b>Audience entry fee:</b> <span id="fee"></span></p>
+</div>
 
-<header>
- <h1>🎤 Melody Magic</h1>
- <p>Digital Auditorium</p>
- <p>Audience Registration</p>
-</header>
+<div id="freePanel" class="hidden">
+<p>This is a free show. You can enter directly without registration.</p>
+<button id="freeEnter">Enter Auditorium</button>
+</div>
 
-<section class="card">
+<div id="paidPanel" class="hidden">
+<p>Contact the host on WhatsApp to receive payment details. After paying, submit your details and payment reference below.</p>
+<a id="whatsappButton" class="btn whatsapp" target="_blank" rel="noopener">Contact Host on WhatsApp</a>
 
- <h2>🎟️ Register for the Show</h2>
+<form id="requestForm">
+<label>Your name</label>
+<input id="name" required maxlength="80" placeholder="Enter your name">
 
- <div id="showInfo" class="show-info">
-  Loading show details...
- </div>
+<label>Mobile number</label>
+<input id="mobile" required inputmode="tel" maxlength="20" placeholder="Enter mobile number">
 
- <form id="audienceForm">
+<label>City / location</label>
+<input id="location" required maxlength="120" placeholder="Your city or area">
 
-  <label for="audienceName">Your Full Name *</label>
-  <input
-   id="audienceName"
-   type="text"
-   maxlength="80"
-   placeholder="Enter your name"
-   required
-  >
+<label>Payment reference / UTR number</label>
+<input id="paymentReference" required maxlength="100" placeholder="Enter payment reference">
 
-  <label for="audienceMobile">Mobile Number *</label>
-  <input
-   id="audienceMobile"
-   type="tel"
-   inputmode="numeric"
-   maxlength="15"
-   placeholder="Enter your mobile number"
-   required
-  >
+<label><input id="rulesAccepted" type="checkbox" required style="width:auto"> I agree to the show rules and entry conditions.</label>
 
-  <label for="audienceEmail">Email Address (Optional)</label>
-  <input
-   id="audienceEmail"
-   type="email"
-   maxlength="120"
-   placeholder="Enter your email"
-  >
+<button id="submitButton" type="submit">Submit Payment Details</button>
+</form>
+</div>
 
-  <button id="registerBtn" type="submit">
-   Register & Enter Auditorium
-  </button>
-
- </form>
-
- <div id="message" class="status hidden"></div>
-
- <a
-  id="continueBtn"
-  class="btn secondary hidden"
-  href="#"
- >
-  Enter Live Auditorium
- </a>
-
-</section>
-
-<footer>
- Powered by Melody Magic Music Studio
-</footer>
+<div id="pendingPanel" class="hidden">
+<h3>Registration status</h3>
+<div id="requestStatus" class="status">Your request is being checked.</div>
+<p class="small">The host must manually verify your payment and approve your entry.</p>
+<button id="enterButton" class="hidden">Enter Auditorium</button>
+</div>
 
 </div>
 
 <script type="module">
-
-import {db} from "./firebase.js";
-
+import {db,connectAuditorium} from "./firebase.js";
 import {
- ref,
- get,
- push,
- set
+  ref,get,set,push,onValue,query,orderByChild,equalTo
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const $ = id => document.getElementById(id);
+const showId = new URLSearchParams(location.search).get("showId");
 
-const params = new URLSearchParams(location.search);
-const showId = params.get("showId");
+let user = null;
+let showData = null;
+let ownRequestRef = null;
 
-let currentShow = null;
-let performanceUrl = "";
+function message(text){$("message").textContent=text}
+function showPanel(id){$(id).classList.remove("hidden")}
+function hidePanel(id){$(id).classList.add("hidden")}
+function enterShow(){
+  location.href="live-performance.html?showId="+encodeURIComponent(showId);
+}
+$("freeEnter").addEventListener("click",enterShow);
+$("enterButton").addEventListener("click",enterShow);
 
-function showMessage(text){
- $("message").textContent = text;
- $("message").classList.remove("hidden");
+async function start(){
+  if(!showId){message("Show ID is missing. Please open the correct show link.");return}
+
+  try{
+    user=await connectAuditorium();
+
+    const showSnap=await get(ref(db,"shows/"+showId));
+    if(!showSnap.exists()){message("This show could not be found.");return}
+
+    showData=showSnap.val();
+
+    if(showData.status!=="Published"){
+      message("This show is not currently available.");
+      return;
+    }
+
+    const blockSnap=await get(ref(db,`audienceBlocks/${showId}/${user.uid}`));
+    if(blockSnap.exists() && blockSnap.val()===true){
+      message("Your access to this show has been blocked. Please contact the host.");
+      return;
+    }
+
+    const fee=Number(showData.audienceFee||0);
+    $("showName").textContent=showData.name||"Live Show";
+    $("showDescription").textContent=showData.description||"";
+    $("fee").textContent=fee<=0?"FREE":"₹"+fee;
+    showPanel("showInfo");
+
+    if(fee<=0){
+      const accessRef=ref(db,`audienceAccess/${showId}/${user.uid}`);
+      const accessSnap=await get(accessRef);
+
+      if(accessSnap.val()!==true){
+        await set(accessRef,true);
+      }
+
+      message("Free entry is ready.");
+      showPanel("freePanel");
+      return;
+    }
+
+    if(!showData.hostWhatsApp){
+      message("The host has not added a WhatsApp number. Please contact the show organiser.");
+      return;
+    }
+
+    const phone=String(showData.hostWhatsApp).replace(/\D/g,"");
+    const text=`Hello, I want to join your show "${showData.name||"Live Show"}". Show ID: ${showId}. Audience entry fee: ₹${fee}. Please share the payment details.`;
+    $("whatsappButton").href="https://wa.me/"+phone+"?text="+encodeURIComponent(text);
+
+    showPanel("paidPanel");
+    message("Paid show: contact the host, make the payment, and submit your payment reference.");
+
+    await checkExistingRequest();
+  }catch(error){
+    console.error(error);
+    message("Unable to open audience entry: "+error.message);
+  }
 }
 
-function normaliseMobile(value){
- return String(value || "").replace(/\D/g,"");
-}
-
-function formatMoney(value){
- return "₹" + Number(value || 0).toLocaleString("en-IN");
-}
-
-async function loadShow(){
-
- if(!showId || !/^[a-zA-Z0-9_-]{1,150}$/.test(showId)){
-  throw new Error("Invalid show link.");
- }
-
- const snapshot = await get(ref(db,"shows/"+showId));
-
- if(!snapshot.exists()){
-  throw new Error("This show could not be found.");
- }
-
- const show = snapshot.val();
-
- if(!["Published","Live"].includes(show.status)){
-  throw new Error("This show is not currently available for registration.");
- }
-
- currentShow = show;
-
- $("showInfo").innerHTML = `
-  <strong style="color:#e9bd55">${escapeHTML(show.name || "Live Show")}</strong>
-  <br>
-  📅 ${escapeHTML(show.date || "Date not announced")}
-  <br>
-  🕒 ${escapeHTML(show.time || "Time not announced")}
-  <br>
-  🎵 ${escapeHTML(show.type || "Music Show")}
-  <br>
-  🎟️ Audience Entry:
-  <strong>${Number(show.audienceFee || 0) === 0
-    ? "FREE"
-    : formatMoney(show.audienceFee)}</strong>
- `;
-
- performanceUrl =
-  "live-performance.html?showId=" +
-  encodeURIComponent(showId);
-
-}
-
-function escapeHTML(value){
- return String(value ?? "").replace(/[&<>"']/g,c=>({
-  "&":"&amp;",
-  "<":"&lt;",
-  ">":"&gt;",
-  '"':"&quot;",
-  "'":"&#039;"
- })[c]);
-}
-
-$("audienceForm").addEventListener("submit",async event=>{
-
- event.preventDefault();
-
- if(!currentShow){
-  showMessage("Show details are not available.");
-  return;
- }
-
- const name = $("audienceName").value.trim();
- const mobile = normaliseMobile($("audienceMobile").value);
- const email = $("audienceEmail").value.trim();
-
- if(name.length < 2){
-  showMessage("Please enter your full name.");
-  return;
- }
-
- if(mobile.length < 10 || mobile.length > 15){
-  showMessage("Please enter a valid mobile number.");
-  return;
- }
-
- if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-  showMessage("Please enter a valid email address.");
-  return;
- }
-
- const button = $("registerBtn");
- button.disabled = true;
- button.textContent = "Registering...";
-
- try{
-
-  const registrationRef = push(
-   ref(db,"audienceRegistrations/"+showId)
+async function checkExistingRequest(){
+  const requestsQuery=query(
+    ref(db,"audienceEntryRequests/"+showId),
+    orderByChild("audienceUid"),
+    equalTo(user.uid)
   );
+  const snap=await get(requestsQuery);
 
-  const registration = {
-   registrationId:registrationRef.key,
-   showId:showId,
-   showName:currentShow.name || "",
-   audienceName:name,
-   mobile:mobile,
-   email:email,
-   status:"Registered",
-   paymentStatus:
-    Number(currentShow.audienceFee || 0) === 0
-     ? "Not Required"
-     : "Pending",
-   entryFee:Number(currentShow.audienceFee || 0),
-   createdAt:Date.now()
-  };
+  if(!snap.exists())return;
 
-  await set(registrationRef,registration);
+  let latest=null;
+  snap.forEach(child=>{
+    const value=child.val();
+    if(!latest || Number(value.createdAt||0)>Number(latest.value.createdAt||0)){
+      latest={key:child.key,value};
+    }
+  });
 
-  showMessage(
-   "Registration successful! You can now enter the auditorium."
-  );
+  if(!latest)return;
 
-  $("audienceForm").classList.add("hidden");
+  const status=latest.value.status;
+  if(status==="Pending" || status==="Approved"){
+    hidePanel("paidPanel");
+    showPanel("pendingPanel");
+    ownRequestRef=ref(db,`audienceEntryRequests/${showId}/${latest.key}`);
+    watchRequest();
+  }
+}
 
-  $("continueBtn").href = performanceUrl;
-  $("continueBtn").classList.remove("hidden");
+function watchRequest(){
+  if(!ownRequestRef)return;
 
-  // Automatically open the audience performance page.
-  setTimeout(()=>{
-   location.href = performanceUrl;
-  },1500);
+  onValue(ownRequestRef,async snap=>{
+    if(!snap.exists()){
+      $("requestStatus").textContent="Registration request not found.";
+      return;
+    }
 
- }catch(error){
+    const request=snap.val();
 
-  console.error(error);
+    if(request.status==="Pending"){
+      $("requestStatus").textContent="PENDING — Your payment is waiting for host verification.";
+      hidePanel("enterButton");
+    }else if(request.status==="Approved"){
+      const accessSnap=await get(ref(db,`audienceAccess/${showId}/${user.uid}`));
+      if(accessSnap.val()===true){
+        $("requestStatus").textContent="APPROVED — Your entry has been approved.";
+        showPanel("enterButton");
+      }else{
+        $("requestStatus").textContent="Approved by host. Preparing your access...";
+      }
+    }else if(request.status==="Rejected"){
+      $("requestStatus").textContent="Your request was rejected. Please contact the host.";
+    }else{
+      $("requestStatus").textContent="Request status: "+(request.status||"Unknown");
+    }
+  },error=>{
+    $("requestStatus").textContent="Could not check status: "+error.message;
+  });
+}
 
-  showMessage(
-   "Registration failed: " +
-   error.message +
-   ". Please check your Firebase Realtime Database permissions."
-  );
+$("requestForm").addEventListener("submit",async event=>{
+  event.preventDefault();
 
-  button.disabled = false;
-  button.textContent = "Register & Enter Auditorium";
+  if(!user || !showData)return;
+  if(!$("rulesAccepted").checked){
+    message("Please accept the show rules.");
+    return;
+  }
 
- }
+  const submit=$("submitButton");
+  submit.disabled=true;
+  submit.textContent="Submitting...";
 
+  try{
+    const existingQuery=query(
+      ref(db,"audienceEntryRequests/"+showId),
+      orderByChild("audienceUid"),
+      equalTo(user.uid)
+    );
+    const existing=await get(existingQuery);
+    let hasPending=false;
+    existing.forEach(child=>{
+      if(child.val().status==="Pending" || child.val().status==="Approved"){
+        hasPending=true;
+      }
+    });
+
+    if(hasPending){
+      message("You already have a pending or approved request.");
+      await checkExistingRequest();
+      return;
+    }
+
+    const requestData={
+      audienceUid:user.uid,
+      name:$("name").value.trim(),
+      mobile:$("mobile").value.trim(),
+      location:$("location").value.trim(),
+      showId:showId,
+      hostUid:showData.hostUid,
+      status:"Pending",
+      createdAt:Date.now(),
+      entryType:"Paid",
+      paymentReference:$("paymentReference").value.trim(),
+      rulesAccepted:true
+    };
+
+    if(!requestData.name || !requestData.mobile || !requestData.location || !requestData.paymentReference){
+      message("Please complete all fields.");
+      return;
+    }
+
+    const newRequest=push(ref(db,"audienceEntryRequests/"+showId));
+    await set(newRequest,requestData);
+
+    ownRequestRef=newRequest;
+    hidePanel("paidPanel");
+    showPanel("pendingPanel");
+    $("requestStatus").textContent="PENDING — Your request has been submitted. The host must verify your payment.";
+    watchRequest();
+  }catch(error){
+    console.error(error);
+    message("Submission failed: "+error.message);
+  }finally{
+    submit.disabled=false;
+    submit.textContent="Submit Payment Details";
+  }
 });
 
-loadShow().catch(error=>{
- $("showInfo").textContent = error.message;
- $("registerBtn").disabled = true;
- showMessage(error.message);
-});
-
+start();
 </script>
-
 </body>
 </html>
