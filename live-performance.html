@@ -8,76 +8,138 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#080b14;color:#fff;font-family:Arial,sans-serif;text-align:center}
-header{padding:22px 12px;background:#111827;border-bottom:2px solid #d4af37}
+body{
+  margin:0;
+  background:#080b14;
+  color:#fff;
+  font-family:Arial,sans-serif;
+  text-align:center
+}
+header{
+  padding:22px 12px;
+  background:#111827;
+  border-bottom:2px solid #d4af37
+}
 h1{color:#f5d76e;margin:0;font-size:25px}
 .subtitle{color:#bbb;margin-top:8px}
 .container{max-width:1000px;margin:auto;padding:15px}
-.card{background:#151c2b;border:1px solid #30394b;border-radius:14px;padding:18px;margin:15px 0}
-.status{display:inline-block;padding:7px 14px;border-radius:20px;background:#343b4c;color:#fff;font-size:13px;font-weight:bold}
+.card{
+  background:#151c2b;
+  border:1px solid #30394b;
+  border-radius:14px;
+  padding:18px;
+  margin:15px 0
+}
+.status{
+  display:inline-block;
+  padding:7px 14px;
+  border-radius:20px;
+  background:#343b4c;
+  color:#fff;
+  font-size:13px;
+  font-weight:bold
+}
 .status.live{background:#a71919}
 .status.ready{background:#287c48}
 h2{color:#f5d76e}
-.performer-name{font-size:27px;color:#f5d76e;font-weight:bold;margin:15px 0}
+.performer-name{
+  font-size:27px;
+  color:#f5d76e;
+  font-weight:bold;
+  margin:15px 0
+}
 .song-details{color:#ddd;font-size:17px;line-height:1.8}
-.player{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden}
+.player{
+  width:100%;
+  aspect-ratio:16/9;
+  background:#000;
+  border-radius:12px;
+  overflow:hidden
+}
 .player iframe{width:100%;height:100%;border:0}
-button{background:#d4af37;color:#111;border:0;padding:13px 22px;border-radius:8px;font-weight:bold;font-size:15px;cursor:pointer;margin:10px 0}
+button{
+  background:#d4af37;
+  color:#111;
+  border:0;
+  padding:13px 22px;
+  border-radius:8px;
+  font-weight:bold;
+  font-size:15px;
+  cursor:pointer;
+  margin:10px 0
+}
 .message{color:#bbb;line-height:1.6}
 .hidden{display:none!important}
 footer{padding:20px;color:#888;font-size:12px}
-@media(max-width:600px){.container{padding:10px}.card{padding:14px}h1{font-size:21px}.performer-name{font-size:23px}}
+@media(max-width:600px){
+  .container{padding:10px}
+  .card{padding:14px}
+  h1{font-size:21px}
+  .performer-name{font-size:23px}
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<h1>MELODY MAGIC</h1>
-<div class="subtitle">DIGITAL AUDITORIUM • LIVE PERFORMANCE</div>
+  <h1>MELODY MAGIC</h1>
+  <div class="subtitle">DIGITAL AUDITORIUM • LIVE PERFORMANCE</div>
 </header>
 
 <div class="container">
 
-<div class="card">
-<span id="status" class="status">CONNECTING...</span>
-<h2 id="showTitle">Live Performance</h2>
-<p id="stageMessage" class="message">Connecting to the auditorium...</p>
-</div>
+  <div class="card">
+    <span id="status" class="status">CONNECTING...</span>
+    <h2 id="showTitle">Live Performance</h2>
+    <p id="stageMessage" class="message">
+      Connecting to the auditorium...
+    </p>
+  </div>
 
-<div class="card">
-<h2>LIVE SHOW</h2>
-<p class="message">Main video broadcast selected by the host</p>
-<div id="mainPlayer" class="player">
-<p class="message" style="padding:35px 10px">Waiting for the host to start the show.</p>
-</div>
-<button id="mainPlayButton" class="hidden">▶ PLAY LIVE SHOW</button>
-<p id="mainMessage" class="message">The main show video will appear here.</p>
-</div>
+  <div class="card">
+    <h2>🎬 LIVE VIDEO</h2>
 
-<div class="card">
-<h2>🎤 NOW PERFORMING</h2>
-<div id="performerName" class="performer-name">Waiting for performer</div>
-<div class="song-details">
-<div>🎵 Song: <strong id="songName">-</strong></div>
-<div>🎬 Movie: <strong id="movieName">-</strong></div>
-<div>🎙️ Type: <strong id="performanceType">-</strong></div>
-</div>
-</div>
+    <p id="videoLabel" class="message">
+      Waiting for the host to select a video.
+    </p>
 
-<div class="card">
-<h2>🎵 SINGER KARAOKE TRACK</h2>
-<div id="karaokePlayer" class="player">
-<p class="message" style="padding:35px 10px">Waiting for the host to select a performer.</p>
-</div>
-<button id="karaokePlayButton" class="hidden">▶ PLAY KARAOKE TRACK</button>
-<p id="karaokeMessage" class="message">The host will provide the selected singer's karaoke track.</p>
-</div>
+    <div id="videoPlayer" class="player">
+      <p class="message" style="padding:35px 10px">
+        Waiting for the host to start the show.
+      </p>
+    </div>
 
-<div class="card">
-<h2>Welcome to the Show!</h2>
-<p class="message">Enjoy the performance and support our singers. Please wait while the host manages the stage.</p>
-</div>
+    <button id="playButton" class="hidden">
+      ▶ PLAY VIDEO
+    </button>
+
+    <p id="videoMessage" class="message">
+      The live video will appear here.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>🎤 NOW PERFORMING</h2>
+
+    <div id="performerName" class="performer-name">
+      Waiting for performer
+    </div>
+
+    <div class="song-details">
+      <div>🎵 Song: <strong id="songName">-</strong></div>
+      <div>🎬 Movie: <strong id="movieName">-</strong></div>
+      <div>🎙️ Type: <strong id="performanceType">-</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Welcome to the Show!</h2>
+    <p class="message">
+      Enjoy the performance and support our singers.
+      Please wait while the host manages the stage.
+    </p>
+  </div>
 
 </div>
 
@@ -88,221 +150,269 @@ footer{padding:20px;color:#888;font-size:12px}
 import {db} from "./firebase-host.js";
 
 import {
-ref,
-onValue
+  ref,
+  onValue
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-const params=new URLSearchParams(location.search);
-const showId=params.get("showId");
-const $=id=>document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const showId = params.get("showId");
 
-let mainVideoId="";
-let karaokeVideoId="";
-let currentPerformerId="";
+const $ = id => document.getElementById(id);
+
+let selectedVideoId = "";
+let selectedVideoSource = "";
+let playerLoaded = false;
 
 function getVideoId(value){
-if(!value)return "";
 
-try{
-const url=new URL(value);
-const host=url.hostname.replace(/^www\./,"");
+  if(!value) return "";
 
-if(host==="youtu.be"){
-return url.pathname.split("/").filter(Boolean)[0]||"";
+  try{
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./,"");
+
+    if(host === "youtu.be"){
+      return url.pathname.split("/").filter(Boolean)[0] || "";
+    }
+
+    if([
+      "youtube.com",
+      "m.youtube.com",
+      "music.youtube.com"
+    ].includes(host)){
+
+      if(url.searchParams.get("v")){
+        return url.searchParams.get("v");
+      }
+
+      const match = url.pathname.match(
+        /^\/(embed|shorts|live)\/([^/?]+)/
+      );
+
+      return match ? match[2] : "";
+    }
+
+  }catch(error){}
+
+  return "";
 }
 
-if(["youtube.com","m.youtube.com","music.youtube.com"].includes(host)){
-if(url.searchParams.get("v"))return url.searchParams.get("v");
+function resetPlayer(message){
 
-const match=url.pathname.match(/^\/(embed|shorts|live)\/([^/?]+)/);
-return match?match[2]:"";
-}
-}catch(e){}
+  $("videoPlayer").innerHTML =
+    `<p class="message" style="padding:35px 10px">${message}</p>`;
 
-return "";
+  $("playButton").classList.add("hidden");
+  playerLoaded = false;
 }
 
-function showVideo(containerId,videoId){
-const container=$(containerId);
-container.innerHTML="";
+function prepareVideo(videoId, source, label){
 
-const iframe=document.createElement("iframe");
-iframe.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(videoId)+"?rel=0";
-iframe.allow="autoplay; encrypted-media; picture-in-picture";
-iframe.allowFullscreen=true;
-iframe.title="YouTube Video";
+  if(
+    videoId === selectedVideoId &&
+    source === selectedVideoSource
+  ){
+    return;
+  }
 
-container.appendChild(iframe);
+  selectedVideoId = videoId;
+  selectedVideoSource = source;
+  playerLoaded = false;
+
+  if(!videoId){
+    resetPlayer("Waiting for the host to select a video.");
+    $("videoLabel").textContent = "No video selected";
+    $("videoMessage").textContent = "Waiting for a YouTube video.";
+    return;
+  }
+
+  resetPlayer("Video is ready. Tap Play Video.");
+
+  $("playButton").classList.remove("hidden");
+  $("videoLabel").textContent = label;
+  $("videoMessage").textContent =
+    "The selected YouTube video is ready to play.";
 }
 
-function resetPlayer(containerId,message){
-$(containerId).innerHTML=
-`<p class="message" style="padding:35px 10px">${message}</p>`;
+function playSelectedVideo(){
+
+  if(!selectedVideoId) return;
+
+  $("videoPlayer").innerHTML = "";
+
+  const iframe = document.createElement("iframe");
+
+  iframe.src =
+    "https://www.youtube-nocookie.com/embed/" +
+    encodeURIComponent(selectedVideoId) +
+    "?autoplay=1&rel=0";
+
+  iframe.allow =
+    "autoplay; encrypted-media; picture-in-picture";
+
+  iframe.allowFullscreen = true;
+  iframe.title = "Melody Magic Live Video";
+
+  $("videoPlayer").appendChild(iframe);
+
+  $("playButton").classList.add("hidden");
+
+  $("videoMessage").textContent =
+    "Video player is ready. Use YouTube controls to play.";
+
+  playerLoaded = true;
 }
 
-$("mainPlayButton").addEventListener("click",()=>{
-if(!mainVideoId)return;
-showVideo("mainPlayer",mainVideoId);
-$("mainMessage").textContent="Main show video is ready. Use YouTube controls to play.";
-$("mainPlayButton").classList.add("hidden");
-});
-
-$("karaokePlayButton").addEventListener("click",()=>{
-if(!karaokeVideoId)return;
-showVideo("karaokePlayer",karaokeVideoId);
-$("karaokeMessage").textContent="Karaoke track is ready. Use YouTube controls to play.";
-$("karaokePlayButton").classList.add("hidden");
-});
+$("playButton").addEventListener("click", playSelectedVideo);
 
 if(!showId){
 
-$("status").textContent="SHOW ID MISSING";
-$("stageMessage").textContent="Please open Performance View using the host's show link.";
-resetPlayer("mainPlayer","Show ID is missing.");
-resetPlayer("karaokePlayer","Show ID is missing.");
+  $("status").textContent = "SHOW ID MISSING";
+  $("stageMessage").textContent =
+    "Please open the page using the host's show link.";
+
+  resetPlayer("Show ID is missing.");
 
 }else{
 
-onValue(ref(db,"shows/"+showId),snapshot=>{
+  onValue(ref(db,"shows/"+showId),snapshot=>{
 
-if(!snapshot.exists()){
-$("showTitle").textContent="Show not found";
-return;
-}
+    if(!snapshot.exists()){
+      $("showTitle").textContent = "Show not found";
+      return;
+    }
 
-const show=snapshot.val();
-$("showTitle").textContent=show.name||"Melody Magic Live Show";
+    const show = snapshot.val();
 
-},error=>{
-console.error(error);
-$("showTitle").textContent="Unable to load show";
-});
+    $("showTitle").textContent =
+      show.name || "Melody Magic Live Show";
 
-onValue(ref(db,"livePerformance/"+showId),snapshot=>{
+  },error=>{
+    console.error(error);
+    $("showTitle").textContent = "Unable to load show";
+  });
 
-const data=snapshot.val();
+  onValue(ref(db,"livePerformance/"+showId),snapshot=>{
 
-if(!data){
+    const data = snapshot.val();
 
-$("status").textContent="WAITING";
-$("status").className="status";
-$("stageMessage").textContent="The host has not started the show yet.";
-$("performerName").textContent="Waiting for performer";
-$("songName").textContent="-";
-$("movieName").textContent="-";
-$("performanceType").textContent="-";
+    if(!data){
 
-mainVideoId="";
-karaokeVideoId="";
-currentPerformerId="";
+      $("status").textContent = "WAITING";
+      $("status").className = "status";
 
-resetPlayer("mainPlayer","Waiting for the host to start the show.");
-resetPlayer("karaokePlayer","Waiting for the host to select a performer.");
+      $("stageMessage").textContent =
+        "The host has not started the show yet.";
 
-$("mainPlayButton").classList.add("hidden");
-$("karaokePlayButton").classList.add("hidden");
-return;
-}
+      $("performerName").textContent = "Waiting for performer";
+      $("songName").textContent = "-";
+      $("movieName").textContent = "-";
+      $("performanceType").textContent = "-";
 
-const status=String(data.status||"").toLowerCase();
+      prepareVideo("", "", "");
 
-if(status==="stopped"){
+      return;
+    }
 
-$("status").textContent="SHOW ENDED";
-$("status").className="status";
-$("stageMessage").textContent="The host has ended the live show.";
+    const status = String(data.status || "").toLowerCase();
 
-mainVideoId="";
-karaokeVideoId="";
+    if(status === "stopped"){
 
-resetPlayer("mainPlayer","The host has ended the show.");
-resetPlayer("karaokePlayer","The show has ended.");
+      $("status").textContent = "SHOW ENDED";
+      $("status").className = "status";
 
-$("mainPlayButton").classList.add("hidden");
-$("karaokePlayButton").classList.add("hidden");
-return;
-}
+      $("stageMessage").textContent =
+        "The host has ended the live show.";
 
-if(status==="live"){
-$("status").textContent="LIVE";
-$("status").className="status live";
-$("stageMessage").textContent="The show is currently live.";
-}else{
-$("status").textContent="READY";
-$("status").className="status ready";
-$("stageMessage").textContent="Waiting for the host to start the live show.";
-}
+      $("performerName").textContent = "Show ended";
+      $("songName").textContent = "-";
+      $("movieName").textContent = "-";
+      $("performanceType").textContent = "-";
 
-/* MAIN SHOW VIDEO */
+      prepareVideo("", "", "");
 
-const newMainVideoId=getVideoId(data.youtubeUrl);
+      return;
+    }
 
-if(newMainVideoId!==mainVideoId){
+    if(status === "live"){
 
-mainVideoId=newMainVideoId;
+      $("status").textContent = "LIVE";
+      $("status").className = "status live";
 
-if(mainVideoId){
-resetPlayer("mainPlayer","Main show video is ready. Tap Play Live Show.");
-$("mainPlayButton").classList.remove("hidden");
-$("mainMessage").textContent="Main show video provided by the host.";
-}else{
-resetPlayer("mainPlayer","The host has not added a main show video.");
-$("mainPlayButton").classList.add("hidden");
-$("mainMessage").textContent="Waiting for the host's YouTube show link.";
-}
-}
+      $("stageMessage").textContent =
+        "The show is currently live.";
 
-/* PERFORMER DETAILS */
+    }else{
 
-const name=data.currentPerformerName||"Waiting for performer";
+      $("status").textContent = "READY";
+      $("status").className = "status ready";
 
-$("performerName").textContent=name;
-$("songName").textContent=data.currentSongName||"-";
-$("movieName").textContent=data.currentMovieName||"-";
-$("performanceType").textContent=data.currentPerformanceType||"-";
+      $("stageMessage").textContent =
+        "Waiting for the host to start the live show.";
+    }
 
-/* KARAOKE VIDEO */
+    const performerId = data.currentPerformerId || "";
+    const performerName =
+      data.currentPerformerName || "";
 
-const newKaraokeVideoId=
-data.currentKaraokeVideoId||
-getVideoId(data.currentKaraokeUrl);
+    $("performerName").textContent =
+      performerName || "Waiting for performer";
 
-const performerId=data.currentPerformerId||"";
+    $("songName").textContent =
+      data.currentSongName || "-";
 
-if(newKaraokeVideoId!==karaokeVideoId||performerId!==currentPerformerId){
+    $("movieName").textContent =
+      data.currentMovieName || "-";
 
-karaokeVideoId=newKaraokeVideoId;
-currentPerformerId=performerId;
+    $("performanceType").textContent =
+      data.currentPerformanceType || "-";
 
-if(karaokeVideoId){
+    const karaokeId =
+      data.currentKaraokeVideoId ||
+      getVideoId(data.currentKaraokeUrl);
 
-resetPlayer("karaokePlayer","Karaoke track is ready. Tap Play Karaoke Track.");
-$("karaokePlayButton").classList.remove("hidden");
-$("karaokeMessage").textContent="Selected performer: "+name;
+    const mainId = getVideoId(data.youtubeUrl);
 
-}else{
+    // Karaoke takes priority when a performer and track are selected.
+    if(performerId && karaokeId){
 
-resetPlayer("karaokePlayer","Waiting for the host to add the karaoke track.");
-$("karaokePlayButton").classList.add("hidden");
-$("karaokeMessage").textContent="The host will provide the selected singer's karaoke track.";
+      prepareVideo(
+        karaokeId,
+        "karaoke-" + performerId,
+        "🎤 Karaoke Track: " + performerName
+      );
 
-}
-}
+    }else if(mainId){
 
-if(data.performanceStatus==="Ready"){
-$("stageMessage").textContent="The show is live. The selected singer is ready to perform.";
-}
+      prepareVideo(
+        mainId,
+        "main",
+        "🎬 Main Live Show Video"
+      );
 
-},error=>{
+    }else{
 
-console.error(error);
-$("status").textContent="CONNECTION ERROR";
-$("stageMessage").textContent="Unable to connect: "+error.message;
+      prepareVideo("", "", "");
+    }
 
-resetPlayer("mainPlayer","Unable to load the main show video.");
-resetPlayer("karaokePlayer","Unable to load the karaoke track.");
+    if(data.performanceStatus === "Ready"){
+      $("stageMessage").textContent =
+        "The show is live. The selected singer is ready to perform.";
+    }
 
-});
+  },error=>{
+
+    console.error(error);
+
+    $("status").textContent = "CONNECTION ERROR";
+
+    $("stageMessage").textContent =
+      "Unable to connect: " + error.message;
+
+    resetPlayer("Unable to load the video.");
+
+  });
+
 }
 
 </script>
