@@ -8,22 +8,12 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;padding:16px;background:#080808;color:#fff;
-  font-family:Arial,sans-serif
-}
+body{margin:0;padding:16px;background:#080808;color:#fff;font-family:Arial,sans-serif}
 .container{max-width:950px;margin:auto}
 h2{text-align:center;color:#f5c542}
 h3{color:#f5c542}
-.card{
-  background:#171717;border:1px solid #51401e;
-  border-radius:12px;padding:15px;margin:18px auto
-}
-button{
-  border:0;border-radius:7px;padding:11px 15px;
-  margin:5px;background:#d4a52f;color:#111;
-  font-weight:bold;cursor:pointer
-}
+.card{background:#171717;border:1px solid #51401e;border-radius:12px;padding:15px;margin:18px auto}
+button{border:0;border-radius:7px;padding:11px 15px;margin:5px;background:#d4a52f;color:#111;font-weight:bold;cursor:pointer}
 button:disabled{opacity:.45;cursor:not-allowed}
 .green{background:#239b56;color:white}
 .red{background:#b52d2d;color:white}
@@ -31,23 +21,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .gray{background:#555;color:white}
 .small{font-size:13px;color:#bbb;line-height:1.6}
 .center{text-align:center}
-.badge{
-  display:inline-block;background:#443719;color:#f5d47b;
-  border-radius:15px;padding:5px 9px;font-size:12px;margin:3px
-}
-.performer{
-  background:#0c0c0c;border:1px solid #454545;
-  border-radius:9px;padding:12px;margin:10px 0
-}
-input{
-  width:100%;padding:11px;border-radius:6px;
-  border:1px solid #555;background:#080808;color:white;
-  margin:6px 0
-}
-#videoFrame{
-  display:none;width:100%;aspect-ratio:16/9;
-  border:0;border-radius:8px;background:#000
-}
+.badge{display:inline-block;background:#443719;color:#f5d47b;border-radius:15px;padding:5px 9px;font-size:12px;margin:3px}
+.performer{background:#0c0c0c;border:1px solid #454545;border-radius:9px;padding:12px;margin:10px 0}
+input{width:100%;padding:11px;border-radius:6px;border:1px solid #555;background:#080808;color:white;margin:6px 0}
+#videoPlayer{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden}
 #videoMessage{text-align:center;color:#ddd;padding:18px 8px}
 footer{text-align:center;color:#999;padding:20px}
 </style>
@@ -59,55 +36,62 @@ footer{text-align:center;color:#999;padding:20px}
 <h2>🎤 Melody Magic Digital Auditorium</h2>
 
 <section class="card">
-  <h3 id="showTitle">Loading Auditorium...</h3>
-  <p id="showStatus" class="small">Connecting...</p>
-  <p id="loginStatus" class="small"></p>
-</section>
-
-<!-- ONE KARAOKE VIDEO PLAYER -->
-<section class="card">
-  <h3>🎵 Karaoke Performance</h3>
-  <div id="videoMessage">Waiting for the host's karaoke selection...</div>
-  <iframe
-    id="videoFrame"
-    title="Karaoke Player"
-    allow="autoplay; encrypted-media; picture-in-picture; web-share"
-    allowfullscreen>
-  </iframe>
+<h3 id="showTitle">Loading Auditorium...</h3>
+<p id="showStatus" class="small">Connecting...</p>
+<p id="loginStatus" class="small"></p>
 </section>
 
 <section class="card">
-  <h3>🎙️ Current Performer</h3>
-  <div id="currentPerformer" class="center">
-    Waiting for the host to start the performance.
-  </div>
+<h3>🎵 Karaoke Performance</h3>
+
+<div id="videoMessage">Waiting for the host to select a karaoke video...</div>
+<div id="videoPlayer" style="display:none"></div>
+
+<div id="karaokeControls" style="display:none">
+<hr>
+<h3>👑 Host Karaoke Controls</h3>
+<p class="small">Only the approved host can select and control the karaoke video.</p>
+
+<label class="small" for="youtubeInput">YouTube video URL or video ID</label>
+<input id="youtubeInput" type="text" placeholder="Paste YouTube video URL here">
+
+<button class="blue" id="loadVideoBtn">LOAD VIDEO</button>
+<button class="green" id="playVideoBtn">▶ PLAY FOR EVERYONE</button>
+<button class="blue" id="pauseVideoBtn">Ⅱ PAUSE EVERYONE</button>
+<button class="green" id="resumeVideoBtn">▶ RESUME FOR EVERYONE</button>
+<button class="red" id="stopVideoBtn">■ STOP VIDEO</button>
+
+<p id="videoStatus" class="small">Host video controls are ready.</p>
+</div>
+</section>
+
+<section class="card">
+<h3>🎙️ Current Performer</h3>
+<div id="currentPerformer" class="center">
+Waiting for the host to start the performance.
+</div>
 </section>
 
 <section class="card" id="queueSection">
-  <h3>🎤 Singing Queue</h3>
-  <p class="small">Approved performers waiting for their turn.</p>
-  <div id="performerQueue">Loading performers...</div>
+<h3>🎤 Singing Queue</h3>
+<p class="small">Approved performers waiting for their turn.</p>
+<div id="performerQueue">Loading performers...</div>
 </section>
 
 <section class="card" id="hostControls" style="display:none">
-  <h3>👑 Host Performance Controls</h3>
-  <p class="small">
-    Only the approved host with an active subscription can manage performances.
-  </p>
+<h3>👑 Host Performance Controls</h3>
+<p class="small">Only the approved host with an active subscription can manage performances.</p>
 
-  <button class="green" id="startBtn">▶ START NEXT PERFORMER</button>
-  <button class="blue" id="nextBtn">⏭ FINISH & NEXT</button>
-  <button class="red" id="finishBtn">■ FINISH PERFORMANCE</button>
+<button class="green" id="startBtn">▶ START NEXT PERFORMER</button>
+<button class="blue" id="nextBtn">⏭ FINISH & NEXT</button>
+<button class="red" id="finishBtn">■ FINISH PERFORMANCE</button>
 
-  <p id="hostMessage" class="small"></p>
+<p id="hostMessage" class="small"></p>
 </section>
 
-<!-- LIVEKIT CONTROLS AND VIDEO TILES ARE CREATED BY livekit.js -->
 <section id="livekitArea" class="card">
-  <h3>🔊 Live Auditorium</h3>
-  <p class="small">
-    Join the auditorium to connect your camera and microphone.
-  </p>
+<h3>🔊 Live Auditorium</h3>
+<p class="small">Join the auditorium to connect your camera and microphone.</p>
 </section>
 
 <footer>Powered by Melody Magic Music Studio</footer>
@@ -124,30 +108,39 @@ import {
   ref,get,onValue,update,set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
+/* BASIC SETTINGS */
 
-/* ---------------- BASIC SETTINGS ---------------- */
+const showId=new URLSearchParams(location.search).get("showId");
+const $=id=>document.getElementById(id);
 
-const showId = new URLSearchParams(location.search).get("showId");
-const $ = id => document.getElementById(id);
+let currentUser=null;
+let showData=null;
+let isHost=false;
+let queueData={};
+let currentPerformance=null;
+let actionRunning=false;
+let listeners=[];
 
-let currentUser = null;
-let showData = null;
-let isHost = false;
-let queueData = {};
-let currentPerformance = null;
-let actionRunning = false;
-let currentVideoId = "";
-let listeners = [];
+let ytPlayer=null;
+let youtubeApiPromise=null;
+let youtubeReady=false;
+let playbackData=null;
+let currentVideoId="";
+let applyingPlayback=false;
+let lastAppliedCommand="";
 
-
-/* ---------------- HELPERS ---------------- */
+/* HELPERS */
 
 function message(text){
-  $("hostMessage").textContent = text;
+  $("hostMessage").textContent=text;
+}
+
+function videoMessage(text){
+  $("videoStatus").textContent=text;
 }
 
 function escapeHTML(value){
-  return String(value ?? "").replace(/[&<>"']/g,c=>({
+  return String(value??"").replace(/[&<>"']/g,c=>({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   })[c]);
 }
@@ -159,14 +152,78 @@ function stopListeners(){
   listeners=[];
 }
 
-function setButtonsDisabled(value){
-  ["startBtn","nextBtn","finishBtn"].forEach(id=>{
-    $(id).disabled=value;
+/* YOUTUBE API */
+
+function loadYouTubeAPI(){
+  if(window.YT && window.YT.Player){
+    return Promise.resolve();
+  }
+
+  if(youtubeApiPromise)return youtubeApiPromise;
+
+  youtubeApiPromise=new Promise((resolve,reject)=>{
+    const previousCallback=window.onYouTubeIframeAPIReady;
+
+    window.onYouTubeIframeAPIReady=()=>{
+      if(typeof previousCallback==="function")previousCallback();
+      resolve();
+    };
+
+    let script=document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+
+    if(!script){
+      script=document.createElement("script");
+      script.src="https://www.youtube.com/iframe_api";
+      script.onerror=()=>reject(new Error("Could not load YouTube player API."));
+      document.head.appendChild(script);
+    }
   });
+
+  return youtubeApiPromise;
 }
 
+async function createYouTubePlayer(){
+  if(ytPlayer && youtubeReady)return ytPlayer;
 
-/* ---------------- YOUTUBE VIDEO ---------------- */
+  await loadYouTubeAPI();
+
+  if(ytPlayer)return ytPlayer;
+
+  return new Promise((resolve,reject)=>{
+    try{
+      ytPlayer=new YT.Player("videoPlayer",{
+        width:"100%",
+        height:"100%",
+        videoId:"",
+        playerVars:{
+          autoplay:0,
+          controls:1,
+          playsinline:1,
+          rel:0,
+          modestbranding:1
+        },
+        events:{
+          onReady:()=>{
+            youtubeReady=true;
+            $("videoPlayer").style.display="block";
+            $("videoMessage").style.display="none";
+            resolve(ytPlayer);
+
+            if(playbackData){
+              applyPlayback(playbackData);
+            }
+          },
+          onError:event=>{
+            console.error("YouTube player error:",event.data);
+            videoMessage("YouTube could not play this video. Check the video URL or its embedding permissions.");
+          }
+        }
+      });
+    }catch(error){
+      reject(error);
+    }
+  });
+}
 
 function getYouTubeVideoId(value){
   const input=String(value||"").trim();
@@ -195,35 +252,278 @@ function getYouTubeVideoId(value){
   return "";
 }
 
-function showVideoMessage(text){
-  $("videoMessage").textContent=text;
-  $("videoMessage").style.display="block";
-  $("videoFrame").style.display="none";
+function expectedPosition(data){
+  const base=Number(data.basePosition||0);
+
+  if(data.state!=="playing")return base;
+
+  const started=Number(data.startedAt||0);
+
+  if(Date.now()<started)return base;
+
+  return base+(Date.now()-started)/1000;
 }
 
-function updateYouTubePlayer(value){
-  const id=getYouTubeVideoId(value);
+/* HOST VIDEO COMMANDS */
+
+async function writePlayback(data){
+  if(!isHost || !currentUser){
+    throw new Error("Only the verified host can control karaoke playback.");
+  }
+
+  await set(ref(db,"karaokePlayback/"+showId),{
+    ...data,
+    updatedAt:Date.now(),
+    updatedBy:currentUser.uid
+  });
+}
+
+async function loadSelectedVideo(){
+  if(!isHost)return;
+
+  const id=getYouTubeVideoId($("youtubeInput").value);
 
   if(!id){
-    currentVideoId="";
-    $("videoFrame").removeAttribute("src");
-    showVideoMessage("The host has not selected a valid karaoke video yet.");
+    videoMessage("Please enter a valid YouTube video URL or ID.");
     return;
   }
 
-  if(id===currentVideoId)return;
+  try{
+    videoMessage("Loading selected video...");
 
-  currentVideoId=id;
-  $("videoFrame").src=
-    "https://www.youtube.com/embed/"+encodeURIComponent(id)+
-    "?playsinline=1&rel=0";
+    await writePlayback({
+      videoId:id,
+      state:"stopped",
+      basePosition:0,
+      startedAt:0
+    });
 
-  $("videoMessage").style.display="none";
-  $("videoFrame").style.display="block";
+    // Keep the existing selection node updated as a backup.
+    await set(ref(db,"karaokeSelectionsByShow/"+showId),{
+      videoId:id,
+      youtubeUrl:"https://www.youtube.com/watch?v="+id,
+      updatedAt:Date.now(),
+      updatedBy:currentUser.uid
+    });
+
+    $("youtubeInput").value="https://www.youtube.com/watch?v="+id;
+    videoMessage("Video selected and saved for everyone.");
+  }catch(error){
+    console.error(error);
+    videoMessage("Could not save video: "+error.message);
+  }
 }
 
+async function playForEveryone(){
+  if(!isHost)return;
 
-/* ---------------- HOST VERIFICATION ---------------- */
+  if(!currentVideoId && !playbackData?.videoId){
+    videoMessage("Load a YouTube video first.");
+    return;
+  }
+
+  try{
+    await writePlayback({
+      videoId:currentVideoId||playbackData.videoId,
+      state:"playing",
+      basePosition:0,
+      startedAt:Date.now()+2500
+    });
+
+    videoMessage("Play command sent to everyone.");
+  }catch(error){
+    console.error(error);
+    videoMessage("Play command failed: "+error.message);
+  }
+}
+
+async function pauseForEveryone(){
+  if(!isHost)return;
+
+  try{
+    let position=0;
+
+    if(ytPlayer && youtubeReady){
+      position=ytPlayer.getCurrentTime()||0;
+    }else if(playbackData){
+      position=expectedPosition(playbackData);
+    }
+
+    await writePlayback({
+      videoId:currentVideoId||playbackData?.videoId||"",
+      state:"paused",
+      basePosition:position,
+      startedAt:0
+    });
+
+    videoMessage("Pause command sent to everyone.");
+  }catch(error){
+    console.error(error);
+    videoMessage("Pause command failed: "+error.message);
+  }
+}
+
+async function resumeForEveryone(){
+  if(!isHost)return;
+
+  if(!currentVideoId && !playbackData?.videoId){
+    videoMessage("Load a YouTube video first.");
+    return;
+  }
+
+  try{
+    let position=0;
+
+    if(ytPlayer && youtubeReady){
+      position=ytPlayer.getCurrentTime()||0;
+    }else if(playbackData){
+      position=expectedPosition(playbackData);
+    }
+
+    await writePlayback({
+      videoId:currentVideoId||playbackData.videoId,
+      state:"playing",
+      basePosition:position,
+      startedAt:Date.now()+2500
+    });
+
+    videoMessage("Resume command sent to everyone.");
+  }catch(error){
+    console.error(error);
+    videoMessage("Resume command failed: "+error.message);
+  }
+}
+
+async function stopForEveryone(){
+  if(!isHost)return;
+
+  try{
+    await writePlayback({
+      videoId:currentVideoId||playbackData?.videoId||"",
+      state:"stopped",
+      basePosition:0,
+      startedAt:0
+    });
+
+    videoMessage("Stop command sent to everyone.");
+  }catch(error){
+    console.error(error);
+    videoMessage("Stop command failed: "+error.message);
+  }
+}
+
+/* APPLY FIREBASE PLAYBACK COMMANDS */
+
+async function applyPlayback(data){
+  if(!data || !data.videoId)return;
+
+  playbackData=data;
+  const id=String(data.videoId);
+
+  try{
+    await createYouTubePlayer();
+
+    if(!youtubeReady || !ytPlayer)return;
+
+    if(id!==currentVideoId){
+      currentVideoId=id;
+      $("videoMessage").style.display="none";
+      $("videoPlayer").style.display="block";
+      ytPlayer.loadVideoById(id);
+      lastAppliedCommand="";
+      return;
+    }
+
+    const command=[
+      id,
+      data.state,
+      data.basePosition,
+      data.startedAt,
+      data.updatedAt
+    ].join("|");
+
+    if(command===lastAppliedCommand)return;
+    lastAppliedCommand=command;
+
+    if(applyingPlayback)return;
+    applyingPlayback=true;
+
+    try{
+      const position=expectedPosition(data);
+
+      if(data.state==="playing"){
+        const delay=Number(data.startedAt||0)-Date.now();
+
+        if(delay>0){
+          ytPlayer.seekTo(Number(data.basePosition||0),true);
+          ytPlayer.pauseVideo();
+
+          setTimeout(()=>{
+            if(playbackData &&
+               playbackData.state==="playing" &&
+               Number(playbackData.startedAt)===Number(data.startedAt)){
+              ytPlayer.seekTo(expectedPosition(playbackData),true);
+              ytPlayer.playVideo();
+            }
+          },delay);
+        }else{
+          ytPlayer.seekTo(position,true);
+          ytPlayer.playVideo();
+        }
+
+        videoMessage("Karaoke video is playing.");
+      }else if(data.state==="paused"){
+        ytPlayer.seekTo(position,true);
+        ytPlayer.pauseVideo();
+        videoMessage("Karaoke video is paused.");
+      }else if(data.state==="stopped"){
+        ytPlayer.stopVideo();
+        videoMessage("Karaoke video is stopped.");
+      }
+    }finally{
+      applyingPlayback=false;
+    }
+
+  }catch(error){
+    console.error("Could not apply playback:",error);
+    videoMessage("YouTube player error: "+error.message);
+  }
+}
+
+function startPlaybackListener(){
+  const stop=onValue(
+    ref(db,"karaokePlayback/"+showId),
+    snap=>{
+      const data=snap.val();
+
+      if(!data){
+        playbackData=null;
+        currentVideoId="";
+        $("videoPlayer").style.display="none";
+        $("videoMessage").style.display="block";
+        $("videoMessage").textContent="Waiting for the host to select a karaoke video...";
+        return;
+      }
+
+      playbackData=data;
+
+      if(data.videoId){
+        $("youtubeInput").value=
+          "https://www.youtube.com/watch?v="+data.videoId;
+
+        applyPlayback(data);
+      }
+    },
+    error=>{
+      console.error("Playback listener:",error);
+      videoMessage("Firebase playback error: "+error.message);
+    }
+  );
+
+  listeners.push(stop);
+}
+
+/* HOST VERIFICATION */
 
 async function verifyHost(user){
   if(!user || !showData || showData.hostUid!==user.uid)return false;
@@ -239,8 +539,7 @@ async function verifyHost(user){
     Number(app.subscriptionEndAt||0)>now;
 }
 
-
-/* ---------------- CURRENT PERFORMER ---------------- */
+/* CURRENT PERFORMER */
 
 function renderCurrentPerformer(data){
   if(!data || !(data.name || data.currentPerformerName)){
@@ -249,12 +548,12 @@ function renderCurrentPerformer(data){
     return;
   }
 
-  const name=data.currentPerformerName || data.name || "Performer";
-  const language=data.language || data.currentLanguage || "";
-  const solo=data.soloCount ?? data.currentSoloCount ?? 0;
-  const duet=data.duetCount ?? data.currentDuetCount ?? 0;
-  const song=data.currentSongName || data.songName || "";
-  const movie=data.currentMovieName || data.movieName || "";
+  const name=data.currentPerformerName||data.name||"Performer";
+  const language=data.language||data.currentLanguage||"";
+  const solo=data.soloCount??data.currentSoloCount??0;
+  const duet=data.duetCount??data.currentDuetCount??0;
+  const song=data.currentSongName||data.songName||"";
+  const movie=data.currentMovieName||data.movieName||"";
 
   $("currentPerformer").innerHTML=`
     <h2>${escapeHTML(name)}</h2>
@@ -267,8 +566,7 @@ function renderCurrentPerformer(data){
   `;
 }
 
-
-/* ---------------- LIVE PERFORMANCE LISTENER ---------------- */
+/* PERFORMANCE LISTENER */
 
 function startPerformanceListener(){
   const stop=onValue(
@@ -276,54 +574,14 @@ function startPerformanceListener(){
     snap=>{
       currentPerformance=snap.val()||{};
       renderCurrentPerformer(currentPerformance);
-
-      // Karaoke selected for the current singer takes priority.
-      const singerVideo=
-        currentPerformance.currentKaraokeUrl ||
-        currentPerformance.currentKaraokeVideoId ||
-        currentPerformance.karaokeUrl ||
-        "";
-
-      const showVideo=
-        currentPerformance.youtubeUrl || "";
-
-      if(singerVideo){
-        updateYouTubePlayer(singerVideo);
-      }else if(showVideo){
-        updateYouTubePlayer(showVideo);
-      }
     },
-    error=>{
-      console.error("Performance listener:",error);
-    }
+    error=>console.error("Performance listener:",error)
   );
 
   listeners.push(stop);
 }
 
-
-/* ---------------- BACKUP KARAOKE SELECTION ---------------- */
-
-function startKaraokeSelectionListener(){
-  const stop=onValue(
-    ref(db,"karaokeSelectionsByShow/"+showId),
-    snap=>{
-      const data=snap.val();
-      if(!data)return;
-
-      if(!currentPerformance?.currentKaraokeUrl &&
-         !currentPerformance?.currentKaraokeVideoId){
-        updateYouTubePlayer(data.videoId || data.youtubeUrl || "");
-      }
-    },
-    error=>console.error("Karaoke selection:",error)
-  );
-
-  listeners.push(stop);
-}
-
-
-/* ---------------- QUEUE ---------------- */
+/* QUEUE */
 
 function sortedQueue(){
   return Object.entries(queueData)
@@ -349,8 +607,8 @@ function renderQueue(){
   const entries=sortedQueue();
   const waiting=approvedWaiting();
   const playing=findPlaying();
-
   const container=$("performerQueue");
+
   container.innerHTML="";
 
   const visible=entries.filter(([,person])=>
@@ -381,13 +639,13 @@ function renderQueue(){
 
   if(isHost){
     $("startBtn").disabled=
-      actionRunning || !!playing || waiting.length===0;
+      actionRunning||!!playing||waiting.length===0;
 
     $("nextBtn").disabled=
-      actionRunning || !playing;
+      actionRunning||!playing;
 
     $("finishBtn").disabled=
-      actionRunning || !playing;
+      actionRunning||!playing;
   }
 }
 
@@ -408,8 +666,7 @@ function startQueueListener(){
   listeners.push(stop);
 }
 
-
-/* ---------------- STAGE DATA ---------------- */
+/* STAGE DATA */
 
 async function clearLiveStage(){
   await set(ref(db,"liveStage/"+showId),{
@@ -422,12 +679,12 @@ async function clearLiveStage(){
 }
 
 async function publishPerformer(id,person){
-  const name=person.name || person.singerName || "Performer";
+  const name=person.name||person.singerName||"Performer";
 
   await set(ref(db,"livePerformance/"+showId),{
     showId,
     registrationId:id,
-    singerUid:person.singerUid || person.uid || "",
+    singerUid:person.singerUid||person.uid||"",
     currentPerformerId:id,
     currentPerformerName:name,
     name,
@@ -469,11 +726,10 @@ async function clearPublicPerformer(){
   });
 }
 
-
-/* ---------------- START NEXT ---------------- */
+/* START NEXT */
 
 async function startNextPerformer(){
-  if(actionRunning || !isHost)return;
+  if(actionRunning||!isHost)return;
 
   actionRunning=true;
   renderQueue();
@@ -507,13 +763,13 @@ async function startNextPerformer(){
   }
 }
 
-
-/* ---------------- FINISH CURRENT ---------------- */
+/* FINISH CURRENT */
 
 async function finishCurrent(){
-  if(actionRunning || !isHost)return;
+  if(actionRunning||!isHost)return;
 
   const playing=findPlaying();
+
   if(!playing){
     message("There is no active performer.");
     return;
@@ -540,13 +796,13 @@ async function finishCurrent(){
   }
 }
 
-
-/* ---------------- FINISH AND NEXT ---------------- */
+/* FINISH AND NEXT */
 
 async function finishAndNext(){
-  if(actionRunning || !isHost)return;
+  if(actionRunning||!isHost)return;
 
   const playing=findPlaying();
+
   if(!playing){
     message("There is no active performer.");
     return;
@@ -562,11 +818,11 @@ async function finishAndNext(){
     await clearLiveStage();
     await clearPublicPerformer();
 
-    // Find the next waiting performer after the current one is completed.
     const next=approvedWaiting().find(([id])=>id!==oldId);
 
     if(next){
       const [nextId,nextPerson]=next;
+
       await markQueueStatus(nextId,"Playing");
       await publishPerformer(nextId,nextPerson);
 
@@ -584,15 +840,19 @@ async function finishAndNext(){
   }
 }
 
+/* BUTTONS */
 
-/* ---------------- BUTTONS ---------------- */
+$("loadVideoBtn").addEventListener("click",loadSelectedVideo);
+$("playVideoBtn").addEventListener("click",playForEveryone);
+$("pauseVideoBtn").addEventListener("click",pauseForEveryone);
+$("resumeVideoBtn").addEventListener("click",resumeForEveryone);
+$("stopVideoBtn").addEventListener("click",stopForEveryone);
 
 $("startBtn").addEventListener("click",startNextPerformer);
 $("finishBtn").addEventListener("click",finishCurrent);
 $("nextBtn").addEventListener("click",finishAndNext);
 
-
-/* ---------------- INITIALIZATION ---------------- */
+/* INITIALIZATION */
 
 async function initializeForUser(user){
   stopListeners();
@@ -604,6 +864,7 @@ async function initializeForUser(user){
   currentPerformance=null;
 
   $("hostControls").style.display="none";
+  $("karaokeControls").style.display="none";
   $("performerQueue").textContent="Loading queue...";
 
   if(!user){
@@ -624,7 +885,6 @@ async function initializeForUser(user){
 
     showData=snap.val();
 
-    // A show can be Published before the event or Live after it starts.
     if(!["Published","Live"].includes(showData.status)){
       $("showStatus").textContent="This show is not published or live.";
       return;
@@ -642,19 +902,19 @@ async function initializeForUser(user){
 
     if(isHost){
       $("hostControls").style.display="block";
+      $("karaokeControls").style.display="block";
+
       $("loginStatus").textContent=
         "Approved host with active subscription.";
 
       startQueueListener();
     }else{
-      $("loginStatus").textContent=
-        "You are viewing the auditorium.";
-
+      $("loginStatus").textContent="You are viewing the auditorium.";
       $("queueSection").style.display="none";
     }
 
     startPerformanceListener();
-    startKaraokeSelectionListener();
+    startPlaybackListener();
 
   }catch(error){
     console.error("Initialization error:",error);
@@ -665,7 +925,7 @@ async function initializeForUser(user){
 
 if(!showId){
   $("showStatus").textContent="Show ID is missing.";
-  showVideoMessage("Open the auditorium using the correct show link.");
+  $("videoMessage").textContent="Open the auditorium using the correct show link.";
 }else{
   onAuthStateChanged(auth,user=>{
     initializeForUser(user);
@@ -675,7 +935,6 @@ if(!showId){
 window.addEventListener("beforeunload",stopListeners);
 </script>
 
-<!-- Keep your existing LiveKit file separate. -->
 <script type="module" src="./livekit.js"></script>
 
 </body>
