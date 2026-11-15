@@ -163,6 +163,7 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 <div class="section-content">
 <label>Select Show</label>
 <select id="queueShowSelect"><option value="">Select a show</option></select>
+
 <h3>▶ Main YouTube Show Video</h3>
 <p class="small">Paste the main YouTube live-stream or show video link here. Individual singers have separate karaoke links below.</p>
 <input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
@@ -170,13 +171,37 @@ footer{text-align:center;color:#999;padding:20px;font-size:12px}
 <button id="stopLiveBtn" class="danger">END LIVE SHOW</button>
 <div id="liveMessage" class="small"></div>
 <div id="liveLinks" class="small"></div>
+
+<!-- GLOBAL YOUTUBE KARAOKE SEARCH -->
+<div class="yt-search-panel" id="globalYouTubeSearch">
+<h3>🔎 YouTube Karaoke Search</h3>
+<p class="small">Search karaoke versions, instrumental tracks, or minus-one songs. Only the host can search and assign tracks.</p>
+
+<label>YouTube Data API Key</label>
+<input type="password" id="ytApiKey" autocomplete="off" placeholder="Paste your YouTube API key">
+<button id="saveYouTubeApiKeyBtn" class="secondary" type="button">Save API Key</button>
+
+<label>Song / Movie / Singer Name</label>
+<input type="search" id="ytSearchQuery" placeholder="Example: Tum Hi Ho karaoke">
+<button id="searchYouTubeBtn" class="success" type="button">🔎 Search YouTube</button>
+
+<label>Assign selected track to performer</label>
+<select id="ytPerformerSelect">
+<option value="">Select a performer from the queue</option>
+</select>
+
+<div id="ytSearchMessage" class="small"></div>
+<div id="ytSearchResults"></div>
+</div>
+
 <hr>
 <h3>🎤 Performance Queue</h3>
-<p class="small">Search YouTube for karaoke tracks, select one, and start the singer's performance.</p>
+<p class="small">Select a track above, assign it to a performer, then start that performance here.</p>
 <div id="queueList" class="empty">Select a show to view its queue.</div>
 </div>
 </details>
 </main>
+
 <footer>Powered by Melody Magic Music Studio</footer>
 </div>
 
@@ -188,11 +213,9 @@ import {ref,get,set,push,update,remove,onValue,off} from "https://www.gstatic.co
 const CLOUD_NAME="quqojlew";
 const UPLOAD_PRESET="melody_magic_posters";
 
-/* PASTE YOUR YOUTUBE DATA API V3 KEY IN THE DASHBOARD FIELD */
 let currentUser=null,currentHost=null,myShows=[];
 let registrationUnsubscribe=null,queueUnsubscribe=null,liveUnsubscribe=null;
 let currentQueue=[];
-let youtubeSearchResults={};
 
 const $=id=>document.getElementById(id);
 
@@ -418,72 +441,58 @@ function listenToQueue(showId){
  queueUnsubscribe=()=>off(r,"value",cb);
 }
 
-/* YOUTUBE SEARCH UI AND API */
-function renderYouTubeSearch(p){
- return `<div class="yt-search-panel">
- <h3>🔎 Search YouTube Karaoke Tracks</h3>
- <p class="small">Search for karaoke versions, instrumental tracks, or minus-one songs. Only the host can select a track.</p>
- <label>YouTube Data API Key</label>
- <input type="password" id="ytApiKey-${escapeHTML(p.id)}" placeholder="Paste your YouTube API key">
- <button class="secondary" type="button" data-save-api="${escapeHTML(p.id)}">Save API Key</button>
- <label>Song / Movie / Singer Name</label>
- <input type="search" id="ytSearch-${escapeHTML(p.id)}" placeholder="Example: Tum Hi Ho karaoke">
- <button type="button" class="success" data-search-yt="${escapeHTML(p.id)}">🔎 Search YouTube</button>
- <div id="ytResults-${escapeHTML(p.id)}" class="small"></div>
- </div>`;
-}
+/* GLOBAL YOUTUBE SEARCH AND API */
 function savedApiKey(){
  try{return localStorage.getItem("melodyMagicYoutubeApiKey")||""}catch(e){return ""}
 }
 function saveApiKey(key){
  try{localStorage.setItem("melodyMagicYoutubeApiKey",key)}catch(e){}
 }
-async function searchYouTubeForSinger(id){
- const query=$("ytSearch-"+id).value.trim();
- const key=$("ytApiKey-"+id).value.trim()||savedApiKey();
- const resultBox=$("ytResults-"+id);
- if(!key){resultBox.textContent="Please enter your YouTube Data API key first.";return}
- if(!query){resultBox.textContent="Enter a song or movie name to search.";return}
+$("ytApiKey").value=savedApiKey();
+
+$("saveYouTubeApiKeyBtn").addEventListener("click",()=>{
+ const key=$("ytApiKey").value.trim();
+ if(!key){alert("Paste your YouTube API key first.");return}
  saveApiKey(key);
- resultBox.textContent="Searching YouTube...";
- const btn=document.querySelector(`[data-search-yt="${CSS.escape(id)}"]`);
- if(btn)btn.disabled=true;
+ message("ytSearchMessage","YouTube API key saved in this browser.");
+});
+$("searchYouTubeBtn").addEventListener("click",searchYouTube);
+
+async function searchYouTube(){
+ const query=$("ytSearchQuery").value.trim();
+ const key=$("ytApiKey").value.trim()||savedApiKey();
+ const resultBox=$("ytSearchResults");
+ if(!key){message("ytSearchMessage","Please enter your YouTube Data API key first.");return}
+ if(!query){message("ytSearchMessage","Enter a song, movie or singer name to search.");return}
+ saveApiKey(key);$("ytApiKey").value=key;
+ message("ytSearchMessage","Searching YouTube...");
+ const btn=$("searchYouTubeBtn");btn.disabled=true;
  try{
-  const params=new URLSearchParams({
-   part:"snippet",type:"video",maxResults:"8",
-   q:query+" karaoke",videoEmbeddable:"true",key
-  });
+  const params=new URLSearchParams({part:"snippet",type:"video",maxResults:"8",q:query+" karaoke",videoEmbeddable:"true",key});
   const response=await fetch("https://www.googleapis.com/youtube/v3/search?"+params.toString());
   const data=await response.json();
   if(!response.ok)throw new Error(data.error?.message||"YouTube search failed.");
-  if(!data.items||!data.items.length){resultBox.textContent="No karaoke videos found. Try another search.";return}
-  youtubeSearchResults[id]=data.items;
-  resultBox.innerHTML=data.items.map((item,index)=>{
-   const videoId=item.id.videoId;
-   const title=item.snippet.title||"YouTube video";
-   const channel=item.snippet.channelTitle||"";
-   const thumb=item.snippet.thumbnails?.medium?.url||item.snippet.thumbnails?.default?.url||"";
-   return `<div class="yt-result">
-    <img src="${escapeHTML(thumb)}" alt="Video thumbnail">
-    <div class="yt-result-info">
-     <div class="yt-result-title">${escapeHTML(title)}</div>
-     <div class="yt-result-channel">${escapeHTML(channel)}</div>
-     <button type="button" class="success" data-select-yt="${escapeHTML(id)}" data-video="${escapeHTML(videoId)}" data-title="${escapeHTML(title)}">✓ Select This Track</button>
-     <a href="https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}" target="_blank" rel="noopener" style="color:#e9bd55;font-size:12px">Preview on YouTube</a>
-    </div>
-   </div>`;
+  if(!data.items||!data.items.length){resultBox.innerHTML="";message("ytSearchMessage","No karaoke videos found. Try another search.");return}
+  resultBox.innerHTML=data.items.map(item=>{
+   const videoId=item.id?.videoId||"",title=item.snippet?.title||"YouTube video";
+   const channel=item.snippet?.channelTitle||"";
+   const thumb=item.snippet?.thumbnails?.medium?.url||item.snippet?.thumbnails?.default?.url||"";
+   if(!videoId)return "";
+   return `<div class="yt-result"><img src="${escapeHTML(thumb)}" alt="Video thumbnail"><div class="yt-result-info"><div class="yt-result-title">${escapeHTML(title)}</div><div class="yt-result-channel">${escapeHTML(channel)}</div><button type="button" class="success" data-select-global-yt="${escapeHTML(videoId)}">✓ Assign This Track</button><a href="https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}" target="_blank" rel="noopener" style="color:#e9bd55;font-size:12px">Preview on YouTube</a></div></div>`;
   }).join("");
-  resultBox.querySelectorAll("[data-select-yt]").forEach(b=>b.onclick=()=>{
-   const url="https://www.youtube.com/watch?v="+b.dataset.video;
-   const input=document.querySelector(`[data-karaoke-input="${CSS.escape(id)}"]`);
-   if(input)input.value=url;
-   const searchInput=$("ytSearch-"+id);
-   if(searchInput)searchInput.value=b.dataset.title;
-   resultBox.insertAdjacentHTML("afterbegin",'<p style="color:#72d58e">Track selected. The karaoke link has been filled in. Press START PERFORMANCE when ready.</p>');
+  message("ytSearchMessage","Found "+data.items.length+" results. Choose a performer, then click Assign This Track.");
+  resultBox.querySelectorAll("[data-select-global-yt]").forEach(b=>b.onclick=()=>{
+   const performerId=$("ytPerformerSelect").value;
+   if(!performerId){alert("First select a performer from the queue.");return}
+   const input=document.querySelector(`[data-karaoke-input="${CSS.escape(performerId)}"]`);
+   if(!input){alert("That performer is no longer in the queue. Please select the performer again.");return}
+   input.value="https://www.youtube.com/watch?v="+b.dataset.selectGlobalYt;
+   message("ytSearchMessage","Track assigned to "+($("ytPerformerSelect").selectedOptions[0]?.textContent||"performer")+". Now click START PERFORMANCE in that performer's queue card.");
+   resultBox.querySelectorAll("[data-select-global-yt]").forEach(x=>x.textContent="✓ Assign This Track");
+   b.textContent="✓ Track Assigned";
   });
- }catch(e){
-  resultBox.textContent="Search error: "+e.message;
- }finally{if(btn)btn.disabled=false}
+ }catch(e){resultBox.innerHTML="";message("ytSearchMessage","Search error: "+e.message)}
+ finally{btn.disabled=false}
 }
 
 function renderQueue(showId,data){
@@ -500,7 +509,6 @@ function renderQueue(showId,data){
  <p>Mobile: ${escapeHTML(p.mobile||"-")}</p>
  <p>Type: ${escapeHTML(p.performanceType||"-")} | Source: ${escapeHTML(p.source||"-")}</p>
  <p>Status: <span class="pill">${escapeHTML(p.status||"Waiting")}</span></p>
- ${renderYouTubeSearch(p)}
  <div class="karaoke-box">
  <label>Selected YouTube Karaoke Link</label>
  <input type="url" data-karaoke-input="${escapeHTML(p.id)}" value="${escapeHTML(p.karaokeUrl||"")}" placeholder="Select a YouTube result or paste a link">
@@ -512,18 +520,18 @@ function renderQueue(showId,data){
  <button class="danger" data-remove="${escapeHTML(p.id)}">Remove</button>
  </div>`).join("");
 
- /* Load saved API key into each queue member's field */
+ /* Keep the global search performer selector in sync with the queue. */
+ const performerSelect=$("ytPerformerSelect");
+ const previousPerformer=performerSelect.value;
+ performerSelect.innerHTML='<option value="">Select a performer from the queue</option>';
  currentQueue.forEach(p=>{
-  const field=$("ytApiKey-"+p.id);
-  if(field)field.value=savedApiKey();
+  const option=document.createElement("option");
+  option.value=p.id;
+  option.textContent=(p.performerName||"Performer")+" — "+(p.songName||"No song name");
+  performerSelect.appendChild(option);
  });
+ if(currentQueue.some(p=>p.id===previousPerformer))performerSelect.value=previousPerformer;
 
- box.querySelectorAll("[data-save-api]").forEach(b=>b.onclick=()=>{
-  const key=$("ytApiKey-"+b.dataset.saveApi).value.trim();
-  if(!key){alert("Paste your YouTube API key first.");return}
-  saveApiKey(key);alert("YouTube API key saved in this browser.");
- });
- box.querySelectorAll("[data-search-yt]").forEach(b=>b.onclick=()=>searchYouTubeForSinger(b.dataset.searchYt));
  box.querySelectorAll("[data-start-performance]").forEach(b=>b.onclick=async()=>{
   const id=b.dataset.startPerformance;
   const input=box.querySelector(`[data-karaoke-input="${CSS.escape(id)}"]`);
