@@ -574,12 +574,15 @@ function renderRegistrations(showId,data){
  `).join("");
 
  box.querySelectorAll("[data-approve]").forEach(b=>b.onclick=async()=>{
+  b.disabled=true;
   try{
    await updatePerformer(showId,b.dataset.approve,{status:"Approved"});
    await addRegistrationToQueue(showId,b.dataset.approve);
    alert("Performer approved and added to queue.");
   }catch(e){
    alert("Approval failed: "+e.message);
+  }finally{
+   b.disabled=false;
   }
  });
 
@@ -626,6 +629,11 @@ $("queueShowSelect").addEventListener("change",e=>{
  listenToLive(e.target.value);
 });
 
+/*
+ IMPORTANT LIVEKIT IDENTITY FIX:
+ Copy singerUid from the approved registration into the queue.
+ Preserve the previous queue status and order when updating.
+*/
 async function addRegistrationToQueue(showId,id){
  await verifyShow(showId);
 
@@ -639,23 +647,43 @@ async function addRegistrationToQueue(showId,id){
   throw new Error("Only approved performers can enter the queue.");
  }
 
+ if(!p.singerUid){
+  throw new Error(
+   "This registration has no singer UID. Ask the singer to register again using the online registration page."
+  );
+ }
+
  const qr=ref(db,`performanceQueue/${showId}/${id}`);
  const existing=await get(qr);
+ const old=existing.exists()?existing.val():{};
 
  const queueData={
   registrationId:id,
+
+  // These fields are required to match the singer's Firebase UID in LiveKit.
+  singerUid:p.singerUid,
+  uid:p.singerUid,
+
   performerName:p.singerName||p.name||"Performer",
+  name:p.singerName||p.name||"Performer",
   mobile:p.mobile||p.phone||"",
   songName:p.songName||p.song||"",
   movieName:p.movieName||p.movie||"",
   performanceType:p.performanceType||p.type||"Solo",
-  status:"Waiting",
+
+  // Do not reset a performer who is already playing.
+  status:old.status||"Waiting",
+
   source:"Online Registration",
   updatedAt:Date.now()
  };
 
  if(existing.exists()){
-  await update(qr,queueData);
+  await update(qr,{
+   ...queueData,
+   order:old.order||1,
+   createdAt:old.createdAt||Date.now()
+  });
   return;
  }
 
@@ -1014,6 +1042,10 @@ $("uploadPosterBtn").onclick=async()=>{
 
  if(!showId){alert("Select a show.");return}
  if(!file){alert("Select a poster image.");return}
+ if(!["image/jpeg","image/png"].includes(file.type)){
+  alert("Only JPG and PNG images are allowed.");
+  return;
+ }
  if(file.size>5*1024*1024){alert("Image must be smaller than 5 MB.");return}
 
  try{
