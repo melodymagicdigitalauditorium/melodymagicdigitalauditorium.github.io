@@ -1,5 +1,381 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Performer Entry - Melody Magic Digital Auditorium</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ padding:15px;
+ background:#080808;
+ color:white;
+ font-family:Arial,sans-serif
+}
+
+.container{
+ max-width:600px;
+ margin:20px auto
+}
+
+header{
+ text-align:center;
+ padding:22px;
+ background:linear-gradient(135deg,#302000,#101010);
+ border:1px solid #b58b35;
+ border-radius:14px
+}
+
+h1,h2{color:#e9bd55}
+
+.card{
+ background:#171717;
+ border:1px solid #514126;
+ border-radius:12px;
+ padding:18px;
+ margin:15px 0
+}
+
+input,select{
+ width:100%;
+ padding:13px;
+ margin:7px 0 15px;
+ background:#090909;
+ color:white;
+ border:1px solid #555;
+ border-radius:7px;
+ font-size:15px
+}
+
+label{
+ color:#ddd;
+ font-size:13px
+}
+
+button,.btn{
+ display:block;
+ width:100%;
+ padding:14px;
+ margin-top:12px;
+ border:0;
+ border-radius:8px;
+ background:#d6ad50;
+ color:#111;
+ font-weight:bold;
+ font-size:15px;
+ text-align:center;
+ text-decoration:none;
+ cursor:pointer
+}
+
+button:disabled{
+ opacity:.5;
+ cursor:not-allowed
+}
+
+.green{background:#218348;color:white}
+.red{background:#a52d2d;color:white}
+
+.status{
+ background:#252525;
+ padding:14px;
+ border-radius:8px;
+ margin:12px 0;
+ line-height:1.7;
+ overflow-wrap:anywhere
+}
+
+.hidden{display:none!important}
+.small{color:#aaa;font-size:12px}
+
+footer{
+ text-align:center;
+ color:#999;
+ padding:20px
+}
+
+.success-text{color:#66df91}
+.warning-text{color:#e9bd55}
+.error-text{color:#ff7777}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+ <h1>🎤 MELODY MAGIC</h1>
+ <p>DIGITAL AUDITORIUM</p>
+ <p>PERFORMER ENTRY PORTAL</p>
+</header>
+
+<div class="card">
+
+ <h2 id="showName">Loading Show...</h2>
+
+ <p id="showDetails" class="small"></p>
+
+ <div id="accountMessage" class="status">
+ Checking performer account...
+ </div>
+
+</div>
+
+<!-- NEW REGISTRATION -->
+
+<div class="card hidden" id="registrationCard">
+
+ <h2>🎵 Register for Performance</h2>
+
+ <form id="registrationForm">
+
+  <label>Performer Name</label>
+  <input id="singerName"
+   required maxlength="80"
+   placeholder="Enter your name">
+
+  <label>Mobile Number</label>
+  <input id="mobile"
+   type="tel" required maxlength="15"
+   placeholder="Mobile number">
+
+  <label>Song Name</label>
+  <input id="songName"
+   required maxlength="120"
+   placeholder="Song you want to perform">
+
+  <label>Movie Name</label>
+  <input id="movieName"
+   maxlength="120"
+   placeholder="Movie name">
+
+  <label>Performance Type</label>
+
+  <select id="performanceType" required>
+   <option value="Solo">Solo</option>
+   <option value="Duet">Duet</option>
+   <option value="Group">Group</option>
+  </select>
+
+  <button id="registerBtn" type="submit">
+   SUBMIT PERFORMANCE REQUEST
+  </button>
+
+ </form>
+
+ <div id="registrationMessage"
+  class="status hidden"></div>
+
+</div>
+
+<!-- REGISTRATION STATUS -->
+
+<div class="card hidden" id="waitingCard">
+
+ <h2>🎤 Your Performance</h2>
+
+ <div id="performerDetails"></div>
+
+ <div id="approvalStatus" class="status">
+  Waiting for host approval...
+ </div>
+
+ <button id="enterShowBtn" class="green hidden">
+  🎤 ENTER SHOW
+ </button>
+
+ <button id="retryBtn" class="hidden">
+  REGISTER AGAIN
+ </button>
+
+ <p class="small">
+ Once approved, enter the auditorium to watch the live show
+ and wait for your performance turn.
+ </p>
+
+</div>
+
+<footer>
+ Melody Magic Digital Auditorium<br>
+ Powered by Melody Magic Music Studio
+</footer>
+
+</div>
+
+<script type="module">
+
+import {auth,db} from "./firebase-host.js";
+
+import {
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+ ref,get,push,set,onValue,query,
+ orderByChild,equalTo
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const $=id=>document.getElementById(id);
+
+const params=new URLSearchParams(location.search);
+const showId=params.get("showId");
+
+let currentUser=null;
+let currentShow=null;
+let registrationId=null;
+let registrationListener=null;
+let registrationData=null;
+let authCheckRunning=false;
+
+function message(id,text){
+ $(id).textContent=text;
+}
+
+function normalStatus(value){
+ return String(value||"Pending")
+  .trim()
+  .toLowerCase();
+}
+
+function cleanup(){
+
+ if(registrationListener){
+  registrationListener();
+  registrationListener=null;
+ }
+
+}
+
+function showRegistration(){
+
+ $("registrationCard").classList.remove("hidden");
+ $("waitingCard").classList.add("hidden");
+
+}
+
+function showWaiting(){
+
+ $("registrationCard").classList.add("hidden");
+ $("waitingCard").classList.remove("hidden");
+
+}
+
+function showError(text){
+
+ message("accountMessage",text);
+
+}
+
+async function loadShow(){
+
+ if(!showId){
+  showError("Show ID is missing. Please open the correct show link.");
+  return false;
+ }
+
+ const snap=await get(ref(db,"shows/"+showId));
+
+ if(!snap.exists()){
+  showError("This show does not exist.");
+  return false;
+ }
+
+ currentShow=snap.val();
+
+ if(currentShow.status==="Deleted"){
+  showError("This show is no longer available.");
+  return false;
+ }
+
+ $("showName").textContent=
+  currentShow.name||"Melody Magic Show";
+
+ $("showDetails").textContent=
+  (currentShow.date||"")+" | "+(currentShow.time||"");
+
+ return true;
+
+}
+
+/* REGISTRATION DISPLAY */
+
+function renderRegistration(data){
+
+ registrationData=data;
+
+ showWaiting();
+
+ $("performerDetails").innerHTML=`
+  <p><b>Name:</b> ${esc(data.singerName)}</p>
+  <p><b>Song:</b> ${esc(data.songName)}</p>
+  <p><b>Movie:</b> ${esc(data.movieName||"-")}</p>
+  <p><b>Type:</b> ${esc(data.performanceType)}</p>
+ `;
+
+ const status=normalStatus(data.status);
+
+ $("enterShowBtn").classList.add("hidden");
+ $("retryBtn").classList.add("hidden");
+
+ if(
+  status==="approved"||
+  status==="queued"||
+  status==="waitingqueue"
+ ){
+
+  $("approvalStatus").innerHTML=
+   '<span class="success-text">✅ Congratulations!</span><br>'+
+   '<b>Your performance has been approved.</b><br>'+
+   'You can now enter the auditorium.';
+
+  $("enterShowBtn").classList.remove("hidden");
+
+ }else if(status==="rejected"){
+
+  $("approvalStatus").textContent=
+   "Your request was not approved. Please contact the host.";
+
+  $("retryBtn").classList.remove("hidden");
+
+ }else if(status==="completed"){
+
+  $("approvalStatus").textContent=
+   "Your performance is completed. Thank you for participating.";
+
+ }else{
+
+  $("approvalStatus").innerHTML=
+   '<span class="warning-text">⏳ Waiting for host approval.</span><br>'+
+   'Your registration has been received successfully.';
+
+ }
+
+}
+
+/* HTML SAFE TEXT */
+
+function esc(v){
+
+ return String(v??"").replace(/[&<>"']/g,c=>({
+  "&":"&amp;",
+  "<":"&lt;",
+  ">":"&gt;",
+  '"':"&quot;",
+  "'":"&#39;"
+ }[c]));
+
+}
+
+/* FIND THE SINGER REGISTRATION */
+
 async function findExistingRegistration(){
+
+ if(!currentUser||!showId)return false;
 
  const q=query(
   ref(db,"showRegistrations/"+showId),
@@ -13,19 +389,26 @@ async function findExistingRegistration(){
 
  const entries=Object.entries(snap.val());
 
- // Prefer an approved registration over a pending duplicate.
+ /*
+  Prioritise approved records.
+  This avoids selecting an older pending
+  registration when another registration
+  has already been approved.
+ */
+
  const priority={
-  "approved":1,
-  "queued":2,
-  "waitingqueue":3,
-  "pending":4,
-  "completed":5,
-  "rejected":6
+  approved:1,
+  queued:2,
+  waitingqueue:3,
+  pending:4,
+  completed:5,
+  rejected:6
  };
 
  entries.sort((a,b)=>{
-  const sa=String(a[1].status||"Pending").trim().toLowerCase();
-  const sb=String(b[1].status||"Pending").trim().toLowerCase();
+
+  const sa=normalStatus(a[1].status);
+  const sb=normalStatus(b[1].status);
 
   const pa=priority[sa]||99;
   const pb=priority[sb]||99;
@@ -34,11 +417,11 @@ async function findExistingRegistration(){
 
   return Number(b[1].createdAt||0)-
          Number(a[1].createdAt||0);
+
  });
 
  const valid=entries.find(([id,p])=>
-  String(p.status||"Pending").trim().toLowerCase()
-  !=="rejected"
+  normalStatus(p.status)!=="rejected"
  );
 
  if(!valid)return false;
@@ -50,4 +433,300 @@ async function findExistingRegistration(){
  listenForApproval();
 
  return true;
+
 }
+
+/* AUTOMATIC APPROVAL LISTENER */
+
+function listenForApproval(){
+
+ cleanup();
+
+ if(!registrationId)return;
+
+ const r=ref(
+  db,
+  "showRegistrations/"+showId+"/"+registrationId
+ );
+
+ registrationListener=onValue(r,snap=>{
+
+  if(!snap.exists()){
+
+   $("approvalStatus").textContent=
+    "Registration could not be found. Please contact the host.";
+
+   return;
+
+  }
+
+  const data=snap.val();
+
+  if(data.singerUid!==currentUser.uid){
+
+   $("approvalStatus").textContent=
+    "Registration account verification failed.";
+
+   return;
+
+  }
+
+  renderRegistration(data);
+
+ },error=>{
+
+  $("approvalStatus").textContent=
+   "Unable to check approval: "+error.message;
+
+ });
+
+}
+
+/* SUBMIT REGISTRATION */
+
+$("registrationForm").addEventListener("submit",async e=>{
+
+ e.preventDefault();
+
+ if(!currentUser||!currentShow)return;
+
+ const btn=$("registerBtn");
+
+ btn.disabled=true;
+ btn.textContent="Submitting...";
+
+ try{
+
+  const existing=await findExistingRegistration();
+
+  if(existing){
+
+   message("registrationMessage",
+    "You already have a registration for this show.");
+
+   $("registrationMessage").classList.remove("hidden");
+
+   return;
+
+  }
+
+  const data={
+
+   showId:showId,
+
+   singerUid:currentUser.uid,
+
+   singerName:$("singerName").value.trim(),
+
+   mobile:$("mobile").value.trim(),
+
+   songName:$("songName").value.trim(),
+
+   movieName:$("movieName").value.trim(),
+
+   performanceType:$("performanceType").value,
+
+   status:"Pending",
+
+   paymentStatus:"Unpaid",
+
+   registrationSource:"Online",
+
+   createdAt:Date.now()
+
+  };
+
+  if(
+   !data.singerName||
+   !data.mobile||
+   !data.songName
+  ){
+
+   throw new Error("Please complete all required fields.");
+
+  }
+
+  const newRef=push(
+   ref(db,"showRegistrations/"+showId)
+  );
+
+  registrationId=newRef.key;
+
+  await set(newRef,data);
+
+  $("registrationForm").reset();
+
+  renderRegistration(data);
+
+  listenForApproval();
+
+  message("accountMessage",
+   "Registration submitted successfully.");
+
+  $("registrationMessage").classList.add("hidden");
+
+ }catch(error){
+
+  message("registrationMessage",
+   "Registration failed: "+error.message);
+
+  $("registrationMessage").classList.remove("hidden");
+
+ }finally{
+
+  btn.disabled=false;
+
+  btn.textContent="SUBMIT PERFORMANCE REQUEST";
+
+ }
+
+});
+
+/* ENTER SHOW BUTTON */
+
+$("enterShowBtn").onclick=async()=>{
+
+ if(!currentUser||!registrationData||!registrationId)return;
+
+ const status=normalStatus(registrationData.status);
+
+ if(![
+  "approved",
+  "queued",
+  "waitingqueue"
+ ].includes(status)){
+
+  alert("Your performance is not approved yet.");
+
+  return;
+
+ }
+
+ const btn=$("enterShowBtn");
+
+ btn.disabled=true;
+ btn.textContent="VERIFYING APPROVAL...";
+
+ try{
+
+  const snap=await get(
+   ref(db,"showRegistrations/"+showId+"/"+registrationId)
+  );
+
+  if(!snap.exists()){
+
+   throw new Error("Registration not found.");
+
+  }
+
+  const latest=snap.val();
+
+  if(latest.singerUid!==currentUser.uid){
+
+   throw new Error("This registration belongs to another account.");
+
+  }
+
+  if(![
+   "approved",
+   "queued",
+   "waitingqueue"
+  ].includes(normalStatus(latest.status))){
+
+   throw new Error("Your show approval could not be verified.");
+
+  }
+
+  window.location.href=
+   "live-performance.html?showId="+
+   encodeURIComponent(showId);
+
+ }catch(error){
+
+  alert(error.message);
+
+  btn.disabled=false;
+  btn.textContent="🎤 ENTER SHOW";
+
+ }
+
+};
+
+/* REGISTER AGAIN */
+
+$("retryBtn").onclick=()=>{
+
+ registrationId=null;
+ registrationData=null;
+
+ cleanup();
+
+ showRegistration();
+
+};
+
+/* AUTHENTICATION */
+
+onAuthStateChanged(auth,async user=>{
+
+ currentUser=user;
+
+ cleanup();
+
+ registrationId=null;
+ registrationData=null;
+
+ if(!user){
+
+  showError(
+   "Please sign in using the same performer account used for registration."
+  );
+
+  $("registrationCard").classList.add("hidden");
+  $("waitingCard").classList.add("hidden");
+
+  return;
+
+ }
+
+ if(authCheckRunning)return;
+
+ authCheckRunning=true;
+
+ try{
+
+  const valid=await loadShow();
+
+  if(!valid)return;
+
+  message("accountMessage",
+   "Signed in successfully. Welcome to the show!");
+
+  const existing=await findExistingRegistration();
+
+  if(!existing){
+
+   showRegistration();
+
+  }
+
+ }catch(error){
+
+  showError(
+   "Unable to load registration: "+error.message
+  );
+
+ }finally{
+
+  authCheckRunning=false;
+
+ }
+
+});
+
+window.addEventListener("beforeunload",cleanup);
+
+</script>
+
+</body>
+</html>
