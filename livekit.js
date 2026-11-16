@@ -1,4 +1,3 @@
-
 import {
   Room,
   RoomEvent,
@@ -132,15 +131,42 @@ function getSingerRegistration(uid) {
   );
 }
 
-function isApprovedSinger(uid) {
-  const entry = getSingerRegistration(uid);
+/*
+ * IMPORTANT:
+ * Singers must not read the complete performanceQueue.
+ * Their own secure role comes from the Cloudflare Worker token.
+ * The host can verify singers using the queue.
+ */
 
-  return Boolean(
-    entry &&
-    ["Approved", "Queued", "Playing"].includes(
-      String(entry[1].status || "")
-    )
-  );
+function isApprovedSinger(uid) {
+  if (!uid) return false;
+
+  // A singer selected on the main stage is approved.
+  if (stageSingerUids.includes(uid)) {
+    return true;
+  }
+
+  // The connected singer's role is confirmed by the secure token.
+  if (uid === currentUser?.uid) {
+    return (
+      currentRole === "selected-singer" ||
+      currentRole === "waiting-singer"
+    );
+  }
+
+  // Only the host can check other singers against the queue.
+  if (isHost) {
+    const entry = getSingerRegistration(uid);
+
+    return Boolean(
+      entry &&
+      ["Approved", "Queued", "Playing"].includes(
+        String(entry[1].status || "")
+      )
+    );
+  }
+
+  return false;
 }
 
 function isSingerRole() {
@@ -981,7 +1007,11 @@ function listenToMyPermissions() {
 
     error => {
       console.error("Permission listener:", error);
-      setStatus("Could not read your host permissions.", true);
+      setStatus(
+        "Could not read your camera/microphone permissions: " +
+        error.message,
+        true
+      );
     }
   );
 }
@@ -1221,8 +1251,24 @@ async function selectMainSingers() {
    FIREBASE QUEUE AND STAGE LISTENERS
 ========================================= */
 
+/*
+ * CRITICAL 401 FIX:
+ * Do not attach a full performanceQueue listener on a singer page.
+ * Firebase rules permit the host to read the full queue, but singers
+ * are restricted to their own registration records.
+ */
+
 function listenToSingerQueue() {
   stopListener(stopQueueListener);
+  stopQueueListener = null;
+
+  if (!isHost) {
+    queueData = {};
+    updateSingerOptions();
+    renderHostControls();
+    renderStageAndQueue();
+    return;
+  }
 
   stopQueueListener = onValue(
     ref(db, `performanceQueue/${showId}`),
@@ -1247,8 +1293,11 @@ function listenToSingerQueue() {
     },
 
     error => {
-      console.error("Singer queue listener:", error);
-      setStatus("Could not load approved singer list: " + error.message, true);
+      console.error("Host queue listener:", error);
+      setStatus(
+        "Host could not load the singer queue: " + error.message,
+        true
+      );
     }
   );
 }
@@ -1292,6 +1341,7 @@ function listenToStage() {
 
     error => {
       console.error("Stage listener:", error);
+      setStatus("Could not read the live stage: " + error.message, true);
     }
   );
 }
@@ -1775,7 +1825,10 @@ async function initializeShow() {
 
     isHost = await verifyHost();
 
+    // The queue listener now reads the full queue only for the host.
     listenToSingerQueue();
+
+    // Singers can still listen to the public live-stage selection.
     listenToStage();
 
     if (isHost) {
@@ -1785,7 +1838,6 @@ async function initializeShow() {
       $("liveNameArea").style.display = "none";
       $("joinLiveButton").style.display = "none";
 
-      // Keep host camera and microphone buttons visible.
       $("cameraButton").style.display = "inline-block";
       $("micButton").style.display = "inline-block";
 
