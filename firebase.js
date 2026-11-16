@@ -28,16 +28,31 @@ const firebaseConfig = {
   appId: "1:458186749712:web:311ecbed0c87367022d795"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
+// PERFORMER LOGIN
+// Reuse the existing login when available.
+// This helps the performer retain the same UID after refreshing.
 async function connectAuditorium() {
+  if (auth.currentUser) {
+    return auth.currentUser;
+  }
+
   const result = await signInAnonymously(auth);
   return result.user;
 }
 
-async function registerSinger(name, song, language, sessionId = "", performance = "") {
+// REGISTER SINGER
+async function registerSinger(
+  name,
+  song,
+  language,
+  sessionId = "",
+  performance = ""
+) {
   const user = await connectAuditorium();
 
   await set(push(ref(db, "registrations/" + user.uid)), {
@@ -53,6 +68,7 @@ async function registerSinger(name, song, language, sessionId = "", performance 
   return user.uid;
 }
 
+// LISTEN TO SINGERS
 function listenToSingers(callback) {
   return onValue(ref(db, "registrations"), snapshot => {
     callback(snapshot.val() || {});
@@ -60,8 +76,14 @@ function listenToSingers(callback) {
 }
 
 // HOST REGISTRATION WITH GPS LOCATION
-async function registerHost(name, email, mobile, plan, password, locationData) {
-
+async function registerHost(
+  name,
+  email,
+  mobile,
+  plan,
+  password,
+  locationData
+) {
   if (
     !locationData ||
     locationData.locationDetected !== true ||
@@ -71,10 +93,17 @@ async function registerHost(name, email, mobile, plan, password, locationData) {
     !locationData.state ||
     !locationData.city
   ) {
-    throw new Error("GPS location detection and Country, State and City are compulsory.");
+    throw new Error(
+      "GPS location detection and Country, State and City are compulsory."
+    );
   }
 
-  const result = await createUserWithEmailAndPassword(auth, email, password);
+  const result = await createUserWithEmailAndPassword(
+    auth,
+    email,
+    password
+  );
+
   const user = result.user;
 
   await set(ref(db, "hostApplications/" + user.uid), {
@@ -108,19 +137,28 @@ async function registerHost(name, email, mobile, plan, password, locationData) {
   return user;
 }
 
+// HOST LOGIN
 async function hostLogin(email, password) {
-  const result = await signInWithEmailAndPassword(auth, email, password);
+  const result = await signInWithEmailAndPassword(
+    auth,
+    email,
+    password
+  );
+
   return result.user;
 }
 
+// HOST LOGOUT
 async function hostLogout() {
   await signOut(auth);
 }
 
+// CHECK LOGIN STATUS
 function checkLogin(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
+// EXPORT FUNCTIONS
 export {
   db,
   auth,
