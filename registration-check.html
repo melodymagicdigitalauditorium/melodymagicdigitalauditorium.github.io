@@ -1,0 +1,155 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melody Magic - Registration Checker</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;padding:20px;background:#090909;color:white;
+  font-family:Arial,sans-serif
+}
+.container{
+  max-width:650px;margin:auto;background:#171717;
+  padding:20px;border-radius:14px;border:1px solid #b58b35
+}
+h2{color:#e8bd55;text-align:center}
+.item{
+  background:#252525;padding:14px;margin:12px 0;
+  border-radius:9px;overflow-wrap:anywhere
+}
+.label{color:#e8bd55;font-weight:bold}
+.value{color:#fff;overflow-wrap:anywhere}
+.status{font-size:20px;font-weight:bold;color:#7cff9b}
+.error{color:#ff7777}
+button{
+  background:#d6a83d;color:#111;border:0;
+  padding:12px 18px;border-radius:8px;font-weight:bold
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>🎤 Melody Magic Digital Auditorium</h2>
+<h3>Registration Checker</h3>
+
+<div class="item">
+  <div class="label">Show ID</div>
+  <div class="value" id="showId">Checking...</div>
+</div>
+
+<div class="item">
+  <div class="label">Firebase Login UID</div>
+  <div class="value" id="uid">Checking...</div>
+</div>
+
+<div class="item">
+  <div class="label">Account</div>
+  <div class="value" id="account">Checking...</div>
+</div>
+
+<div id="results">Loading registration...</div>
+</div>
+
+<script type="module">
+import { auth, db } from "./firebase-host.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+  ref,
+  query,
+  orderByChild,
+  equalTo,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const params = new URLSearchParams(location.search);
+const showId = params.get("showId");
+
+const showIdBox = document.getElementById("showId");
+const uidBox = document.getElementById("uid");
+const accountBox = document.getElementById("account");
+const results = document.getElementById("results");
+
+showIdBox.textContent = showId || "MISSING";
+
+if (!showId) {
+  results.innerHTML =
+    '<p class="error">Show ID is missing. Open this page with ?showId=YOUR_SHOW_ID</p>';
+}
+
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    uidBox.textContent = "Not logged in";
+    accountBox.textContent = "Please sign in with the performer account.";
+    results.innerHTML =
+      '<p class="error">No Firebase user is logged in.</p>';
+    return;
+  }
+
+  uidBox.textContent = user.uid;
+  accountBox.textContent = user.email || "Logged in";
+
+  if (!showId) return;
+
+  const registrationsQuery = query(
+    ref(db, "showRegistrations/" + showId),
+    orderByChild("singerUid"),
+    equalTo(user.uid)
+  );
+
+  onValue(registrationsQuery, snapshot => {
+    results.innerHTML = "";
+
+    if (!snapshot.exists()) {
+      results.innerHTML =
+        '<div class="item error">No registration found for this login UID and show ID.</div>';
+      return;
+    }
+
+    snapshot.forEach(child => {
+      const data = child.val() || {};
+      const status = String(data.status || "Missing").trim();
+
+      const item = document.createElement("div");
+      item.className = "item";
+
+      const heading = document.createElement("h3");
+      heading.textContent = data.singerName || "Singer registration";
+      item.appendChild(heading);
+
+      function addLine(label, value, className) {
+        const line = document.createElement("p");
+        const strong = document.createElement("span");
+        strong.className = "label";
+        strong.textContent = label + ": ";
+        const val = document.createElement("span");
+        val.className = className || "value";
+        val.textContent = String(value ?? "Not found");
+        line.append(strong, val);
+        item.appendChild(line);
+      }
+
+      addLine("Registration ID", child.key);
+      addLine("Singer UID", data.singerUid);
+      addLine("Show ID", data.showId);
+      addLine("Song", data.songName);
+      addLine("Status", status, "status");
+      addLine("Payment", data.paymentStatus);
+
+      results.appendChild(item);
+    });
+
+  }, error => {
+    results.innerHTML =
+      '<p class="error">Firebase error: ' + error.message + '</p>';
+  });
+});
+</script>
+</body>
+</html>
