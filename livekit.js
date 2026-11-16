@@ -80,7 +80,6 @@ const $ = id => document.getElementById(id);
 
 function setStatus(message, error = false) {
   const element = $("livekitStatus");
-
   if (!element) return;
 
   element.textContent = message;
@@ -117,11 +116,8 @@ function waitForUser() {
     let unsubscribe = onAuthStateChanged(auth, user => {
       unsubscribe();
 
-      if (user) {
-        resolve(user);
-      } else {
-        reject(new Error("Please sign in before joining."));
-      }
+      if (user) resolve(user);
+      else reject(new Error("Please sign in before joining."));
     });
   });
 }
@@ -154,8 +150,9 @@ function isSingerRole() {
 
 function displayName(uid) {
   if (uid === currentUser?.uid) {
-    return $("liveSingerName")?.value.trim() ||
-      (isHost ? "Show Host" : "Singer");
+    return isHost
+      ? "Show Host"
+      : $("liveSingerName")?.value.trim() || "Singer";
   }
 
   const registration = getSingerRegistration(uid);
@@ -243,9 +240,7 @@ function setupVocalEffectControls() {
     control.addEventListener("input", () => {
       vocalEffectSettings[setting] = Number(control.value);
 
-      if (value) {
-        value.textContent = control.value + "%";
-      }
+      if (value) value.textContent = control.value + "%";
 
       applyVocalEffectSettings();
     });
@@ -284,7 +279,6 @@ function createPanel() {
   if ($("livekitPanel")) return;
 
   const panel = document.createElement("section");
-
   panel.id = "livekitPanel";
 
   panel.style.cssText = `
@@ -311,9 +305,7 @@ function createPanel() {
 
     <div id="liveNameArea" style="margin-top:15px">
       <label for="liveSingerName">Your name</label>
-
-      <input id="liveSingerName"
-        type="text"
+      <input id="liveSingerName" type="text"
         placeholder="Enter your name"
         style="display:block;width:100%;padding:12px;margin:7px 0 12px;box-sizing:border-box;border-radius:7px">
     </div>
@@ -324,18 +316,17 @@ function createPanel() {
     </button>
 
     <div style="background:#202020;padding:14px;border-radius:10px;margin-top:15px">
-
       <h3 style="color:#e5bd62;margin-top:0">
         🎛️ CAMERA & MICROPHONE CONTROL
       </h3>
 
       <p style="font-size:13px;color:#ccc">
+        Host camera and microphone start automatically.
         Approved singers' cameras turn on when they join.
-        Only singers selected for the main stage can use their microphones.
+        Only main-stage singers can use their microphones.
       </p>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-
         <button id="cameraButton" disabled
           style="background:#a71919;color:white;padding:13px 18px;border:0;border-radius:8px;font-weight:bold;cursor:pointer">
           📷 CAMERA OFF
@@ -350,13 +341,11 @@ function createPanel() {
           style="background:#555;color:white;padding:13px 18px;border:0;border-radius:8px;cursor:pointer">
           LEAVE
         </button>
-
       </div>
 
       <div id="localPermissionMessage"
         style="color:#e5bd62;font-size:13px;margin-top:12px">
       </div>
-
     </div>
 
     <div id="hostVocalEffects"
@@ -373,37 +362,28 @@ function createPanel() {
       <label for="echoControl">
         Echo / Delay: <strong id="echoValue">20%</strong>
       </label>
-
-      <input id="echoControl" type="range"
-        min="0" max="100" value="20"
+      <input id="echoControl" type="range" min="0" max="100" value="20"
         style="width:100%;margin:10px 0 18px">
 
       <label for="reverbControl">
         Reverb: <strong id="reverbValue">20%</strong>
       </label>
-
-      <input id="reverbControl" type="range"
-        min="0" max="100" value="20"
+      <input id="reverbControl" type="range" min="0" max="100" value="20"
         style="width:100%;margin:10px 0 18px">
 
       <label for="mixControl">
         Wet / Dry Mix: <strong id="mixValue">25%</strong>
       </label>
-
-      <input id="mixControl" type="range"
-        min="0" max="100" value="25"
+      <input id="mixControl" type="range" min="0" max="100" value="25"
         style="width:100%;margin:10px 0 18px">
 
       <label for="volumeControl">
         Microphone Output: <strong id="volumeValue">80%</strong>
       </label>
-
-      <input id="volumeControl" type="range"
-        min="0" max="100" value="80"
+      <input id="volumeControl" type="range" min="0" max="100" value="80"
         style="width:100%;margin:10px 0 18px">
 
       <div style="border-top:1px solid #555;padding-top:14px;margin-top:8px">
-
         <label style="display:flex;align-items:center;gap:9px">
           <input id="monitorControl" type="checkbox">
           Headphone monitoring
@@ -417,11 +397,8 @@ function createPanel() {
           Headphone Volume:
           <strong id="monitorVolumeValue">35%</strong>
         </label>
-
-        <input id="monitorVolumeControl" type="range"
-          min="0" max="100" value="35"
+        <input id="monitorVolumeControl" type="range" min="0" max="100" value="35"
           style="width:100%">
-
       </div>
     </div>
 
@@ -433,35 +410,24 @@ function createPanel() {
       </h3>
 
       <label for="stageMode">Stage type</label>
-
       <select id="stageMode"
         style="display:block;width:100%;padding:11px;margin:7px 0 12px">
-
         <option value="solo">Solo performance</option>
         <option value="duet">Duet performance</option>
-
       </select>
 
       <label for="stageSingerOne">First singer</label>
-
       <select id="stageSingerOne"
         style="display:block;width:100%;padding:11px;margin:7px 0 12px">
-
         <option value="">Select singer</option>
-
       </select>
 
       <div id="secondSingerArea" style="display:none">
-
         <label for="stageSingerTwo">Second singer</label>
-
         <select id="stageSingerTwo"
           style="display:block;width:100%;padding:11px;margin:7px 0 12px">
-
           <option value="">Select second singer</option>
-
         </select>
-
       </div>
 
       <button id="makeStageButton"
@@ -475,48 +441,29 @@ function createPanel() {
 
       <p style="font-size:12px;color:#ccc">
         Microphone access is controlled automatically by stage assignment.
-        This list only controls cameras.
       </p>
 
       <div id="hostSingerControls">
         No approved singers connected.
       </div>
-
     </div>
 
-    <h3 style="color:#e5bd62;margin-top:22px">
-      ⭐ MAIN STAGE
-    </h3>
-
-    <p style="font-size:12px;color:#bbb">
-      The selected solo singer or duet appears here.
-    </p>
+    <h3 style="color:#e5bd62;margin-top:22px">⭐ MAIN STAGE</h3>
 
     <div id="mainStage"
       style="background:#181818;padding:12px;border-radius:10px;min-height:130px">
       Waiting for host to select a singer...
     </div>
 
-    <h3 style="color:#e5bd62;margin-top:22px">
-      🎤 SINGERS WAITING QUEUE
-    </h3>
-
-    <p style="font-size:12px;color:#bbb">
-      Approved connected singers remain visible here with their cameras on and microphones off.
-    </p>
+    <h3 style="color:#e5bd62;margin-top:22px">🎤 SINGERS WAITING QUEUE</h3>
 
     <div id="singerGrid"
       style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
-
-      <p style="color:#aaa">
-        No waiting singers are connected.
-      </p>
-
+      <p style="color:#aaa">No waiting singers are connected.</p>
     </div>
   `;
 
   const area = $("livekitArea");
-
   (area || document.body).appendChild(panel);
 
   $("joinLiveButton").addEventListener("click", joinAuditorium);
@@ -561,12 +508,11 @@ async function verifyHost() {
 }
 
 /* =========================================
-   VIDEO TILES AND LAYOUT
+   VIDEO TILES
 ========================================= */
 
 function makeTile(uid, target, stageTile = false) {
   const participant = participants.get(uid);
-
   if (!participant || !target) return;
 
   const tile = document.createElement("div");
@@ -581,13 +527,8 @@ function makeTile(uid, target, stageTile = false) {
   `;
 
   const title = document.createElement("p");
-
-  title.textContent =
-    (stageTile ? "🎤 " : "📷 ") + displayName(uid);
-
-  title.style.cssText =
-    "color:#e5bd62;font-weight:bold;margin:4px 0 10px";
-
+  title.textContent = "🎤 " + displayName(uid);
+  title.style.cssText = "color:#e5bd62;font-weight:bold;margin:4px 0 10px";
   tile.appendChild(title);
 
   const videoBox = document.createElement("div");
@@ -623,19 +564,14 @@ function makeTile(uid, target, stageTile = false) {
     `;
 
     videoBox.appendChild(video);
-
   } else {
     const message = document.createElement("span");
-
     message.textContent = "Camera is OFF";
     message.style.cssText = "color:#aaa;padding:35px 8px";
-
     videoBox.appendChild(message);
   }
 
   tile.appendChild(videoBox);
-
-  const state = document.createElement("p");
 
   const hasAudio = uid === currentUser?.uid
     ? (
@@ -645,16 +581,16 @@ function makeTile(uid, target, stageTile = false) {
       )
     : Boolean(participant.audioTrack);
 
+  const state = document.createElement("p");
+
   state.textContent =
     (track && !track.isMuted ? "Camera ON" : "Camera OFF") +
     " • " +
     (hasAudio ? "Microphone active" : "Microphone OFF");
 
-  state.style.cssText =
-    "font-size:12px;color:#bbb;margin:8px 0 0";
+  state.style.cssText = "font-size:12px;color:#bbb;margin:8px 0 0";
 
   tile.appendChild(state);
-
   target.appendChild(tile);
 }
 
@@ -668,8 +604,7 @@ function renderStageAndQueue() {
   queue.innerHTML = "";
 
   stage.style.display = "grid";
-  stage.style.gridTemplateColumns =
-    "repeat(auto-fit,minmax(220px,1fr))";
+  stage.style.gridTemplateColumns = "repeat(auto-fit,minmax(220px,1fr))";
   stage.style.gap = "12px";
 
   const selected = stageSingerUids.filter(uid =>
@@ -720,9 +655,7 @@ function renderStageAndQueue() {
 ========================================= */
 
 async function startCamera() {
-  if (!room) {
-    throw new Error("Join the auditorium first.");
-  }
+  if (!room) throw new Error("Join the auditorium first.");
 
   if (!isHost && !cameraAllowed) {
     throw new Error("The host has not enabled your camera.");
@@ -743,13 +676,11 @@ async function startCamera() {
         name: "camera",
         source: Track.Source.Camera
       });
-
     } catch (error) {
       localCamera.stop();
       localCamera = null;
       throw error;
     }
-
   } else if (localCamera.isMuted) {
     await localCamera.unmute();
   }
@@ -794,28 +725,21 @@ async function toggleCamera() {
     if (localCamera && !localCamera.isMuted) {
       await stopCamera();
       setStatus("Camera turned OFF.");
-
     } else {
       setStatus("Requesting camera access...");
       await startCamera();
       setStatus("Camera turned ON.");
     }
-
   } catch (error) {
     console.error("Camera error:", error);
 
-    setStatus(
-      "Camera error: " + error.message +
-      ". Check browser camera permission.",
-      true
-    );
+    setStatus("Camera error: " + error.message, true);
 
     alert(
       "Unable to start camera.\n\n" +
       error.message +
       "\n\nCheck browser camera permission."
     );
-
   } finally {
     updateCameraButton();
   }
@@ -823,22 +747,17 @@ async function toggleCamera() {
 
 function updateCameraButton() {
   const button = $("cameraButton");
-
   if (!button) return;
 
-  const enabled = Boolean(
-    localCamera && !localCamera.isMuted
-  );
+  const enabled = Boolean(localCamera && !localCamera.isMuted);
 
   button.textContent = enabled
     ? "📷 CAMERA ON"
     : "📷 CAMERA OFF";
 
-  button.style.background =
-    enabled ? "#287c48" : "#a71919";
+  button.style.background = enabled ? "#287c48" : "#a71919";
 
-  button.disabled =
-    !room || (!isHost && !cameraAllowed);
+  button.disabled = !room || (!isHost && !cameraAllowed);
 }
 
 /* =========================================
@@ -846,9 +765,7 @@ function updateCameraButton() {
 ========================================= */
 
 async function startMicrophone() {
-  if (!room) {
-    throw new Error("Join the auditorium first.");
-  }
+  if (!room) throw new Error("Join the auditorium first.");
 
   if (!isHost && (!micAllowed || !isOnStage(currentUser.uid))) {
     throw new Error(
@@ -872,20 +789,15 @@ async function startMicrophone() {
         );
 
         if (!processedMicTrack) {
-          throw new Error(
-            "Vocal effects did not return an audio track."
-          );
+          throw new Error("Vocal effects did not return an audio track.");
         }
 
         applyVocalEffectSettings();
 
-        await room.localParticipant.publishTrack(
-          processedMicTrack,
-          {
-            name: "microphone",
-            source: Track.Source.Microphone
-          }
-        );
+        await room.localParticipant.publishTrack(processedMicTrack, {
+          name: "microphone",
+          source: Track.Source.Microphone
+        });
 
       } catch (error) {
         vocalEffects?.stop();
@@ -900,7 +812,10 @@ async function startMicrophone() {
     }
 
     hostMicMuted = false;
-    vocalEffects?.setMuted(false);
+
+    if (vocalEffects) {
+      await vocalEffects.setMuted(false);
+    }
 
   } else {
     if (!localMic) {
@@ -915,13 +830,11 @@ async function startMicrophone() {
           name: "microphone",
           source: Track.Source.Microphone
         });
-
       } catch (error) {
         localMic.stop();
         localMic = null;
         throw error;
       }
-
     } else if (localMic.isMuted) {
       await localMic.unmute();
     }
@@ -934,7 +847,10 @@ async function startMicrophone() {
 async function stopMicrophone() {
   if (isHost) {
     hostMicMuted = true;
-    vocalEffects?.setMuted(true);
+
+    if (vocalEffects) {
+      await vocalEffects.setMuted(true);
+    }
 
   } else if (localMic && !localMic.isMuted) {
     await localMic.mute();
@@ -968,27 +884,21 @@ async function toggleMicrophone() {
     if (enabled) {
       await stopMicrophone();
       setStatus("Microphone turned OFF.");
-
     } else {
       setStatus("Requesting microphone access...");
       await startMicrophone();
       setStatus("Microphone turned ON.");
     }
-
   } catch (error) {
     console.error("Microphone error:", error);
 
-    setStatus(
-      "Microphone error: " + error.message,
-      true
-    );
+    setStatus("Microphone error: " + error.message, true);
 
     alert(
       "Unable to start microphone.\n\n" +
       error.message +
       "\n\nCheck browser microphone permission and LiveKit publishing permission."
     );
-
   } finally {
     updateMicButton();
   }
@@ -996,7 +906,6 @@ async function toggleMicrophone() {
 
 function updateMicButton() {
   const button = $("micButton");
-
   if (!button) return;
 
   const enabled = isHost
@@ -1007,8 +916,7 @@ function updateMicButton() {
     ? "🎙️ MICROPHONE ON"
     : "🎙️ MICROPHONE OFF";
 
-  button.style.background =
-    enabled ? "#287c48" : "#a71919";
+  button.style.background = enabled ? "#287c48" : "#a71919";
 
   button.disabled =
     !room ||
@@ -1045,11 +953,9 @@ function listenToMyPermissions() {
         "Host permissions: Camera " +
         (cameraAllowed ? "ON" : "OFF") +
         " • Microphone " +
-        (
-          micAllowed && isOnStage(currentUser.uid)
-            ? "ON (Main Stage)"
-            : "OFF"
-        );
+        (micAllowed && isOnStage(currentUser.uid)
+          ? "ON (Main Stage)"
+          : "OFF");
 
       try {
         if (cameraAllowed) {
@@ -1066,11 +972,7 @@ function listenToMyPermissions() {
 
       } catch (error) {
         console.error("Permission application:", error);
-
-        setStatus(
-          "Could not apply host permissions: " + error.message,
-          true
-        );
+        setStatus("Could not apply host permissions: " + error.message, true);
       }
 
       updateMicButton();
@@ -1090,7 +992,6 @@ function listenToMyPermissions() {
 
 function renderHostControls() {
   const container = $("hostSingerControls");
-
   if (!container || !isHost) return;
 
   const connected = [...participants.entries()].filter(([uid]) =>
@@ -1111,14 +1012,10 @@ function renderHostControls() {
       "background:#303030;border-radius:9px;padding:12px;margin:8px 0";
 
     const title = document.createElement("strong");
-
-    title.textContent =
-      participant.name || displayName(uid);
+    title.textContent = participant.name || displayName(uid);
 
     const details = document.createElement("p");
-
-    details.style.cssText =
-      "font-size:12px;color:#bbb;margin:6px 0";
+    details.style.cssText = "font-size:12px;color:#bbb;margin:6px 0";
 
     details.textContent = isOnStage(uid)
       ? "MAIN STAGE • Microphone permission ON"
@@ -1133,11 +1030,7 @@ function renderHostControls() {
 
     cameraButton.style.cssText =
       "margin-top:8px;padding:9px 12px;border:0;border-radius:6px;color:white;background:" +
-      (
-        participant.cameraAllowed === false
-          ? "#a71919"
-          : "#287c48"
-      );
+      (participant.cameraAllowed === false ? "#a71919" : "#287c48");
 
     cameraButton.addEventListener("click", () => {
       setSingerCameraPermission(
@@ -1147,7 +1040,6 @@ function renderHostControls() {
     });
 
     row.append(title, details, cameraButton);
-
     container.appendChild(row);
   });
 }
@@ -1160,17 +1052,11 @@ async function setSingerCameraPermission(uid, enabled) {
   try {
     setStatus("Updating singer camera permission...");
 
-    const result = await workerRequest({
+    await workerRequest({
       action: "syncPermissions",
       targetUid: uid,
       cameraAllowed: enabled
     });
-
-    if (result.success === false) {
-      throw new Error(
-        result.error || "Camera permission update failed."
-      );
-    }
 
     const participant = participants.get(uid);
 
@@ -1181,19 +1067,14 @@ async function setSingerCameraPermission(uid, enabled) {
     renderHostControls();
 
     setStatus(
-      displayName(uid) +
-      ": camera " +
+      displayName(uid) + ": camera " +
       (enabled ? "enabled." : "disabled.")
     );
 
   } catch (error) {
     console.error(error);
 
-    setStatus(
-      "Camera permission update failed: " + error.message,
-      true
-    );
-
+    setStatus("Camera permission update failed: " + error.message, true);
     alert(error.message);
 
   } finally {
@@ -1202,7 +1083,7 @@ async function setSingerCameraPermission(uid, enabled) {
 }
 
 /* =========================================
-   HOST STAGE SELECTION AND STRICT MIC RULE
+   HOST STAGE SELECTION
 ========================================= */
 
 function updateSingerOptions() {
@@ -1215,9 +1096,7 @@ function updateSingerOptions() {
 
   const connected = getQueueEntries().filter(([, item]) =>
     item &&
-    ["Approved", "Queued", "Playing"].includes(
-      String(item.status || "")
-    ) &&
+    ["Approved", "Queued", "Playing"].includes(String(item.status || "")) &&
     participants.has(item.singerUid || item.uid)
   );
 
@@ -1230,19 +1109,11 @@ function updateSingerOptions() {
     )}</option>`
   ).join("");
 
-  first.innerHTML =
-    '<option value="">Select singer</option>' + options;
+  first.innerHTML = '<option value="">Select singer</option>' + options;
+  second.innerHTML = '<option value="">Select second singer</option>' + options;
 
-  second.innerHTML =
-    '<option value="">Select second singer</option>' + options;
-
-  if (connected.some(([id]) => id === oldFirst)) {
-    first.value = oldFirst;
-  }
-
-  if (connected.some(([id]) => id === oldSecond)) {
-    second.value = oldSecond;
-  }
+  if (connected.some(([id]) => id === oldFirst)) first.value = oldFirst;
+  if (connected.some(([id]) => id === oldSecond)) second.value = oldSecond;
 }
 
 async function selectMainSingers() {
@@ -1262,23 +1133,17 @@ async function selectMainSingers() {
     return;
   }
 
-  if (mode === "duet" &&
-      (!secondId || firstId === secondId)) {
+  if (mode === "duet" && (!secondId || firstId === secondId)) {
     alert("Please select two different singers.");
     return;
   }
 
-  const ids = mode === "duet"
-    ? [firstId, secondId]
-    : [firstId];
-
+  const ids = mode === "duet" ? [firstId, secondId] : [firstId];
   const selected = ids.map(id => queueData[id]);
 
   if (selected.some(item =>
     !item ||
-    !["Approved", "Queued", "Playing"].includes(
-      String(item.status || "")
-    ) ||
+    !["Approved", "Queued", "Playing"].includes(String(item.status || "")) ||
     !participants.has(item.singerUid || item.uid)
   )) {
     alert("Selected singers must be approved and connected.");
@@ -1295,7 +1160,7 @@ async function selectMainSingers() {
   $("makeStageButton").disabled = true;
 
   try {
-    const stageData = {
+    await set(ref(db, `liveStage/${showId}`), {
       mode,
       registrationIds: ids,
       singerUids: uids,
@@ -1304,26 +1169,17 @@ async function selectMainSingers() {
       singerUid: uids[0],
       singerName: names[0],
       updatedAt: Date.now()
-    };
-
-    await set(
-      ref(db, `liveStage/${showId}`),
-      stageData
-    );
+    });
 
     const allApproved = getQueueEntries()
       .filter(([, item]) =>
         item &&
-        ["Approved", "Queued", "Playing"].includes(
-          String(item.status || "")
-        )
+        ["Approved", "Queued", "Playing"].includes(String(item.status || ""))
       )
       .map(([, item]) => item.singerUid || item.uid)
       .filter(Boolean);
 
-    const allUids = [
-      ...new Set([...allApproved, ...uids])
-    ];
+    const allUids = [...new Set([...allApproved, ...uids])];
 
     for (const uid of allUids) {
       await workerRequest({
@@ -1345,21 +1201,15 @@ async function selectMainSingers() {
     renderHostControls();
 
     setStatus(
-      "Main stage assigned. Only selected singer(s) have microphone permission ON."
+      "Main stage assigned. Only selected singers have microphone permission ON."
     );
 
   } catch (error) {
     console.error("Stage assignment error:", error);
 
-    alert(
-      "Stage assignment or microphone update failed: " +
-      error.message
-    );
+    alert("Stage assignment or microphone update failed: " + error.message);
 
-    setStatus(
-      "Could not complete stage assignment: " + error.message,
-      true
-    );
+    setStatus("Could not complete stage assignment: " + error.message, true);
 
   } finally {
     permissionBusy = false;
@@ -1398,11 +1248,7 @@ function listenToSingerQueue() {
 
     error => {
       console.error("Singer queue listener:", error);
-
-      setStatus(
-        "Could not load approved singer list: " + error.message,
-        true
-      );
+      setStatus("Could not load approved singer list: " + error.message, true);
     }
   );
 }
@@ -1432,7 +1278,6 @@ function listenToStage() {
           } catch (error) {
             console.warn(error);
           }
-
         } else if (micAllowed) {
           try {
             await startMicrophone();
@@ -1490,16 +1335,13 @@ function removeParticipant(uid) {
 }
 
 function listenToSingerControls(uid) {
-  if (!isHost || participantControlListeners.has(uid)) {
-    return;
-  }
+  if (!isHost || participantControlListeners.has(uid)) return;
 
   const unsubscribe = onValue(
     ref(db, `participantControls/${showId}/${uid}`),
 
     snapshot => {
       const controls = snapshot.val() || {};
-
       const participant = participants.get(uid);
 
       if (!participant) return;
@@ -1526,10 +1368,7 @@ function listenToSingerControls(uid) {
 }
 
 function stopSingerControlsListener(uid) {
-  stopListener(
-    participantControlListeners.get(uid)
-  );
-
+  stopListener(participantControlListeners.get(uid));
   participantControlListeners.delete(uid);
 }
 
@@ -1538,107 +1377,79 @@ function stopSingerControlsListener(uid) {
 ========================================= */
 
 function setupRoomEvents() {
-  room.on(
-    RoomEvent.ParticipantConnected,
-    participant => {
-      addParticipant(
-        participant.identity,
-        participant.name || participant.identity
-      );
+  room.on(RoomEvent.ParticipantConnected, participant => {
+    addParticipant(
+      participant.identity,
+      participant.name || participant.identity
+    );
+  });
+
+  room.on(RoomEvent.ParticipantDisconnected, participant => {
+    removeParticipant(participant.identity);
+  });
+
+  room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    const uid = participant.identity;
+
+    const old = participants.get(uid) || {
+      name: participant.name || uid
+    };
+
+    if (track.kind === "video") old.videoTrack = track;
+
+    if (track.kind === "audio") {
+      old.audioTrack = track;
+
+      const audio = track.attach();
+      audio.autoplay = true;
+      audio.dataset.livekitRemote = "true";
+
+      document.body.appendChild(audio);
+
+      remoteAudioElements.get(uid)?.remove();
+      remoteAudioElements.set(uid, audio);
     }
-  );
 
-  room.on(
-    RoomEvent.ParticipantDisconnected,
-    participant => {
-      removeParticipant(participant.identity);
+    participants.set(uid, old);
+
+    renderStageAndQueue();
+    renderHostControls();
+  });
+
+  room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+    const uid = participant.identity;
+
+    track.detach().forEach(element => element.remove());
+
+    const old = participants.get(uid);
+
+    if (old) {
+      if (track.kind === "video") old.videoTrack = null;
+      if (track.kind === "audio") old.audioTrack = null;
     }
-  );
 
-  room.on(
-    RoomEvent.TrackSubscribed,
-    (track, publication, participant) => {
-      const uid = participant.identity;
-
-      const old = participants.get(uid) || {
-        name: participant.name || uid
-      };
-
-      if (track.kind === "video") {
-        old.videoTrack = track;
-      }
-
-      if (track.kind === "audio") {
-        old.audioTrack = track;
-
-        const audio = track.attach();
-
-        audio.autoplay = true;
-        audio.dataset.livekitRemote = "true";
-
-        document.body.appendChild(audio);
-
-        remoteAudioElements.get(uid)?.remove();
-
-        remoteAudioElements.set(uid, audio);
-      }
-
-      participants.set(uid, old);
-
-      renderStageAndQueue();
-      renderHostControls();
+    if (track.kind === "audio") {
+      remoteAudioElements.get(uid)?.remove();
+      remoteAudioElements.delete(uid);
     }
-  );
 
-  room.on(
-    RoomEvent.TrackUnsubscribed,
-    (track, publication, participant) => {
-      const uid = participant.identity;
+    renderStageAndQueue();
+    renderHostControls();
+  });
 
-      track.detach().forEach(element => element.remove());
+  room.on(RoomEvent.Disconnected, () => {
+    setStatus("Disconnected from the auditorium.", true);
+  });
 
-      const old = participants.get(uid);
+  room.on(RoomEvent.ParticipantNameChanged, (name, participant) => {
+    const old = participants.get(participant.identity) || {};
+    old.name = name;
 
-      if (old) {
-        if (track.kind === "video") {
-          old.videoTrack = null;
-        }
+    participants.set(participant.identity, old);
 
-        if (track.kind === "audio") {
-          old.audioTrack = null;
-        }
-      }
-
-      if (track.kind === "audio") {
-        remoteAudioElements.get(uid)?.remove();
-        remoteAudioElements.delete(uid);
-      }
-
-      renderStageAndQueue();
-      renderHostControls();
-    }
-  );
-
-  room.on(
-    RoomEvent.Disconnected,
-    () => {
-      setStatus("Disconnected from the auditorium.", true);
-    }
-  );
-
-  room.on(
-    RoomEvent.ParticipantNameChanged,
-    (name, participant) => {
-      const old = participants.get(participant.identity) || {};
-
-      old.name = name;
-
-      participants.set(participant.identity, old);
-
-      renderStageAndQueue();
-      renderHostControls();
-    }
-  );
+    renderStageAndQueue();
+    renderHostControls();
+  });
 }
 
 /* =========================================
@@ -1692,7 +1503,7 @@ async function joinAuditorium() {
       currentRole === "waiting-singer";
 
     if (isHost) {
-      cameraAllowed = false;
+      cameraAllowed = true;
       micAllowed = true;
       hostMicMuted = true;
 
@@ -1735,23 +1546,18 @@ async function joinAuditorium() {
 
         const track = publication.track;
         const uid = participant.identity;
-
         const old = participants.get(uid) || {};
 
-        if (track.kind === "video") {
-          old.videoTrack = track;
-        }
+        if (track.kind === "video") old.videoTrack = track;
 
         if (track.kind === "audio") {
           old.audioTrack = track;
 
           const audio = track.attach();
-
           audio.autoplay = true;
           audio.dataset.livekitRemote = "true";
 
           document.body.appendChild(audio);
-
           remoteAudioElements.set(uid, audio);
         }
 
@@ -1765,27 +1571,26 @@ async function joinAuditorium() {
       cameraAllowed
     });
 
-    // IMPORTANT:
-    // Host monitors the auditorium without starting a webcam.
-    // Approved singers start their cameras automatically.
-    if (!isHost && canPublish && cameraAllowed) {
+    /* HOST: CAMERA AND MICROPHONE ON AUTOMATICALLY */
+    if (isHost && canPublish) {
+      setStatus("Starting host camera and microphone...");
+
+      await startCamera();
+      await startMicrophone();
+    }
+
+    /* APPROVED SINGERS: CAMERA ON AUTOMATICALLY */
+    else if (!isHost && canPublish && cameraAllowed) {
       await startCamera();
     }
 
-    if (isHost) {
-      // Host microphone stays OFF until manually enabled.
-      hostMicMuted = true;
-
-    } else if (
-      isSingerRole() &&
-      micAllowed &&
-      isOnStage(currentUser.uid)
-    ) {
-      await startMicrophone();
-
-    } else if (isSingerRole()) {
-      // Waiting singers always remain muted.
-      await stopMicrophone();
+    /* SINGER MICROPHONE RULES */
+    if (!isHost && isSingerRole()) {
+      if (micAllowed && isOnStage(currentUser.uid)) {
+        await startMicrophone();
+      } else {
+        await stopMicrophone();
+      }
     }
 
     if (!isHost && isSingerRole()) {
@@ -1802,9 +1607,9 @@ async function joinAuditorium() {
 
     setStatus(
       isHost
-        ? "Host connected. You can monitor the auditorium without using your camera."
+        ? "Host connected. Camera and microphone are ON."
         : isSingerRole()
-          ? "Singer connected. Camera is ON by default. Microphone is OFF unless you are selected for the main stage."
+          ? "Singer connected. Camera is ON. Microphone is OFF unless selected for the main stage."
           : "Connected as audience."
     );
 
@@ -1837,10 +1642,6 @@ async function leaveAuditorium() {
   leaving = true;
 
   try {
-    // Keep queue and stage listeners running.
-    // They are needed to keep the show information updated
-    // if the user reconnects.
-
     stopListener(stopPermissionListener);
     stopPermissionListener = null;
 
@@ -1852,13 +1653,10 @@ async function leaveAuditorium() {
 
     if (room && processedMicTrack) {
       try {
-        await room.localParticipant.unpublishTrack(
-          processedMicTrack
-        );
+        await room.localParticipant.unpublishTrack(processedMicTrack);
       } catch (error) {
         console.warn(error);
       }
-
     } else if (room && localMic) {
       try {
         await room.localParticipant.unpublishTrack(localMic);
@@ -1882,9 +1680,7 @@ async function leaveAuditorium() {
 
     if (room && localCamera) {
       try {
-        await room.localParticipant.unpublishTrack(
-          localCamera
-        );
+        await room.localParticipant.unpublishTrack(localCamera);
       } catch (error) {
         console.warn(error);
       }
@@ -1905,17 +1701,11 @@ async function leaveAuditorium() {
     ).forEach(element => element.remove());
 
     remoteAudioElements.forEach(audio => audio.remove());
-
     remoteAudioElements.clear();
     participants.clear();
 
-    if ($("joinLiveButton")) {
-      $("joinLiveButton").disabled = false;
-    }
-
-    if ($("leaveButton")) {
-      $("leaveButton").disabled = true;
-    }
+    if ($("joinLiveButton")) $("joinLiveButton").disabled = false;
+    if ($("leaveButton")) $("leaveButton").disabled = true;
 
     micAllowed = false;
     cameraAllowed = false;
@@ -1947,8 +1737,7 @@ async function leaveAuditorium() {
     console.error("Leave error:", error);
 
     setStatus(
-      "There was a problem leaving the auditorium: " +
-      error.message,
+      "There was a problem leaving the auditorium: " + error.message,
       true
     );
 
@@ -1964,18 +1753,13 @@ async function leaveAuditorium() {
 async function initializeShow() {
   try {
     if (!showId) {
-      setStatus(
-        "Show ID is missing from the page URL.",
-        true
-      );
+      setStatus("Show ID is missing from the page URL.", true);
       return;
     }
 
     currentUser = await waitForUser();
 
-    const snapshot = await get(
-      ref(db, `shows/${showId}`)
-    );
+    const snapshot = await get(ref(db, `shows/${showId}`));
 
     if (!snapshot.exists()) {
       setStatus("Show not found.", true);
@@ -1985,16 +1769,12 @@ async function initializeShow() {
     currentShow = snapshot.val();
 
     if (!["Published", "Live"].includes(currentShow.status)) {
-      setStatus(
-        "This show is not published or live.",
-        true
-      );
+      setStatus("This show is not published or live.", true);
       return;
     }
 
     isHost = await verifyHost();
 
-    // All viewers need the singer queue and stage assignment.
     listenToSingerQueue();
     listenToStage();
 
@@ -2002,23 +1782,22 @@ async function initializeShow() {
       $("hostStageControls").style.display = "block";
       $("hostVocalEffects").style.display = "block";
 
-      // Host does not need to enter a name or press Join.
       $("liveNameArea").style.display = "none";
       $("joinLiveButton").style.display = "none";
 
-      // Host webcam is not required.
-      $("cameraButton").style.display = "none";
+      // Keep host camera and microphone buttons visible.
+      $("cameraButton").style.display = "inline-block";
+      $("micButton").style.display = "inline-block";
 
       $("liveSingerName").value = "Show Host";
 
       $("localPermissionMessage").textContent =
-        "Host monitoring mode: no host camera is required. Your microphone remains OFF until you turn it ON.";
+        "Host mode: camera and microphone will turn ON automatically when you connect.";
 
       setStatus(
         "Host verified. Connecting automatically to the live auditorium..."
       );
 
-      // Automatically connect host for monitoring.
       await joinAuditorium();
 
     } else {
