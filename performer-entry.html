@@ -8,96 +8,43 @@
 
 <style>
 *{box-sizing:border-box}
-
 body{
- margin:0;
- padding:15px;
- background:#080808;
- color:white;
+ margin:0;padding:15px;background:#080808;color:white;
  font-family:Arial,sans-serif
 }
-
-.container{
- max-width:600px;
- margin:20px auto
-}
-
+.container{max-width:600px;margin:20px auto}
 header{
- text-align:center;
- padding:22px;
+ text-align:center;padding:22px;
  background:linear-gradient(135deg,#302000,#101010);
- border:1px solid #b58b35;
- border-radius:14px
+ border:1px solid #b58b35;border-radius:14px
 }
-
 h1,h2{color:#e9bd55}
-
 .card{
- background:#171717;
- border:1px solid #514126;
- border-radius:12px;
- padding:18px;
- margin:15px 0
+ background:#171717;border:1px solid #514126;
+ border-radius:12px;padding:18px;margin:15px 0
 }
-
 input,select{
- width:100%;
- padding:13px;
- margin:7px 0 15px;
- background:#090909;
- color:white;
- border:1px solid #555;
- border-radius:7px;
- font-size:15px
+ width:100%;padding:13px;margin:7px 0 15px;
+ background:#090909;color:white;border:1px solid #555;
+ border-radius:7px;font-size:15px
 }
-
-label{
- color:#ddd;
- font-size:13px
-}
-
+label{color:#ddd;font-size:13px}
 button,.btn{
- display:block;
- width:100%;
- padding:14px;
- margin-top:12px;
- border:0;
- border-radius:8px;
- background:#d6ad50;
- color:#111;
- font-weight:bold;
- font-size:15px;
- text-align:center;
- text-decoration:none;
- cursor:pointer
+ display:block;width:100%;padding:14px;margin-top:12px;
+ border:0;border-radius:8px;background:#d6ad50;
+ color:#111;font-weight:bold;font-size:15px;
+ text-align:center;text-decoration:none;cursor:pointer
 }
-
-button:disabled{
- opacity:.5;
- cursor:not-allowed
-}
-
+button:disabled{opacity:.5;cursor:not-allowed}
 .green{background:#218348;color:white}
 .red{background:#a52d2d;color:white}
-
 .status{
- background:#252525;
- padding:14px;
- border-radius:8px;
- margin:12px 0;
- line-height:1.7;
- overflow-wrap:anywhere
+ background:#252525;padding:14px;border-radius:8px;
+ margin:12px 0;line-height:1.7;overflow-wrap:anywhere
 }
-
 .hidden{display:none!important}
 .small{color:#aaa;font-size:12px}
-
-footer{
- text-align:center;
- color:#999;
- padding:20px
-}
-
+footer{text-align:center;color:#999;padding:20px}
 .success-text{color:#66df91}
 .warning-text{color:#e9bd55}
 .error-text{color:#ff7777}
@@ -105,7 +52,6 @@ footer{
 </head>
 
 <body>
-
 <div class="container">
 
 <header>
@@ -115,47 +61,36 @@ footer{
 </header>
 
 <div class="card">
-
  <h2 id="showName">Loading Show...</h2>
-
  <p id="showDetails" class="small"></p>
-
  <div id="accountMessage" class="status">
- Checking performer account...
+  Checking performer account...
  </div>
-
 </div>
 
 <!-- NEW REGISTRATION -->
-
 <div class="card hidden" id="registrationCard">
-
  <h2>🎵 Register for Performance</h2>
 
  <form id="registrationForm">
 
   <label>Performer Name</label>
-  <input id="singerName"
-   required maxlength="80"
+  <input id="singerName" required maxlength="80"
    placeholder="Enter your name">
 
   <label>Mobile Number</label>
-  <input id="mobile"
-   type="tel" required maxlength="15"
+  <input id="mobile" type="tel" required maxlength="15"
    placeholder="Mobile number">
 
   <label>Song Name</label>
-  <input id="songName"
-   required maxlength="120"
+  <input id="songName" required maxlength="120"
    placeholder="Song you want to perform">
 
   <label>Movie Name</label>
-  <input id="movieName"
-   maxlength="120"
+  <input id="movieName" maxlength="120"
    placeholder="Movie name">
 
   <label>Performance Type</label>
-
   <select id="performanceType" required>
    <option value="Solo">Solo</option>
    <option value="Duet">Duet</option>
@@ -165,18 +100,13 @@ footer{
   <button id="registerBtn" type="submit">
    SUBMIT PERFORMANCE REQUEST
   </button>
-
  </form>
 
- <div id="registrationMessage"
-  class="status hidden"></div>
-
+ <div id="registrationMessage" class="status hidden"></div>
 </div>
 
 <!-- REGISTRATION STATUS -->
-
 <div class="card hidden" id="waitingCard">
-
  <h2>🎤 Your Performance</h2>
 
  <div id="performerDetails"></div>
@@ -189,15 +119,14 @@ footer{
   🎤 ENTER SHOW
  </button>
 
- <button id="retryBtn" class="hidden">
+ <button id="retryBtn" class="red hidden">
   REGISTER AGAIN
  </button>
 
  <p class="small">
- Once approved, enter the auditorium to watch the live show
- and wait for your performance turn.
+  Once approved by the host, enter the auditorium and wait
+  for your performance turn.
  </p>
-
 </div>
 
 <footer>
@@ -232,44 +161,70 @@ let registrationListener=null;
 let registrationData=null;
 let authCheckRunning=false;
 
+/* HELPERS */
+
 function message(id,text){
  $(id).textContent=text;
 }
 
 function normalStatus(value){
- return String(value||"Pending")
-  .trim()
-  .toLowerCase();
+ return String(value||"Pending").trim().toLowerCase();
+}
+
+function esc(v){
+ return String(v??"").replace(/[&<>"']/g,c=>({
+  "&":"&amp;",
+  "<":"&lt;",
+  ">":"&gt;",
+  '"':"&quot;",
+  "'":"&#39;"
+ }[c]));
 }
 
 function cleanup(){
-
  if(registrationListener){
   registrationListener();
   registrationListener=null;
  }
-
 }
 
 function showRegistration(){
-
  $("registrationCard").classList.remove("hidden");
  $("waitingCard").classList.add("hidden");
-
 }
 
 function showWaiting(){
-
  $("registrationCard").classList.add("hidden");
  $("waitingCard").classList.remove("hidden");
-
 }
 
 function showError(text){
-
  message("accountMessage",text);
-
 }
+
+/* APPROVAL AND PAYMENT CHECK */
+
+function isApprovedAndPaid(data){
+
+ const status=normalStatus(data.status);
+ const payment=normalStatus(data.paymentStatus);
+
+ const approvedStatuses=[
+  "approved",
+  "queued",
+  "waitingqueue"
+ ];
+
+ const paymentConfirmed=[
+  "paid",
+  "free"
+ ];
+
+ return approvedStatuses.includes(status)&&
+        paymentConfirmed.includes(payment);
+}
+
+/* LOAD SHOW */
 
 async function loadShow(){
 
@@ -299,15 +254,13 @@ async function loadShow(){
   (currentShow.date||"")+" | "+(currentShow.time||"");
 
  return true;
-
 }
 
-/* REGISTRATION DISPLAY */
+/* DISPLAY REGISTRATION */
 
 function renderRegistration(data){
 
  registrationData=data;
-
  showWaiting();
 
  $("performerDetails").innerHTML=`
@@ -315,6 +268,7 @@ function renderRegistration(data){
   <p><b>Song:</b> ${esc(data.songName)}</p>
   <p><b>Movie:</b> ${esc(data.movieName||"-")}</p>
   <p><b>Type:</b> ${esc(data.performanceType)}</p>
+  <p><b>Payment:</b> ${esc(data.paymentStatus||"Pending")}</p>
  `;
 
  const status=normalStatus(data.status);
@@ -322,23 +276,20 @@ function renderRegistration(data){
  $("enterShowBtn").classList.add("hidden");
  $("retryBtn").classList.add("hidden");
 
- if(
-  status==="approved"||
-  status==="queued"||
-  status==="waitingqueue"
- ){
+ if(isApprovedAndPaid(data)){
 
   $("approvalStatus").innerHTML=
    '<span class="success-text">✅ Congratulations!</span><br>'+
-   '<b>Your performance has been approved.</b><br>'+
+   '<b>Your payment is confirmed and your performance is approved.</b><br>'+
    'You can now enter the auditorium.';
 
   $("enterShowBtn").classList.remove("hidden");
 
  }else if(status==="rejected"){
 
-  $("approvalStatus").textContent=
-   "Your request was not approved. Please contact the host.";
+  $("approvalStatus").innerHTML=
+   '<span class="error-text">Your registration was not approved.</span><br>'+
+   'Please contact the host for assistance.';
 
   $("retryBtn").classList.remove("hidden");
 
@@ -347,6 +298,12 @@ function renderRegistration(data){
   $("approvalStatus").textContent=
    "Your performance is completed. Thank you for participating.";
 
+ }else if(status==="approved"&&!isApprovedAndPaid(data)){
+
+  $("approvalStatus").innerHTML=
+   '<span class="warning-text">Approval payment confirmation is pending.</span><br>'+
+   'Please contact the host.';
+
  }else{
 
   $("approvalStatus").innerHTML=
@@ -354,24 +311,9 @@ function renderRegistration(data){
    'Your registration has been received successfully.';
 
  }
-
 }
 
-/* HTML SAFE TEXT */
-
-function esc(v){
-
- return String(v??"").replace(/[&<>"']/g,c=>({
-  "&":"&amp;",
-  "<":"&lt;",
-  ">":"&gt;",
-  '"':"&quot;",
-  "'":"&#39;"
- }[c]));
-
-}
-
-/* FIND THE SINGER REGISTRATION */
+/* FIND EXISTING REGISTRATION */
 
 async function findExistingRegistration(){
 
@@ -388,13 +330,6 @@ async function findExistingRegistration(){
  if(!snap.exists())return false;
 
  const entries=Object.entries(snap.val());
-
- /*
-  Prioritise approved records.
-  This avoids selecting an older pending
-  registration when another registration
-  has already been approved.
- */
 
  const priority={
   approved:1,
@@ -417,7 +352,6 @@ async function findExistingRegistration(){
 
   return Number(b[1].createdAt||0)-
          Number(a[1].createdAt||0);
-
  });
 
  const valid=entries.find(([id,p])=>
@@ -429,14 +363,12 @@ async function findExistingRegistration(){
  registrationId=valid[0];
 
  renderRegistration(valid[1]);
-
  listenForApproval();
 
  return true;
-
 }
 
-/* AUTOMATIC APPROVAL LISTENER */
+/* REAL-TIME APPROVAL LISTENER */
 
 function listenForApproval(){
 
@@ -453,33 +385,36 @@ function listenForApproval(){
 
   if(!snap.exists()){
 
+   $("enterShowBtn").classList.add("hidden");
+
    $("approvalStatus").textContent=
     "Registration could not be found. Please contact the host.";
 
    return;
-
   }
 
   const data=snap.val();
 
   if(data.singerUid!==currentUser.uid){
 
+   $("enterShowBtn").classList.add("hidden");
+
    $("approvalStatus").textContent=
     "Registration account verification failed.";
 
    return;
-
   }
 
   renderRegistration(data);
 
  },error=>{
 
+  $("enterShowBtn").classList.add("hidden");
+
   $("approvalStatus").textContent=
    "Unable to check approval: "+error.message;
 
  });
-
 }
 
 /* SUBMIT REGISTRATION */
@@ -507,43 +442,29 @@ $("registrationForm").addEventListener("submit",async e=>{
    $("registrationMessage").classList.remove("hidden");
 
    return;
-
   }
 
   const data={
 
    showId:showId,
-
    singerUid:currentUser.uid,
 
    singerName:$("singerName").value.trim(),
-
    mobile:$("mobile").value.trim(),
-
    songName:$("songName").value.trim(),
-
    movieName:$("movieName").value.trim(),
-
    performanceType:$("performanceType").value,
 
    status:"Pending",
-
    paymentStatus:"Unpaid",
 
    registrationSource:"Online",
-
    createdAt:Date.now()
 
   };
 
-  if(
-   !data.singerName||
-   !data.mobile||
-   !data.songName
-  ){
-
+  if(!data.singerName||!data.mobile||!data.songName){
    throw new Error("Please complete all required fields.");
-
   }
 
   const newRef=push(
@@ -557,7 +478,6 @@ $("registrationForm").addEventListener("submit",async e=>{
   $("registrationForm").reset();
 
   renderRegistration(data);
-
   listenForApproval();
 
   message("accountMessage",
@@ -575,31 +495,21 @@ $("registrationForm").addEventListener("submit",async e=>{
  }finally{
 
   btn.disabled=false;
-
   btn.textContent="SUBMIT PERFORMANCE REQUEST";
 
  }
-
 });
 
-/* ENTER SHOW BUTTON */
+/* ENTER SHOW */
 
 $("enterShowBtn").onclick=async()=>{
 
  if(!currentUser||!registrationData||!registrationId)return;
 
- const status=normalStatus(registrationData.status);
+ if(!isApprovedAndPaid(registrationData)){
 
- if(![
-  "approved",
-  "queued",
-  "waitingqueue"
- ].includes(status)){
-
-  alert("Your performance is not approved yet.");
-
+  alert("Your payment and host approval have not been confirmed yet.");
   return;
-
  }
 
  const btn=$("enterShowBtn");
@@ -614,27 +524,17 @@ $("enterShowBtn").onclick=async()=>{
   );
 
   if(!snap.exists()){
-
    throw new Error("Registration not found.");
-
   }
 
   const latest=snap.val();
 
   if(latest.singerUid!==currentUser.uid){
-
    throw new Error("This registration belongs to another account.");
-
   }
 
-  if(![
-   "approved",
-   "queued",
-   "waitingqueue"
-  ].includes(normalStatus(latest.status))){
-
-   throw new Error("Your show approval could not be verified.");
-
+  if(!isApprovedAndPaid(latest)){
+   throw new Error("Your payment and approval could not be verified.");
   }
 
   window.location.href=
@@ -649,7 +549,6 @@ $("enterShowBtn").onclick=async()=>{
   btn.textContent="🎤 ENTER SHOW";
 
  }
-
 };
 
 /* REGISTER AGAIN */
@@ -686,7 +585,6 @@ onAuthStateChanged(auth,async user=>{
   $("waitingCard").classList.add("hidden");
 
   return;
-
  }
 
  if(authCheckRunning)return;
@@ -705,9 +603,7 @@ onAuthStateChanged(auth,async user=>{
   const existing=await findExistingRegistration();
 
   if(!existing){
-
    showRegistration();
-
   }
 
  }catch(error){
@@ -727,6 +623,5 @@ onAuthStateChanged(auth,async user=>{
 window.addEventListener("beforeunload",cleanup);
 
 </script>
-
 </body>
 </html>
