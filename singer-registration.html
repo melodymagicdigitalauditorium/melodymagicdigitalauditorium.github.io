@@ -3,817 +3,790 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Melody Magic - Performer Registration</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Performer Registration - Melody Magic Digital Auditorium</title>
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:18px;background:#090807;color:white;font-family:Arial,sans-serif}
-.container{max-width:600px;margin:20px auto}
-h1,h2{color:#e7bd68}
-.card{background:#191510;border:1px solid #705322;border-radius:12px;padding:20px;margin:18px 0}
-.muted{color:#c2b7a6;line-height:1.6}
-label{display:block;margin-top:15px;margin-bottom:7px;color:#e7bd68;font-weight:bold}
-input,select{width:100%;padding:13px;border-radius:7px;border:1px solid #705322;background:#0d0b09;color:white;font-size:16px}
-button,.contact-button{display:block;width:100%;padding:15px;margin-top:17px;border:0;border-radius:7px;text-align:center;text-decoration:none;font-size:15px;font-weight:bold;cursor:pointer}
-.submit{background:#e7bd68;color:#171009}
-.submit:disabled{opacity:.5;cursor:not-allowed}
-.whatsapp{background:#25D366;color:#071b0c}
-.call{background:#e7bd68;color:#171009}
-.fee{color:#e7bd68;font-weight:bold;margin-top:12px}
-.message{margin-top:15px;line-height:1.6;white-space:pre-wrap}
+body{
+ margin:0;padding:15px;background:#080808;color:white;
+ font-family:Arial,sans-serif
+}
+.container{max-width:650px;margin:20px auto}
+h1,h2,h3{color:#e8c36c}
+.card{
+ background:#17140f;border:1px solid #705526;
+ border-radius:12px;padding:20px;margin-bottom:20px
+}
+.muted{color:#c9c2b4;line-height:1.7}
+label{
+ display:block;margin:15px 0 7px;
+ color:#e8c36c;font-weight:bold
+}
+input,select{
+ width:100%;padding:13px;border-radius:7px;
+ border:1px solid #705526;background:#090909;
+ color:white;font-size:15px
+}
+button,.action{
+ display:block;width:100%;padding:15px;
+ margin-top:17px;border:0;border-radius:7px;
+ font-weight:bold;font-size:15px;text-align:center;
+ text-decoration:none;cursor:pointer
+}
+.submit{background:#e8c36c;color:#171006}
+.whatsapp{background:#25d366;color:#071b0c}
+.enter{background:#25834a;color:white;font-size:19px}
+button:disabled{opacity:.5}
+.hidden{display:none!important}
+.song-box{
+ background:#100e0b;border:1px solid #57421f;
+ border-radius:8px;padding:13px;margin-top:12px
+}
+.fee-box{
+ background:#100e0b;border:1px solid #705526;
+ padding:16px;border-radius:9px;margin-top:18px
+}
+.amount{font-size:27px;color:#e8c36c;font-weight:bold}
+.status-box{
+ background:#100e0b;border:1px solid #705526;
+ padding:18px;border-radius:10px;margin-top:20px
+}
+.status-box p{line-height:1.7;color:#d5cbb8}
 .success{color:#8ee6a1}
 .error{color:#ff9999}
-.hidden{display:none!important}
-.song-box{border:1px solid #705322;border-radius:9px;padding:13px;margin-top:12px;background:#100e0b}
-.song-box label{margin-top:5px}
-.duet-note{color:#e7bd68;font-size:13px;line-height:1.5;margin:7px 0 12px}
-.total-box{background:#100e0b;border:1px solid #e7bd68;border-radius:9px;padding:16px;margin-top:18px}
-.total-amount{font-size:26px;font-weight:bold;color:#e7bd68;margin:8px 0}
-footer{text-align:center;color:#a99b84;font-size:12px;margin:25px 0}
+footer{text-align:center;color:#999;font-size:12px;padding:20px}
 </style>
 </head>
 
 <body>
 <div class="container">
 
+<header>
 <h1>MELODY MAGIC</h1>
 <p class="muted">DIGITAL AUDITORIUM</p>
+</header>
 
 <div class="card">
-  <h2>Selected Show</h2>
-  <div id="showDetails" class="muted">Loading show details...</div>
-  <div id="feeDetails"></div>
+<h2>Selected Show</h2>
+<div id="showDetails" class="muted">Loading show...</div>
+<div id="feeDetails"></div>
+</div>
+
+<div class="card" id="registrationCard">
+<h2>Performer Registration</h2>
+<p class="muted">
+Register your solo and duet songs for this show.
+Please enter the correct mobile number.
+</p>
+
+<form id="registrationForm">
+
+<label>Performer Name *</label>
+<input id="singerName" maxlength="60" required placeholder="Your full name">
+
+<label>Gender *</label>
+<select id="gender" required>
+<option value="">Select gender</option>
+<option>Male</option>
+<option>Female</option>
+<option>Other</option>
+</select>
+
+<label>WhatsApp Mobile Number *</label>
+<input id="mobile" type="tel" inputmode="numeric"
+maxlength="10" pattern="[6-9][0-9]{9}"
+required placeholder="10-digit mobile number">
+
+<label>Location *</label>
+<input id="location" required maxlength="100"
+placeholder="City / Area">
+
+<label>Song Language *</label>
+<select id="language" required>
+<option value="">Select language</option>
+<option>Hindi</option>
+<option>Marathi</option>
+<option>English</option>
+<option>Gujarati</option>
+<option>Punjabi</option>
+<option>Tamil</option>
+<option>Telugu</option>
+<option>Bengali</option>
+<option>Other</option>
+</select>
+
+<label>Number of Solo Songs</label>
+<select id="soloCount">
+<option value="0">0 - No Solo</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+</select>
+
+<div id="soloSongs"></div>
+
+<label>Number of Duet Songs</label>
+<select id="duetCount">
+<option value="0">0 - No Duet</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+</select>
+
+<div id="duetSongs"></div>
+
+<div class="fee-box">
+<h3>Registration Fee</h3>
+<p id="soloCalculation" class="muted"></p>
+<p id="duetCalculation" class="muted"></p>
+<div class="amount" id="totalAmount">₹0</div>
+</div>
+
+<button type="submit" id="submitButton" class="submit">
+SUBMIT REGISTRATION
+</button>
+
+<div id="formMessage" class="muted"></div>
+</form>
+
+<a id="paymentWhatsApp" class="action whatsapp hidden"
+target="_blank" rel="noopener">
+SEND PAYMENT DETAILS TO HOST ON WHATSAPP
+</a>
+
+<p id="paymentInstructions" class="muted hidden">
+Please send your payment screenshot or transaction reference to the host. Your registration will be approved after the host verifies your payment.
+</p>
+</div>
+
+<div class="status-box hidden" id="registrationStatusPanel">
+<h2 id="registrationStatusTitle">Registration Status</h2>
+<p id="registrationStatusText"></p>
+
+<button id="enterShowButton" class="enter hidden" type="button">
+🎤 ENTER SHOW
+</button>
 </div>
 
 <div class="card">
-  <h2>Performer Registration</h2>
-
-  <p class="muted">
-    Select your solo and duet songs. Enter the movie name for
-    each song. Your total performance fee will be calculated
-    automatically on a per-song basis.
-  </p>
-
-  <form id="registrationForm">
-
-    <label for="singerName">Name *</label>
-    <input id="singerName" maxlength="60"
-      placeholder="Enter your full name" required>
-
-    <label for="gender">Gender *</label>
-    <select id="gender" required>
-      <option value="">Select gender</option>
-      <option value="Male">Male</option>
-      <option value="Female">Female</option>
-    </select>
-
-    <label for="mobile">WhatsApp Mobile Number *</label>
-    <input id="mobile" type="tel" inputmode="numeric"
-      maxlength="10" pattern="[6-9][0-9]{9}"
-      placeholder="10-digit mobile number" required>
-
-    <label for="location">Location *</label>
-    <input id="location" type="text" maxlength="100"
-      placeholder="Enter your city / area / locality" required>
-
-    <label for="language">Song Language *</label>
-    <select id="language" required>
-      <option value="">Select language</option>
-      <option>Hindi</option>
-      <option>Marathi</option>
-      <option>English</option>
-      <option>Gujarati</option>
-      <option>Punjabi</option>
-      <option>Other</option>
-    </select>
-
-    <label for="soloCount">Number of Solo Songs *</label>
-    <select id="soloCount" required>
-      <option value="0">0 - No Solo</option>
-      <option value="1">1 Solo Song</option>
-      <option value="2">2 Solo Songs</option>
-      <option value="3">3 Solo Songs</option>
-      <option value="4">4 Solo Songs</option>
-      <option value="5">5 Solo Songs</option>
-    </select>
-
-    <div id="soloSongs"></div>
-
-    <label for="duetCount">Number of Duet Songs *</label>
-    <select id="duetCount" required>
-      <option value="0">0 - No Duet</option>
-      <option value="1">1 Duet Song</option>
-      <option value="2">2 Duet Songs</option>
-      <option value="3">3 Duet Songs</option>
-      <option value="4">4 Duet Songs</option>
-      <option value="5">5 Duet Songs</option>
-    </select>
-
-    <div id="duetSongs"></div>
-
-    <div class="total-box">
-      <h3>Payment Calculation</h3>
-      <p id="soloCalculation" class="muted">Solo: 0 songs</p>
-      <p id="duetCalculation" class="muted">Duet: 0 songs</p>
-      <div class="total-amount" id="totalAmount">₹0</div>
-      <p class="muted">Final amount payable for your selected songs.</p>
-    </div>
-
-    <button id="submitButton" class="submit" type="submit">
-      SUBMIT REGISTRATION
-    </button>
-  </form>
-
-  <div id="formMessage" class="message" aria-live="polite"></div>
-
-  <a id="paymentWhatsApp" class="contact-button whatsapp hidden"
-     target="_blank" rel="noopener">
-     SEND REGISTRATION & PAYMENT DETAILS ON WHATSAPP
-  </a>
-
-  <p id="paymentInstructions" class="muted hidden">
-    After making your payment, send the transaction reference
-    number and payment screenshot to the host in the same
-    WhatsApp chat. Your performance will be approved after
-    the host verifies payment.
-  </p>
+<h3>Need Help?</h3>
+<p class="muted">Contact the show host.</p>
+<a id="hostWhatsApp" class="action whatsapp hidden"
+target="_blank" rel="noopener">CONTACT HOST ON WHATSAPP</a>
 </div>
 
-<div class="card">
-  <h2>Need Registration Help?</h2>
-  <p class="muted">
-    Contact the show host through WhatsApp or phone.
-  </p>
+<footer>
+Created & Managed by Melody Magic Music Studio
+</footer>
 
-  <a id="whatsappButton" class="contact-button whatsapp hidden"
-     target="_blank" rel="noopener">
-     CONTACT HOST ON WHATSAPP
-  </a>
-
-  <a id="callButton" class="contact-button call hidden">
-     CALL HOST
-  </a>
-
-  <div id="contactMessage" class="muted"></div>
-</div>
-
-<footer>Powered by Melody Magic Music Studio</footer>
 </div>
 
 <script type="module">
 
-import {
-  db,
-  connectAuditorium
-} from "./firebase.js";
+import {db,connectAuditorium} from "./firebase.js";
 
 import {
-  ref,get,push,set
+ ref,get,push,set,onValue,off,
+ query,orderByChild,equalTo
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 
-const showId = new URLSearchParams(location.search).get("showId");
+const $=id=>document.getElementById(id);
 
-const showDetails = document.getElementById("showDetails");
-const feeDetails = document.getElementById("feeDetails");
-const form = document.getElementById("registrationForm");
-const submitButton = document.getElementById("submitButton");
-const formMessage = document.getElementById("formMessage");
+const showId=new URLSearchParams(location.search).get("showId");
 
-const soloCount = document.getElementById("soloCount");
-const duetCount = document.getElementById("duetCount");
-const soloSongs = document.getElementById("soloSongs");
-const duetSongs = document.getElementById("duetSongs");
+let selectedShow=null;
+let currentUser=null;
+let currentRegistration=null;
+let registrationUnsubscribe=null;
+let currentPaymentLink="";
 
-const whatsappButton = document.getElementById("whatsappButton");
-const callButton = document.getElementById("callButton");
-const contactMessage = document.getElementById("contactMessage");
-const paymentWhatsApp = document.getElementById("paymentWhatsApp");
-const paymentInstructions = document.getElementById("paymentInstructions");
-
-let selectedShow = null;
-let registrationSubmitted = false;
+const form=$("registrationForm");
+const soloCount=$("soloCount");
+const duetCount=$("duetCount");
 
 
-function cleanPhone(value){
-  return String(value || "").replace(/\D/g,"");
+/* HELPERS */
+
+function feeNumber(value){
+ if(value===null||value===undefined||value==="")return null;
+ const n=Number(value);
+ return Number.isFinite(n)&&n>=0?n:null;
 }
 
-function formatFee(value){
-  if(value === null || value === undefined || value === ""){
-    return "Not set";
-  }
-
-  const fee = Number(value);
-  if(!Number.isFinite(fee)) return "Not set";
-
-  return fee === 0 ? "FREE" : "₹" + fee;
+function money(value){
+ return value===0?"FREE":"₹"+value;
 }
 
-function getRate(value){
-  if(value === null || value === undefined || value === ""){
-    return null;
-  }
-
-  const rate = Number(value);
-  return Number.isFinite(rate) && rate >= 0 ? rate : null;
+function phoneNumber(value){
+ let n=String(value||"").replace(/\D/g,"");
+ if(n.length===10)n="91"+n;
+ if(n.length===11&&n.startsWith("0"))n="91"+n.substring(1);
+ return n;
 }
 
-function addDetail(label,value){
-  const p = document.createElement("p");
-  p.textContent = label + ": " + value;
-  return p;
-}
-
-function getHostNumber(){
-
-  const phone = cleanPhone(
-    selectedShow?.hostWhatsApp ||
-    selectedShow?.hostWhatsapp ||
-    selectedShow?.hostMobile ||
-    selectedShow?.contactWhatsApp ||
-    selectedShow?.whatsappNumber ||
-    selectedShow?.hostPhone ||
-    selectedShow?.mobile
-  );
-
-  if(phone.length === 10) return "91" + phone;
-
-  if(phone.length === 12 && phone.startsWith("91")){
-    return phone;
-  }
-
-  return "";
+function hostPhone(){
+ return phoneNumber(
+  selectedShow?.hostWhatsApp||
+  selectedShow?.hostWhatsapp||
+  selectedShow?.contactWhatsApp||
+  selectedShow?.whatsappNumber||
+  selectedShow?.hostPhone||
+  selectedShow?.hostMobile||
+  selectedShow?.mobile
+ );
 }
 
 
-/* CREATE SONG AND MOVIE INPUTS */
+/* SONG FIELDS */
 
 function createSongFields(){
 
-  soloSongs.replaceChildren();
-  duetSongs.replaceChildren();
+ $("soloSongs").replaceChildren();
+ $("duetSongs").replaceChildren();
 
-  const soloTotal = Number(soloCount.value);
-  const duetTotal = Number(duetCount.value);
+ function addSong(container,type,index){
 
-  function createSongBox(container,type,index){
+  const box=document.createElement("div");
+  box.className="song-box";
 
-    const box = document.createElement("div");
-    box.className = "song-box";
+  const songLabel=document.createElement("label");
+  songLabel.textContent=type+" Song "+index+" Name *";
 
-    const songLabel = document.createElement("label");
-    songLabel.textContent =
-      type + " Song " + index + " Name *";
+  const song=document.createElement("input");
+  song.required=true;
+  song.maxLength=100;
+  song.placeholder="Enter song name";
+  song.dataset.song=type;
 
-    const songInput = document.createElement("input");
-    songInput.type = "text";
-    songInput.maxLength = 100;
-    songInput.required = true;
-    songInput.placeholder = "Enter song name";
-    songInput.dataset.songType = type.toLowerCase();
+  const movieLabel=document.createElement("label");
+  movieLabel.textContent="Movie Name *";
 
-    const movieLabel = document.createElement("label");
-    movieLabel.textContent = "Movie Name *";
+  const movie=document.createElement("input");
+  movie.required=true;
+  movie.maxLength=100;
+  movie.placeholder="Enter movie name";
+  movie.dataset.movie=type;
 
-    const movieInput = document.createElement("input");
-    movieInput.type = "text";
-    movieInput.maxLength = 100;
-    movieInput.required = true;
-    movieInput.placeholder = "Enter movie name";
-    movieInput.dataset.movieType = type.toLowerCase();
+  box.append(songLabel,song,movieLabel,movie);
 
-    box.append(songLabel,songInput,movieLabel,movieInput);
-
-    if(type === "Duet"){
-
-      const note = document.createElement("p");
-      note.className = "duet-note";
-
-      note.textContent =
-        "Duet song selections will be finalised two days prior to the event, subject to partner availability.";
-
-      box.appendChild(note);
-    }
-
-    container.appendChild(box);
+  if(type==="Duet"){
+   const note=document.createElement("p");
+   note.className="muted";
+   note.textContent="Duet song and partner arrangements can be finalised with the host.";
+   box.appendChild(note);
   }
 
-  for(let i=1;i<=soloTotal;i++){
-    createSongBox(soloSongs,"Solo",i);
-  }
+  container.appendChild(box);
+ }
 
-  for(let i=1;i<=duetTotal;i++){
-    createSongBox(duetSongs,"Duet",i);
-  }
+ for(let i=1;i<=Number(soloCount.value);i++){
+  addSong($("soloSongs"),"Solo",i);
+ }
 
-  updateCalculation();
+ for(let i=1;i<=Number(duetCount.value);i++){
+  addSong($("duetSongs"),"Duet",i);
+ }
+
+ updateFee();
+}
+
+function readSongs(type){
+
+ const songs=[];
+
+ document.querySelectorAll("input[data-song='"+type+"']").forEach(songInput=>{
+
+  const box=songInput.closest(".song-box");
+  const movieInput=box.querySelector("input[data-movie='"+type+"']");
+
+  songs.push({
+   type:type,
+   song:songInput.value.trim(),
+   movieName:movieInput.value.trim()
+  });
+
+ });
+
+ return songs;
 }
 
 
-function updateCalculation(){
+/* FEE CALCULATION */
 
-  const soloTotal = Number(soloCount.value);
-  const duetTotal = Number(duetCount.value);
+function updateFee(){
 
-  const soloRate = getRate(selectedShow?.soloEntryFee);
-  const duetRate = getRate(selectedShow?.duetEntryFee);
+ const solo=Number(soloCount.value);
+ const duet=Number(duetCount.value);
 
-  const soloText = soloRate === null
-    ? "Rate not set"
-    : formatFee(soloRate) + " per song";
+ const soloRate=feeNumber(selectedShow?.soloEntryFee);
+ const duetRate=feeNumber(selectedShow?.duetEntryFee);
 
-  const duetText = duetRate === null
-    ? "Rate not set"
-    : formatFee(duetRate) + " per song";
+ $("soloCalculation").textContent=
+  "Solo: "+solo+" songs × "+
+  (soloRate===null?"Rate not set":money(soloRate));
 
-  document.getElementById("soloCalculation").textContent =
-    "Solo: " + soloTotal + " × " + soloText;
+ $("duetCalculation").textContent=
+  "Duet: "+duet+" songs × "+
+  (duetRate===null?"Rate not set":money(duetRate));
 
-  document.getElementById("duetCalculation").textContent =
-    "Duet: " + duetTotal + " × " + duetText;
+ if((solo>0&&soloRate===null)||(duet>0&&duetRate===null)){
+  $("totalAmount").textContent="Rate not set";
+  return null;
+ }
 
-  if(
-    (soloTotal > 0 && soloRate === null) ||
-    (duetTotal > 0 && duetRate === null)
-  ){
+ const soloAmount=solo*(soloRate||0);
+ const duetAmount=duet*(duetRate||0);
+ const total=soloAmount+duetAmount;
 
-    document.getElementById("totalAmount").textContent =
-      "Rate not set";
+ $("totalAmount").textContent=money(total);
 
-    return null;
-  }
-
-  const soloAmount = soloTotal * (soloRate || 0);
-  const duetAmount = duetTotal * (duetRate || 0);
-
-  const total = soloAmount + duetAmount;
-
-  document.getElementById("totalAmount").textContent =
-    total === 0 ? "FREE" : "₹" + total;
-
-  return {
-    soloAmount,
-    duetAmount,
-    total,
-    soloRate,
-    duetRate
-  };
+ return {
+  soloRate,duetRate,soloAmount,duetAmount,total
+ };
 }
-
 
 soloCount.addEventListener("change",createSongFields);
 duetCount.addEventListener("change",createSongFields);
+
+
+/* PAYMENT WHATSAPP LINK */
+
+function makePaymentLink(data){
+
+ const phone=hostPhone();
+
+ if(!phone)return "";
+
+ const songs=[
+  ...(data.soloSongs||[]),
+  ...(data.duetSongs||[])
+ ];
+
+ const songText=songs.map((s,i)=>
+  (i+1)+". "+s.type+": "+s.song+
+  " (Movie: "+s.movieName+")"
+ ).join("\n");
+
+ const message=
+  "Hello "+(selectedShow?.hostName||"Host")+",\n\n"+
+  "My performer registration details:\n\n"+
+  "Show: "+(selectedShow?.name||selectedShow?.title||"Music Show")+"\n"+
+  "Name: "+data.singerName+"\n"+
+  "Mobile: "+data.mobile+"\n"+
+  "Songs:\n"+songText+"\n\n"+
+  "Total amount: ₹"+data.totalAmount+"\n"+
+  "Registration ID: "+data.registrationId+"\n\n"+
+  "I am sending my payment proof.";
+
+ return "https://wa.me/"+phone+"?text="+encodeURIComponent(message);
+}
+
+
+/* REGISTRATION STATUS WATCHER */
+
+function stopWatcher(){
+ if(registrationUnsubscribe){
+  registrationUnsubscribe();
+  registrationUnsubscribe=null;
+ }
+}
+
+function startRegistrationWatcher(){
+
+ stopWatcher();
+
+ if(!currentUser||!showId)return;
+
+ const myRegistrations=query(
+  ref(db,"showRegistrations/"+showId),
+  orderByChild("singerUid"),
+  equalTo(currentUser.uid)
+ );
+
+ const callback=onValue(myRegistrations,snapshot=>{
+
+  const records=snapshot.val()||{};
+
+  const matches=Object.entries(records)
+   .filter(([id,data])=>data)
+   .sort((a,b)=>
+    Number(b[1].createdAt||0)-Number(a[1].createdAt||0)
+   );
+
+  if(matches.length===0){
+
+   currentRegistration=null;
+
+   $("registrationStatusPanel").classList.add("hidden");
+   $("registrationCard").classList.remove("hidden");
+   $("paymentWhatsApp").classList.add("hidden");
+   $("paymentInstructions").classList.add("hidden");
+
+   return;
+  }
+
+  const [id,data]=matches[0];
+
+  currentRegistration={id,...data};
+
+  $("registrationCard").classList.remove("hidden");
+  form.classList.add("hidden");
+
+  const status=String(data.status||"Pending").toLowerCase();
+  const payment=String(data.paymentStatus||"Unpaid").toLowerCase();
+
+  $("registrationStatusPanel").classList.remove("hidden");
+
+  $("enterShowButton").classList.add("hidden");
+
+  if(status==="approved"&&(payment==="paid"||payment==="free")){
+
+   $("registrationStatusTitle").textContent="🎉 Registration Approved!";
+
+   $("registrationStatusText").textContent=
+    "Your payment has been confirmed by the host. You can now enter the show.";
+
+   $("paymentWhatsApp").classList.add("hidden");
+   $("paymentInstructions").classList.add("hidden");
+
+   $("enterShowButton").classList.remove("hidden");
+
+  }else if(status==="rejected"){
+
+   $("registrationStatusTitle").textContent="Registration Rejected";
+
+   $("registrationStatusText").textContent=
+    "Your registration has been rejected. Please contact the host.";
+
+   $("paymentWhatsApp").classList.add("hidden");
+   $("paymentInstructions").classList.add("hidden");
+
+  }else{
+
+   $("registrationStatusTitle").textContent="Waiting for Host Approval";
+
+   $("registrationStatusText").textContent=
+    "Your registration is saved. Please send your payment proof to the host. The ENTER SHOW button will appear automatically after host approval.";
+
+   if(payment!=="paid"&&payment!=="free"){
+    currentPaymentLink=makePaymentLink(data);
+
+    if(currentPaymentLink){
+     $("paymentWhatsApp").href=currentPaymentLink;
+     $("paymentWhatsApp").classList.remove("hidden");
+     $("paymentInstructions").classList.remove("hidden");
+    }
+   }else{
+    $("paymentWhatsApp").classList.add("hidden");
+    $("paymentInstructions").classList.add("hidden");
+   }
+
+  }
+
+ },error=>{
+
+  console.error("Registration watcher error:",error);
+
+  $("registrationStatusPanel").classList.remove("hidden");
+  $("registrationStatusTitle").textContent="Unable to Check Registration";
+  $("registrationStatusText").textContent=error.message;
+
+ });
+
+ registrationUnsubscribe=()=>off(myRegistrations,"value",callback);
+}
+
+
+/* ENTER SHOW */
+
+$("enterShowButton").addEventListener("click",async()=>{
+
+ const button=$("enterShowButton");
+
+ button.disabled=true;
+ button.textContent="CHECKING...";
+
+ try{
+
+  if(!currentRegistration||!currentUser){
+   throw new Error("Registration not found. Please refresh the page.");
+  }
+
+  // Recheck the performer's own registration.
+  const myRegistrations=query(
+   ref(db,"showRegistrations/"+showId),
+   orderByChild("singerUid"),
+   equalTo(currentUser.uid)
+  );
+
+  const snapshot=await get(myRegistrations);
+  const records=snapshot.val()||{};
+
+  const data=records[currentRegistration.id];
+
+  if(!data){
+   throw new Error("Your registration could not be verified.");
+  }
+
+  const status=String(data.status||"").toLowerCase();
+  const payment=String(data.paymentStatus||"").toLowerCase();
+
+  if(data.singerUid!==currentUser.uid){
+   throw new Error("This registration belongs to another account.");
+  }
+
+  if(status!=="approved"||!["paid","free"].includes(payment)){
+   throw new Error("Your registration is not approved yet.");
+  }
+
+  const page=new URL("live-performance.html",location.href);
+  page.searchParams.set("showId",showId);
+
+  location.href=page.href;
+
+ }catch(error){
+
+  alert(error.message);
+
+  button.disabled=false;
+  button.textContent="🎤 ENTER SHOW";
+
+ }
+
+});
 
 
 /* LOAD SHOW */
 
 async function loadShow(){
 
-  try{
+ try{
 
-    if(!showId){
-      throw new Error(
-        "No show selected. Please open registration from the homepage."
-      );
-    }
-
-    const snapshot = await get(ref(db,"shows/"+showId));
-
-    if(!snapshot.exists()){
-      throw new Error("This show does not exist.");
-    }
-
-    const show = snapshot.val();
-
-    if(show.status !== "Published"){
-      throw new Error("This show is not currently available.");
-    }
-
-    selectedShow = show;
-
-    showDetails.replaceChildren();
-
-    const heading = document.createElement("h3");
-
-    heading.textContent =
-      show.name || show.title || "Singing Show";
-
-    showDetails.appendChild(heading);
-
-    showDetails.append(
-      addDetail("Date",show.date || "To be announced"),
-      addDetail("Time",(show.time || "To be announced") + " IST"),
-      addDetail("Host",show.hostName || "Show Host")
-    );
-
-    feeDetails.replaceChildren();
-
-    const solo = document.createElement("p");
-    solo.className = "fee";
-    solo.textContent =
-      "Solo rate per song: " + formatFee(show.soloEntryFee);
-
-    const duet = document.createElement("p");
-    duet.className = "fee";
-    duet.textContent =
-      "Duet rate per song: " + formatFee(show.duetEntryFee);
-
-    feeDetails.append(solo,duet);
-
-    const number = getHostNumber();
-
-    if(number){
-
-      const message =
-        "Hello " + (show.hostName || "Host") +
-        ", I need help with performer registration for your show: " +
-        (show.name || show.title || "Singing Show");
-
-      whatsappButton.href =
-        "https://wa.me/" + number +
-        "?text=" + encodeURIComponent(message);
-
-      whatsappButton.classList.remove("hidden");
-
-      callButton.href = "tel:+" + number;
-      callButton.classList.remove("hidden");
-
-      contactMessage.textContent =
-        "Host WhatsApp: +" + number;
-
-    }else{
-
-      contactMessage.textContent =
-        "The host has not added a valid WhatsApp number.";
-    }
-
-    updateCalculation();
-
-  }catch(error){
-
-    console.error(error);
-
-    showDetails.className = "error";
-    showDetails.textContent = error.message;
-
-    form.classList.add("hidden");
-    feeDetails.replaceChildren();
+  if(!showId){
+   throw new Error("Show ID is missing. Please select a show from the homepage.");
   }
-}
 
+  // Reuse the performer's existing anonymous Firebase login.
+  currentUser=await connectAuditorium();
 
-/* READ SONGS */
+  const showSnapshot=await get(ref(db,"shows/"+showId));
 
-function readSongs(container,type){
+  if(!showSnapshot.exists()){
+   throw new Error("Show not found.");
+  }
 
-  const songInputs = [
-    ...container.querySelectorAll(
-      'input[data-song-type="' + type.toLowerCase() + '"]'
-    )
-  ];
+  selectedShow=showSnapshot.val();
 
-  const movieInputs = [
-    ...container.querySelectorAll(
-      'input[data-movie-type="' + type.toLowerCase() + '"]'
-    )
-  ];
+  if(selectedShow.status!=="Published"){
+   throw new Error("This show is not currently published.");
+  }
 
-  return songInputs.map((input,index)=>({
+  $("showDetails").textContent=
+   (selectedShow.name||selectedShow.title||"Singing Show")+
+   " | Date: "+(selectedShow.date||"Not announced")+
+   " | Time: "+(selectedShow.time||"Not announced");
 
-    type,
-    number:index+1,
-    song:input.value.trim(),
-    movieName:movieInputs[index]?.value.trim() || ""
+  $("feeDetails").textContent=
+   "Solo: "+(feeNumber(selectedShow.soloEntryFee)===null?"Not set":money(feeNumber(selectedShow.soloEntryFee)))+
+   " | Duet: "+(feeNumber(selectedShow.duetEntryFee)===null?"Not set":money(feeNumber(selectedShow.duetEntryFee)));
 
-  }));
+  const phone=hostPhone();
+
+  if(phone){
+   $("hostWhatsApp").href="https://wa.me/"+phone;
+   $("hostWhatsApp").classList.remove("hidden");
+  }
+
+  updateFee();
+
+  // Check for previous registrations automatically.
+  startRegistrationWatcher();
+
+ }catch(error){
+
+  console.error(error);
+
+  $("showDetails").textContent=error.message;
+  $("showDetails").classList.add("error");
+
+  $("registrationCard").classList.add("hidden");
+
+ }
+
 }
 
 
 /* SUBMIT REGISTRATION */
 
-form.addEventListener("submit",async(event)=>{
+form.addEventListener("submit",async event=>{
 
-  event.preventDefault();
+ event.preventDefault();
 
-  if(registrationSubmitted) return;
+ const button=$("submitButton");
+ const message=$("formMessage");
 
-  if(!selectedShow || !showId){
+ if(!selectedShow||!currentUser){
+  message.textContent="Show or performer login is not ready.";
+  message.className="error";
+  return;
+ }
 
-    formMessage.className = "message error";
-    formMessage.textContent =
-      "Show details are not available.";
+ const name=$("singerName").value.trim();
+ const gender=$("gender").value;
+ const mobile=$("mobile").value.trim();
+ const locationValue=$("location").value.trim();
+ const language=$("language").value;
 
-    return;
-  }
+ if(!/^[6-9][0-9]{9}$/.test(mobile)){
+  message.textContent="Enter a valid 10-digit Indian mobile number.";
+  message.className="error";
+  return;
+ }
 
-  const name =
-    document.getElementById("singerName").value.trim();
+ const solo=readSongs("Solo");
+ const duet=readSongs("Duet");
 
-  const gender =
-    document.getElementById("gender").value;
+ if(solo.length===0&&duet.length===0){
+  message.textContent="Please select at least one song.";
+  message.className="error";
+  return;
+ }
 
-  const mobile =
-    document.getElementById("mobile").value.trim();
+ const allSongs=[...solo,...duet];
 
-  const locationValue =
-    document.getElementById("location").value.trim();
+ if(allSongs.some(s=>!s.song||!s.movieName)){
+  message.textContent="Enter the song name and movie name for every song.";
+  message.className="error";
+  return;
+ }
 
-  const language =
-    document.getElementById("language").value;
+ const calculation=updateFee();
 
+ if(!calculation){
+  message.textContent="The host has not set the fee for your selected performance.";
+  message.className="error";
+  return;
+ }
 
-  if(!/^[6-9][0-9]{9}$/.test(mobile)){
+ if(!hostPhone()){
+  message.textContent="Host WhatsApp number is missing. Please contact the administrator.";
+  message.className="error";
+  return;
+ }
 
-    formMessage.className = "message error";
+ button.disabled=true;
+ button.textContent="SUBMITTING...";
 
-    formMessage.textContent =
-      "Please enter a valid 10-digit Indian WhatsApp number.";
+ try{
 
-    return;
-  }
+  const registrationRef=push(
+   ref(db,"showRegistrations/"+showId)
+  );
 
+  const firstSong=allSongs[0];
 
-  const soloTotal = Number(soloCount.value);
-  const duetTotal = Number(duetCount.value);
+  const performanceType=
+   solo.length&&duet.length?"Solo + Duet":
+   solo.length?"Solo":"Duet";
 
+  const now=Date.now();
 
-  if(soloTotal === 0 && duetTotal === 0){
+  const registrationData={
 
-    formMessage.className = "message error";
+   singerUid:currentUser.uid,
+   registrationId:registrationRef.key,
+   showId:showId,
 
-    formMessage.textContent =
-      "Please select at least one solo or duet song.";
+   showName:selectedShow.name||selectedShow.title||"Music Show",
 
-    return;
-  }
+   singerName:name,
+   mobile:mobile,
+   songName:firstSong.song,
+   movieName:firstSong.movieName,
+   performanceType:performanceType,
 
+   name:name,
+   gender:gender,
+   location:locationValue,
+   language:language,
 
-  const calculation = updateCalculation();
+   song:firstSong.song,
+   requestedSong:firstSong.song,
+   performance:performanceType,
 
+   soloCount:solo.length,
+   duetCount:duet.length,
 
-  if(!calculation){
+   soloSongs:solo,
+   duetSongs:duet,
+   songs:allSongs,
 
-    formMessage.className = "message error";
+   duetPartnerName:"",
 
-    formMessage.textContent =
-      "The host has not set the per-song rate for your selected performance type. Please contact the host.";
+   soloRate:calculation.soloRate,
+   duetRate:calculation.duetRate,
+   soloAmount:calculation.soloAmount,
+   duetAmount:calculation.duetAmount,
 
-    return;
-  }
+   totalAmount:calculation.total,
+   currency:"INR",
 
+   paymentStatus:calculation.total>0?"Unpaid":"Free",
+   paymentMethod:"WhatsApp payment proof",
 
-  const soloSongList = readSongs(soloSongs,"Solo");
-  const duetSongList = readSongs(duetSongs,"Duet");
+   status:"Pending",
+   source:"Online Registration",
 
-  const allSongs = [
-    ...soloSongList,
-    ...duetSongList
-  ];
+   submittedAt:now,
+   createdAt:now
 
+  };
 
-  if(allSongs.some(item=>!item.song || !item.movieName)){
+  await set(registrationRef,registrationData);
 
-    formMessage.className = "message error";
+  currentRegistration={
+   id:registrationRef.key,
+   ...registrationData
+  };
 
-    formMessage.textContent =
-      "Please enter both song name and movie name for every selected song.";
+  $("paymentWhatsApp").href=makePaymentLink(registrationData);
+  $("paymentWhatsApp").classList.remove("hidden");
+  $("paymentInstructions").classList.remove("hidden");
 
-    return;
-  }
+  message.textContent="Registration submitted successfully!";
+  message.className="success";
 
+  form.classList.add("hidden");
 
-  const hostNumber = getHostNumber();
+  // Listen for the host's approval.
+  startRegistrationWatcher();
 
+ }catch(error){
 
-  if(!hostNumber){
+  console.error("Registration submit error:",error);
 
-    formMessage.className = "message error";
+  message.textContent=
+   "Registration failed: "+(error.message||"Please try again.");
 
-    formMessage.textContent =
-      "The host has not added a valid WhatsApp number. Please contact the organiser.";
+  message.className="error";
 
-    return;
-  }
+  button.disabled=false;
+  button.textContent="SUBMIT REGISTRATION";
 
-
-  submitButton.disabled = true;
-  submitButton.textContent = "SUBMITTING...";
-
-  formMessage.textContent = "";
-
-
-  try{
-
-    const user = await connectAuditorium();
-
-    const registrationRef = push(
-      ref(db,"showRegistrations/"+showId)
-    );
-
-
-    const firstSong = allSongs[0];
-
-    const performanceType =
-      soloTotal > 0 && duetTotal > 0
-        ? "Solo + Duet"
-        : soloTotal > 0
-          ? "Solo"
-          : "Duet";
-
-
-    const total = calculation.total;
-
-
-    /* HOST DASHBOARD COMPATIBLE DATABASE RECORD */
-
-    const registrationData = {
-
-      singerUid:user.uid,
-
-      registrationId:registrationRef.key,
-
-      showId,
-
-      showName:
-        selectedShow.name ||
-        selectedShow.title ||
-        "Music Show",
-
-      /* Main fields used by Host Dashboard */
-
-      singerName:name,
-
-      mobile,
-
-      songName:firstSong.song,
-
-      movieName:firstSong.movieName,
-
-      performanceType,
-
-      /* Additional registration details */
-
-      name,
-
-      gender,
-
-      location:locationValue,
-
-      language,
-
-      song:firstSong.song,
-
-      requestedSong:firstSong.song,
-
-      performance:performanceType,
-
-      soloCount:soloTotal,
-
-      duetCount:duetTotal,
-
-      soloSongs:soloSongList,
-
-      duetSongs:duetSongList,
-
-      songs:allSongs,
-
-      duetPartnerName:"",
-
-      soloRate:calculation.soloRate,
-
-      duetRate:calculation.duetRate,
-
-      soloAmount:calculation.soloAmount,
-
-      duetAmount:calculation.duetAmount,
-
-      totalAmount:total,
-
-      currency:"INR",
-
-      /* Payment status */
-
-      paymentStatus:total > 0 ? "Unpaid" : "Free",
-
-      paymentMethod:"External payment - WhatsApp proof",
-
-      /* Approval workflow */
-
-      status:"Pending",
-
-      source:"Online Registration",
-
-      submittedAt:Date.now(),
-
-      createdAt:Date.now()
-
-      /* No karaokeUrl: host adds it later */
-
-    };
-
-
-    await set(registrationRef,registrationData);
-
-
-    const songLines = allSongs.map(item=>
-      item.type + " " + item.number +
-      ": " + item.song +
-      " (Movie: " + item.movieName + ")"
-    ).join("\n");
-
-
-    const paymentMessage =
-
-      "Hello " + (selectedShow.hostName || "Host") + ",\n\n" +
-
-      "I have successfully registered for your show.\n\n" +
-
-      "Show: " +
-      (selectedShow.name || "Music Show") + "\n" +
-
-      "Performer: " + name + "\n" +
-
-      "Mobile: " + mobile + "\n" +
-
-      "Performance: " + performanceType + "\n\n" +
-
-      "Selected songs:\n" + songLines + "\n\n" +
-
-      "Solo amount: ₹" +
-      calculation.soloAmount + "\n" +
-
-      "Duet amount: ₹" +
-      calculation.duetAmount + "\n" +
-
-      "Total payable: ₹" + total + "\n\n" +
-
-      "Please share your payment details. I will send the transaction reference and payment screenshot here.\n\n" +
-
-      "Registration ID: " + registrationRef.key;
-
-
-    paymentWhatsApp.href =
-      "https://wa.me/" + hostNumber +
-      "?text=" + encodeURIComponent(paymentMessage);
-
-
-    paymentWhatsApp.classList.remove("hidden");
-
-    paymentInstructions.classList.remove("hidden");
-
-
-    formMessage.className = "message success";
-
-    formMessage.textContent =
-
-      "Thank you, " + name + "!\n\n" +
-
-      "Your registration for " +
-      (selectedShow.name || "the show") +
-      " has been submitted successfully.\n\n" +
-
-      "Solo songs: " + soloTotal +
-      " × ₹" + calculation.soloRate +
-      " = ₹" + calculation.soloAmount + "\n" +
-
-      "Duet songs: " + duetTotal +
-      " × ₹" + calculation.duetRate +
-      " = ₹" + calculation.duetAmount + "\n\n" +
-
-      "TOTAL PAYABLE: ₹" + total + "\n\n" +
-
-      "Your registration is awaiting host approval. Tap the WhatsApp button below to contact the host for payment details.";
-
-
-    registrationSubmitted = true;
-
-    submitButton.textContent =
-      "REGISTRATION SUBMITTED";
-
-
-  }catch(error){
-
-    console.error("Registration error:",error);
-
-    formMessage.className = "message error";
-
-    formMessage.textContent =
-      "Registration could not be submitted.\n" +
-      (error.code || error.message || "Please try again.");
-
-    submitButton.disabled = false;
-
-    submitButton.textContent =
-      "SUBMIT REGISTRATION";
-  }
+ }
 
 });
 
 
-createSongFields();
+/* START */
 
+createSongFields();
 loadShow();
 
 </script>
