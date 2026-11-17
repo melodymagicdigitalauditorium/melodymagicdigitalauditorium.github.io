@@ -1,5 +1,5 @@
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 
 import {
   getDatabase,
@@ -30,15 +30,21 @@ const firebaseConfig = {
   appId: "1:458186749712:web:311ecbed0c87367022d795"
 };
 
-// INITIALIZE FIREBASE
-const app = initializeApp(firebaseConfig);
+// INITIALIZE FIREBASE ONCE
+const app = getApps().length
+  ? getApp()
+  : initializeApp(firebaseConfig);
+
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-// SET PERSISTENT LOGIN
-const authReady = setPersistence(auth, browserLocalPersistence);
+// INITIALIZE AUTHENTICATION PERSISTENCE
+const authReady = setPersistence(
+  auth,
+  browserLocalPersistence
+);
 
-// PERFORMER LOGIN
+// ENSURE USER IS AUTHENTICATED
 async function connectAuditorium() {
   await authReady;
 
@@ -60,27 +66,33 @@ async function registerSinger(
 ) {
   const user = await connectAuditorium();
 
-  await set(push(ref(db, "registrations/" + user.uid)), {
-    name,
-    song,
-    language,
-    sessionId,
-    performance,
-    status: "Waiting",
-    createdAt: Date.now()
-  });
+  await set(
+    push(ref(db, "registrations/" + user.uid)),
+    {
+      name,
+      song,
+      language,
+      sessionId,
+      performance,
+      status: "Waiting",
+      createdAt: Date.now()
+    }
+  );
 
   return user.uid;
 }
 
 // LISTEN TO SINGERS
 function listenToSingers(callback) {
-  return onValue(ref(db, "registrations"), snapshot => {
-    callback(snapshot.val() || {});
-  });
+  return onValue(
+    ref(db, "registrations"),
+    snapshot => {
+      callback(snapshot.val() || {});
+    }
+  );
 }
 
-// HOST REGISTRATION WITH GPS LOCATION
+// REGISTER HOST
 async function registerHost(
   name,
   email,
@@ -113,33 +125,36 @@ async function registerHost(
 
   const user = result.user;
 
-  await set(ref(db, "hostApplications/" + user.uid), {
-    name,
-    email,
-    mobile,
-    plan,
+  await set(
+    ref(db, "hostApplications/" + user.uid),
+    {
+      name,
+      email,
+      mobile,
+      plan,
 
-    country: locationData.country,
-    state: locationData.state,
-    city: locationData.city,
+      country: locationData.country,
+      state: locationData.state,
+      city: locationData.city,
 
-    location: [
-      locationData.city,
-      locationData.state,
-      locationData.country
-    ].join(", "),
+      location: [
+        locationData.city,
+        locationData.state,
+        locationData.country
+      ].join(", "),
 
-    latitude: locationData.latitude,
-    longitude: locationData.longitude,
-    accuracy: locationData.accuracy || null,
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+      accuracy: locationData.accuracy || null,
 
-    locationDetected: true,
-    locationDetectionMethod: "Browser GPS",
-    locationCapturedAt: Date.now(),
+      locationDetected: true,
+      locationDetectionMethod: "Browser GPS",
+      locationCapturedAt: Date.now(),
 
-    status: "Pending",
-    createdAt: Date.now()
-  });
+      status: "Pending",
+      createdAt: Date.now()
+    }
+  );
 
   return user;
 }
@@ -147,8 +162,6 @@ async function registerHost(
 // HOST LOGIN
 async function hostLogin(email, password) {
   await authReady;
-
-  await setPersistence(auth, browserLocalPersistence);
 
   const result = await signInWithEmailAndPassword(
     auth,
