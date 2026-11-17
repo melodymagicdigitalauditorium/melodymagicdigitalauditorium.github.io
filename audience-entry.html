@@ -10,35 +10,66 @@
 body{margin:0;padding:20px;background:#090909;color:#fff;font-family:Arial,sans-serif}
 .card{max-width:520px;margin:35px auto;padding:25px;background:#171717;border:1px solid #b58b35;border-radius:14px}
 h1{color:#e8bd62;text-align:center;font-size:25px}
+h2{color:#e8bd62}
+h3{color:#e8bd62}
 p{line-height:1.5;color:#ddd}
 input,textarea{width:100%;padding:13px;margin:7px 0 14px;background:#090909;color:#fff;border:1px solid #555;border-radius:7px}
 button,.btn{display:block;width:100%;padding:14px;margin:12px 0;border:0;border-radius:8px;background:#d6a943;color:#111;font-weight:bold;text-align:center;text-decoration:none;cursor:pointer}
 button:disabled{opacity:.5;cursor:not-allowed}
 .whatsapp{background:#168b50;color:white}
-.status{padding:12px;background:#252525;border-radius:8px;margin:14px 0;white-space:pre-wrap}
+.status{padding:12px;background:#252525;border-radius:8px;margin:14px 0;white-space:pre-wrap;line-height:1.5}
 label{display:block;margin:10px 0;color:#ddd}
 .small{font-size:13px;color:#aaa}
-.hidden{display:none}
+.hidden{display:none!important}
+.feeBox{background:#101010;border:1px solid #65502b;border-radius:9px;padding:14px;margin:15px 0}
+.feeLine{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #333}
+.feeLine:last-child{border-bottom:0}
+.feeValue{color:#e8bd62;font-weight:bold;text-align:right}
+.freeText{color:#62d68a}
+.paidText{color:#ffc65c}
 </style>
 </head>
 <body>
+
 <div class="card">
 <h1>Melody Magic Digital Auditorium</h1>
+
 <div id="message" class="status">Connecting...</div>
 
 <div id="showInfo" class="hidden">
 <h2 id="showName"></h2>
 <p id="showDescription"></p>
-<p><b>Audience entry fee:</b> <span id="fee"></span></p>
+
+<div class="feeBox">
+<h3>Show Fee Details</h3>
+
+<div class="feeLine">
+<span>Audience Entry</span>
+<span id="fee" class="feeValue">-</span>
+</div>
+
+<div class="feeLine">
+<span>Solo Performance / Song</span>
+<span id="soloFee" class="feeValue">-</span>
+</div>
+
+<div class="feeLine">
+<span>Duet Performance / Song</span>
+<span id="duetFee" class="feeValue">-</span>
+</div>
+</div>
 </div>
 
 <div id="freePanel" class="hidden">
-<p>This is a free show. You can enter directly without registration.</p>
+<p class="freeText"><b>This is a FREE ENTRY show!</b></p>
+<p>You can enter the auditorium directly without payment or registration.</p>
 <button id="freeEnter">Enter Auditorium</button>
 </div>
 
 <div id="paidPanel" class="hidden">
-<p>Contact the host on WhatsApp to receive payment details. After paying, submit your details and payment reference below.</p>
+<p class="paidText"><b>This show has a paid audience entry fee.</b></p>
+<p>Contact the host on WhatsApp for payment details. After paying, submit your details and payment reference below.</p>
+
 <a id="whatsappButton" class="btn whatsapp" target="_blank" rel="noopener">Contact Host on WhatsApp</a>
 
 <form id="requestForm">
@@ -54,14 +85,17 @@ label{display:block;margin:10px 0;color:#ddd}
 <label>Payment reference / UTR number</label>
 <input id="paymentReference" required maxlength="100" placeholder="Enter payment reference">
 
-<label><input id="rulesAccepted" type="checkbox" required style="width:auto"> I agree to the show rules and entry conditions.</label>
+<label>
+<input id="rulesAccepted" type="checkbox" required style="width:auto">
+I agree to the show rules and entry conditions.
+</label>
 
 <button id="submitButton" type="submit">Submit Payment Details</button>
 </form>
 </div>
 
 <div id="pendingPanel" class="hidden">
-<h3>Registration status</h3>
+<h3>Registration Status</h3>
 <div id="requestStatus" class="status">Your request is being checked.</div>
 <p class="small">The host must manually verify your payment and approve your entry.</p>
 <button id="enterButton" class="hidden">Enter Auditorium</button>
@@ -71,34 +105,118 @@ label{display:block;margin:10px 0;color:#ddd}
 
 <script type="module">
 import {db,connectAuditorium} from "./firebase.js";
+
 import {
   ref,get,set,push,onValue,query,orderByChild,equalTo
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const $ = id => document.getElementById(id);
+
 const showId = new URLSearchParams(location.search).get("showId");
 
 let user = null;
 let showData = null;
 let ownRequestRef = null;
+let audienceFee = 0;
+let audienceIsPaid = false;
 
-function message(text){$("message").textContent=text}
-function showPanel(id){$(id).classList.remove("hidden")}
-function hidePanel(id){$(id).classList.add("hidden")}
+function message(text){
+  $("message").textContent=text;
+}
+
+function showPanel(id){
+  $(id).classList.remove("hidden");
+}
+
+function hidePanel(id){
+  $(id).classList.add("hidden");
+}
+
 function enterShow(){
   location.href="live-performance.html?showId="+encodeURIComponent(showId);
 }
+
 $("freeEnter").addEventListener("click",enterShow);
 $("enterButton").addEventListener("click",enterShow);
 
+function getFeeDetails(typeField,amountField,legacyTypeField){
+  const amount=Number(showData[amountField]||0);
+
+  const savedType=String(showData[typeField]||"").toLowerCase();
+  const legacyType=String(showData[legacyTypeField]||"").toLowerCase();
+
+  if(savedType==="paid"){
+    return {paid:true,amount:amount};
+  }
+
+  if(savedType==="free"){
+    return {paid:false,amount:0};
+  }
+
+  if(legacyType==="paid"){
+    return {paid:true,amount:amount};
+  }
+
+  return {paid:amount>0,amount:amount};
+}
+
+function feeText(details){
+  if(!details.paid){
+    return '<span class="freeText">FREE</span>';
+  }
+
+  if(details.amount<=0){
+    return '<span class="paidText">Paid — Contact Host</span>';
+  }
+
+  return '<span class="paidText">₹'+details.amount.toLocaleString("en-IN")+'</span>';
+}
+
+function displayFeeDetails(){
+  const audience=getFeeDetails(
+    "audienceFeeType",
+    "audienceFee",
+    "entryType"
+  );
+
+  const solo=getFeeDetails(
+    "soloSongFeeType",
+    "soloSongFee",
+    "soloEntryType"
+  );
+
+  const duet=getFeeDetails(
+    "duetSongFeeType",
+    "duetSongFee",
+    "duetEntryType"
+  );
+
+  audienceIsPaid=audience.paid;
+  audienceFee=audience.amount;
+
+  $("fee").innerHTML=feeText(audience);
+  $("soloFee").innerHTML=feeText(solo);
+  $("duetFee").innerHTML=feeText(duet);
+
+  return audience;
+}
+
 async function start(){
-  if(!showId){message("Show ID is missing. Please open the correct show link.");return}
+
+  if(!showId){
+    message("Show ID is missing. Please open the correct show link.");
+    return;
+  }
 
   try{
     user=await connectAuditorium();
 
     const showSnap=await get(ref(db,"shows/"+showId));
-    if(!showSnap.exists()){message("This show could not be found.");return}
+
+    if(!showSnap.exists()){
+      message("This show could not be found.");
+      return;
+    }
 
     showData=showSnap.val();
 
@@ -107,19 +225,27 @@ async function start(){
       return;
     }
 
-    const blockSnap=await get(ref(db,`audienceBlocks/${showId}/${user.uid}`));
+    const blockSnap=await get(
+      ref(db,`audienceBlocks/${showId}/${user.uid}`)
+    );
+
     if(blockSnap.exists() && blockSnap.val()===true){
       message("Your access to this show has been blocked. Please contact the host.");
       return;
     }
 
-    const fee=Number(showData.audienceFee||0);
-    $("showName").textContent=showData.name||"Live Show";
-    $("showDescription").textContent=showData.description||"";
-    $("fee").textContent=fee<=0?"FREE":"₹"+fee;
+    $("showName").textContent=
+      showData.showName || showData.name || showData.title || "Live Show";
+
+    $("showDescription").textContent=
+      showData.showDescription || showData.description || "";
+
+    const audienceDetails=displayFeeDetails();
+
     showPanel("showInfo");
 
-    if(fee<=0){
+    if(!audienceDetails.paid){
+
       const accessRef=ref(db,`audienceAccess/${showId}/${user.uid}`);
       const accessSnap=await get(accessRef);
 
@@ -127,24 +253,50 @@ async function start(){
         await set(accessRef,true);
       }
 
-      message("Free entry is ready.");
+      message("FREE ENTRY — No audience entry fee is required.");
       showPanel("freePanel");
       return;
     }
 
-    if(!showData.hostWhatsApp){
-      message("The host has not added a WhatsApp number. Please contact the show organiser.");
+    if(audienceFee<=0){
+      message("The host selected Paid audience entry but has not entered a valid amount. Please contact the host.");
       return;
     }
 
-    const phone=String(showData.hostWhatsApp).replace(/\D/g,"");
-    const text=`Hello, I want to join your show "${showData.name||"Live Show"}". Show ID: ${showId}. Audience entry fee: ₹${fee}. Please share the payment details.`;
-    $("whatsappButton").href="https://wa.me/"+phone+"?text="+encodeURIComponent(text);
+    const hostNumber=
+      showData.hostWhatsApp ||
+      showData.whatsapp ||
+      showData.hostMobile ||
+      showData.hostPhone ||
+      "";
+
+    if(!hostNumber){
+      message("Paid audience entry: ₹"+audienceFee+". The host has not added a WhatsApp number. Please contact the show organiser.");
+      return;
+    }
+
+    const phone=String(hostNumber).replace(/\D/g,"");
+
+    if(!phone){
+      message("The host WhatsApp number is invalid. Please contact the show organiser.");
+      return;
+    }
+
+    const showTitle=
+      showData.showName || showData.name || showData.title || "Live Show";
+
+    const text=
+      `Hello, I want to join your show "${showTitle}". Show ID: ${showId}. Audience entry fee: ₹${audienceFee}. Please share the payment details.`;
+
+    $("whatsappButton").href=
+      "https://wa.me/"+phone+"?text="+encodeURIComponent(text);
 
     showPanel("paidPanel");
-    message("Paid show: contact the host, make the payment, and submit your payment reference.");
+
+    message("PAID AUDIENCE ENTRY — ₹"+audienceFee+". Contact the host, make the payment, and submit your payment reference.");
 
     await checkExistingRequest();
+
   }catch(error){
     console.error(error);
     message("Unable to open audience entry: "+error.message);
@@ -152,38 +304,53 @@ async function start(){
 }
 
 async function checkExistingRequest(){
+
   const requestsQuery=query(
     ref(db,"audienceEntryRequests/"+showId),
     orderByChild("audienceUid"),
     equalTo(user.uid)
   );
+
   const snap=await get(requestsQuery);
 
   if(!snap.exists())return;
 
   let latest=null;
+
   snap.forEach(child=>{
     const value=child.val();
-    if(!latest || Number(value.createdAt||0)>Number(latest.value.createdAt||0)){
-      latest={key:child.key,value};
+
+    if(
+      !latest ||
+      Number(value.createdAt||0)>Number(latest.value.createdAt||0)
+    ){
+      latest={key:child.key,value:value};
     }
   });
 
   if(!latest)return;
 
   const status=latest.value.status;
+
   if(status==="Pending" || status==="Approved"){
     hidePanel("paidPanel");
     showPanel("pendingPanel");
-    ownRequestRef=ref(db,`audienceEntryRequests/${showId}/${latest.key}`);
+
+    ownRequestRef=ref(
+      db,
+      `audienceEntryRequests/${showId}/${latest.key}`
+    );
+
     watchRequest();
   }
 }
 
 function watchRequest(){
+
   if(!ownRequestRef)return;
 
   onValue(ownRequestRef,async snap=>{
+
     if(!snap.exists()){
       $("requestStatus").textContent="Registration request not found.";
       return;
@@ -192,49 +359,85 @@ function watchRequest(){
     const request=snap.val();
 
     if(request.status==="Pending"){
-      $("requestStatus").textContent="PENDING — Your payment is waiting for host verification.";
+
+      $("requestStatus").textContent=
+        "PENDING — Your payment is waiting for host verification.";
+
       hidePanel("enterButton");
+
     }else if(request.status==="Approved"){
-      const accessSnap=await get(ref(db,`audienceAccess/${showId}/${user.uid}`));
+
+      const accessSnap=await get(
+        ref(db,`audienceAccess/${showId}/${user.uid}`)
+      );
+
       if(accessSnap.val()===true){
-        $("requestStatus").textContent="APPROVED — Your entry has been approved.";
+
+        $("requestStatus").textContent=
+          "APPROVED — Your entry has been approved.";
+
         showPanel("enterButton");
+
       }else{
-        $("requestStatus").textContent="Approved by host. Preparing your access...";
+
+        $("requestStatus").textContent=
+          "Approved by host. Preparing your access...";
       }
+
     }else if(request.status==="Rejected"){
-      $("requestStatus").textContent="Your request was rejected. Please contact the host.";
+
+      $("requestStatus").textContent=
+        "Your request was rejected. Please contact the host.";
+
+      hidePanel("enterButton");
+
     }else{
-      $("requestStatus").textContent="Request status: "+(request.status||"Unknown");
+
+      $("requestStatus").textContent=
+        "Request status: "+(request.status||"Unknown");
     }
+
   },error=>{
-    $("requestStatus").textContent="Could not check status: "+error.message;
+
+    $("requestStatus").textContent=
+      "Could not check status: "+error.message;
+
   });
 }
 
 $("requestForm").addEventListener("submit",async event=>{
+
   event.preventDefault();
 
   if(!user || !showData)return;
+
   if(!$("rulesAccepted").checked){
     message("Please accept the show rules.");
     return;
   }
 
   const submit=$("submitButton");
+
   submit.disabled=true;
   submit.textContent="Submitting...";
 
   try{
+
     const existingQuery=query(
       ref(db,"audienceEntryRequests/"+showId),
       orderByChild("audienceUid"),
       equalTo(user.uid)
     );
+
     const existing=await get(existingQuery);
+
     let hasPending=false;
+
     existing.forEach(child=>{
-      if(child.val().status==="Pending" || child.val().status==="Approved"){
+      if(
+        child.val().status==="Pending" ||
+        child.val().status==="Approved"
+      ){
         hasPending=true;
       }
     });
@@ -251,31 +454,48 @@ $("requestForm").addEventListener("submit",async event=>{
       mobile:$("mobile").value.trim(),
       location:$("location").value.trim(),
       showId:showId,
-      hostUid:showData.hostUid,
+      hostUid:showData.hostUid || "",
       status:"Pending",
       createdAt:Date.now(),
       entryType:"Paid",
+      audienceFee:audienceFee,
       paymentReference:$("paymentReference").value.trim(),
       rulesAccepted:true
     };
 
-    if(!requestData.name || !requestData.mobile || !requestData.location || !requestData.paymentReference){
+    if(
+      !requestData.name ||
+      !requestData.mobile ||
+      !requestData.location ||
+      !requestData.paymentReference
+    ){
       message("Please complete all fields.");
       return;
     }
 
-    const newRequest=push(ref(db,"audienceEntryRequests/"+showId));
+    const newRequest=push(
+      ref(db,"audienceEntryRequests/"+showId)
+    );
+
     await set(newRequest,requestData);
 
     ownRequestRef=newRequest;
+
     hidePanel("paidPanel");
     showPanel("pendingPanel");
-    $("requestStatus").textContent="PENDING — Your request has been submitted. The host must verify your payment.";
+
+    $("requestStatus").textContent=
+      "PENDING — Your request has been submitted. The host must verify your payment.";
+
     watchRequest();
+
   }catch(error){
+
     console.error(error);
     message("Submission failed: "+error.message);
+
   }finally{
+
     submit.disabled=false;
     submit.textContent="Submit Payment Details";
   }
