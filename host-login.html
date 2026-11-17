@@ -58,7 +58,9 @@ input {
   font-size: 16px;
 }
 
-input:focus { outline: 1px solid #e5bd60; }
+input:focus {
+  outline: 1px solid #e5bd60;
+}
 
 button {
   width: 100%;
@@ -95,7 +97,6 @@ a:hover { text-decoration: underline; }
   padding-top: 18px;
   border-top: 1px solid #514326;
 }
-
 .signup a {
   font-weight: bold;
   font-size: 15px;
@@ -109,7 +110,7 @@ a:hover { text-decoration: underline; }
   <div class="brand">MELODY MAGIC</div>
   <h2>Host Login</h2>
 
-  <p>Sign in with your registered email and password.</p>
+  <p>Sign in with your registered host email and password.</p>
 
   <form id="loginForm">
     <input
@@ -157,24 +158,56 @@ const form = document.getElementById("loginForm");
 const message = document.getElementById("message");
 const button = document.getElementById("loginButton");
 
+let redirecting = false;
+
 function showMessage(text, color = "#ff9999") {
   message.textContent = text;
   message.style.color = color;
 }
 
-function readHostApplication(applicationRef) {
-  return Promise.race([
-    get(applicationRef),
-    new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error("Database read timed out after 12 seconds"));
-      }, 12000);
-    })
-  ]);
+function parseTimestamp(value) {
+  if (value === undefined || value === null || value === "") {
+    return NaN;
+  }
+
+  if (typeof value === "number") {
+    return value < 1000000000000 ? value * 1000 : value;
+  }
+
+  const numeric = Number(value);
+
+  if (Number.isFinite(numeric)) {
+    return numeric < 1000000000000 ? numeric * 1000 : numeric;
+  }
+
+  const parsed = Date.parse(value);
+
+  return Number.isNaN(parsed) ? NaN : parsed;
+}
+
+async function readHostApplication(applicationRef) {
+  let timeoutId;
+
+  try {
+    return await Promise.race([
+      get(applicationRef),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(
+            "Database read timed out. Please check your internet connection."
+          ));
+        }, 12000);
+      })
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  if (redirecting) return;
 
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
@@ -189,12 +222,20 @@ form.addEventListener("submit", async (event) => {
   showMessage("Signing in...", "#e5bd60");
 
   try {
-    // Step 1: Authenticate host
+
+    // STEP 1: Firebase authentication
     const user = await hostLogin(email, password);
 
-    showMessage("Login successful. Checking host account...", "#e5bd60");
+    if (!user || !user.uid) {
+      throw new Error("Could not verify your login account.");
+    }
 
-    // Step 2: Read host application
+    showMessage(
+      "Login successful. Checking your host account...",
+      "#e5bd60"
+    );
+
+    // STEP 2: Read the host application using authenticated UID
     const applicationRef = ref(
       db,
       "hostApplications/" + user.uid
@@ -202,59 +243,90 @@ form.addEventListener("submit", async (event) => {
 
     const snapshot = await readHostApplication(applicationRef);
 
-    console.log("Host application found:", snapshot.exists());
-    console.log("Host application data:", snapshot.val());
-
     if (!snapshot.exists()) {
       showMessage(
-        "Host application not found. Please contact the administrator."
+        "Host application not found for this login account. Please contact the administrator."
       );
       return;
     }
 
     const application = snapshot.val();
 
-    // Step 3: Approval check
-    if (application.status !== "Approved") {
+    console.log("Authenticated host UID:", user.uid);
+    console.log("Host application:", application);
+
+    // STEP 3: Check approval status
+    const status = String(
+      application.status || ""
+    ).trim().toLowerCase();
+
+    if (status !== "approved") {
       showMessage(
-        "Your host application is not approved yet."
+        "Your host application is not approved yet. Current status: " +
+        (application.status || "Pending")
       );
       return;
     }
 
-    // Step 4: Subscription check
-    const start = Number(application.subscriptionStartAt);
-    const end = Number(application.subscriptionEndAt);
+    // STEP 4: Check subscription dates
+    const start = parseTimestamp(
+      application.subscriptionStartAt
+    );
+
+    const end = parseTimestamp(
+      application.subscriptionEndAt
+    );
+
     const now = Date.now();
+
+    console.log("Subscription start:", start);
+    console.log("Subscription expiry:", end);
+    console.log("Current time:", now);
 
     if (
       !Number.isFinite(start) ||
       !Number.isFinite(end) ||
       start <= 0 ||
-      end <= 0 ||
-      now < start ||
-      now >= end
+      end <= 0
     ) {
       showMessage(
-        "Your subscription is not active or has expired. Please contact the administrator."
+        "Your subscription dates are missing or invalid. Please contact the administrator."
       );
       return;
     }
 
-    // Step 5: Open dashboard
+    if (start > now) {
+      showMessage(
+        "Your subscription has not started yet. Please contact the administrator."
+      );
+      return;
+    }
+
+    if (end <= now) {
+      showMessage(
+        "Your subscription has expired. Please contact the administrator for renewal."
+      );
+      return;
+    }
+
+    // STEP 5: Host is approved and subscription is active
     showMessage(
-      "Login successful! Opening your dashboard...",
+      "Login successful! Opening your Host Dashboard...",
       "#9be7a5"
     );
+
+    redirecting = true;
 
     window.location.replace("host-dashboard.html");
 
   } catch (error) {
+
     console.error("Host login error:", error);
 
     let errorMessage = error.message || "Unknown error";
 
     switch (error.code) {
+
       case "auth/invalid-credential":
         errorMessage = "Incorrect email or password.";
         break;
@@ -263,24 +335,35 @@ form.addEventListener("submit", async (event) => {
         errorMessage = "No account found with this email.";
         break;
 
+      case "auth/wrong-password":
+        errorMessage = "Incorrect password.";
+        break;
+
       case "auth/too-many-requests":
         errorMessage = "Too many attempts. Please try again later.";
         break;
 
       case "PERMISSION_DENIED":
-        errorMessage = "Firebase database permission denied.";
+      case "database/permission-denied":
+        errorMessage =
+          "Firebase database permission denied. Please contact the administrator.";
         break;
 
-      case "NETWORK_ERROR":
-        errorMessage = "Network error. Check your internet connection.";
+      case "auth/network-request-failed":
+        errorMessage =
+          "Network error. Check your internet connection.";
         break;
     }
 
     showMessage("Login failed: " + errorMessage);
 
   } finally {
-    button.disabled = false;
-    button.textContent = "Sign In";
+
+    if (!redirecting) {
+      button.disabled = false;
+      button.textContent = "Sign In";
+    }
+
   }
 });
 
