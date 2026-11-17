@@ -75,9 +75,17 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 
 <div id="renewBox" class="status hidden">
 <strong>Your host subscription is inactive or expired.</strong>
-<p class="small">Contact Melody Magic Music Studio to activate or renew your host plan.</p>
-<button id="renewBtn">Contact for Host Renewal</button>
+<p class="small">Choose the plan you want to renew. Your access will return only after the administrator verifies payment and approves the renewal.</p>
+<select id="renewPlan">
+<option value="day">₹99 — 24 Hours (1 Day)</option>
+<option value="week">₹499 — 7 Days</option>
+<option value="month">₹1,499 — 30 Days</option>
+</select>
+<button id="requestRenewalBtn">Send Renewal Request to Admin</button>
+<div id="renewRequestMessage" class="small"></div>
+<button id="renewBtn" class="secondary">Contact Admin on WhatsApp</button>
 </div>
+<div id="expiryReminder" class="status hidden"></div>
 
 <div id="hostTools">
 
@@ -242,6 +250,59 @@ function setHostAccess(active) {
   }
 }
 
+const HOST_PLANS = {
+  day: { name: "24 Hours", price: 99, durationMs: 24 * 60 * 60 * 1000 },
+  week: { name: "7 Days", price: 499, durationMs: 7 * 24 * 60 * 60 * 1000 },
+  month: { name: "30 Days", price: 1499, durationMs: 30 * 24 * 60 * 60 * 1000 }
+};
+
+function showExpiryReminder(data) {
+  const box = $("expiryReminder");
+  const end = parseTimestamp(data?.subscriptionEndAt);
+  if (!Number.isFinite(end)) { box.classList.add("hidden"); return; }
+  const remaining = end - Date.now();
+  const days = Math.ceil(remaining / 86400000);
+  let text = "";
+  if (remaining <= 0) text = "Your subscription has expired. Choose a renewal plan and contact Admin.";
+  else if (remaining <= 86400000) text = "Reminder: your host subscription expires within 24 hours. Please contact Admin for renewal.";
+  else if (days <= 1) text = "Reminder: your host subscription expires tomorrow. Please arrange renewal.";
+  else if (days <= 3) text = "Reminder: your host subscription expires in " + days + " days. Please arrange renewal.";
+  else if (days <= 7) text = "Advance reminder: your host subscription expires in " + days + " days.";
+  if (!text) { box.classList.add("hidden"); return; }
+  box.textContent = text;
+  box.classList.remove("hidden");
+}
+
+async function submitRenewalRequest() {
+  if (!currentUser || !hostApplication || String(hostApplication.status || "").toLowerCase() !== "approved") {
+    alert("Only an approved host can request a subscription renewal."); return;
+  }
+  const planId = $("renewPlan").value;
+  const plan = HOST_PLANS[planId];
+  if (!plan) return;
+  const existing = await get(ref(db, "hostRenewalRequests/" + currentUser.uid));
+  if (existing.exists() && Object.values(existing.val()).some(item => item && String(item.status || "").toLowerCase() === "pending")) {
+    $("renewRequestMessage").textContent = "You already have a pending renewal request. Please wait for Admin to review it.";
+    return;
+  }
+  const btn = $("requestRenewalBtn");
+  btn.disabled = true;
+  try {
+    const requestRef = push(ref(db, "hostRenewalRequests/" + currentUser.uid));
+    await set(requestRef, {
+      hostUid: currentUser.uid, hostEmail: currentUser.email || "",
+      hostName: hostApplication.fullName || hostApplication.name || hostApplication.hostName || currentUser.email || "Host",
+      planId, planName: plan.name, amount: plan.price, status: "Pending",
+      requestedAt: Date.now()
+    });
+    $("renewRequestMessage").textContent = "Renewal request sent to Admin. Please complete payment after confirming with Admin. Your subscription remains locked until approval.";
+    const waText = encodeURIComponent("Hello Admin, I have submitted a host renewal request. Plan: " + plan.name + ", Amount: ₹" + plan.price + ". Host: " + (currentUser.email || currentUser.uid));
+    if (!ADMIN_WHATSAPP.includes("X")) window.open("https://wa.me/" + ADMIN_WHATSAPP + "?text=" + waText, "_blank");
+  } catch (error) {
+    $("renewRequestMessage").textContent = "Could not send renewal request: " + error.message;
+  } finally { btn.disabled = false; }
+}
+
 function showLogin() {
   $("loginSection").classList.remove("hidden");
   $("dashboardSection").classList.add("hidden");
@@ -270,6 +331,7 @@ async function checkHostAccount(user) {
     }
 
     hostApplication = snapshot.val();
+    showExpiryReminder(hostApplication);
 
     const status = String(hostApplication.status || "").toLowerCase();
 
@@ -754,6 +816,9 @@ $("logoutBtn").addEventListener("click", async () => {
   }
 });
 
+/* RENEWAL REQUEST */
+$("requestRenewalBtn").addEventListener("click", submitRenewalRequest);
+
 /* RENEWAL CONTACT */
 $("renewBtn").addEventListener("click", () => {
   if (ADMIN_WHATSAPP.includes("X")) {
@@ -762,7 +827,7 @@ $("renewBtn").addEventListener("click", () => {
   }
 
   const text = encodeURIComponent(
-    "Hello, I want to activate or renew my Melody Magic Digital Auditorium host subscription."
+    "Hello, I want to renew my Melody Magic Digital Auditorium host subscription. Host: " + (currentUser?.email || currentUser?.uid || "") + ". Selected plan: " + (HOST_PLANS[$("renewPlan")?.value]?.name || "Please advise")
   );
 
   window.open("https://wa.me/" + ADMIN_WHATSAPP + "?text=" + text, "_blank");
