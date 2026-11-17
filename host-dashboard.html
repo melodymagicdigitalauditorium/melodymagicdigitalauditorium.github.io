@@ -1,101 +1,906 @@
-function renderRegistrations(showId,data){
- const box=$("registrationsList");
- const entries=Object.entries(data||{});
 
- if(!entries.length){
-  box.innerHTML='<div class="empty">No registrations yet.</div>';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melody Magic Digital Auditorium - Host Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#09090d;color:#fff;
+ font-family:Arial,sans-serif;
+}
+header{
+ background:#17131d;padding:20px;
+ text-align:center;border-bottom:2px solid #c99b38;
+}
+header h1{color:#e8bd59;margin:0;font-size:23px}
+header p{color:#aaa;margin:7px 0 0}
+.container{max-width:1050px;margin:auto;padding:18px}
+.card{
+ background:#17171f;padding:20px;margin-bottom:18px;
+ border:1px solid #38313e;border-radius:12px;
+}
+h2{color:#e8bd59;font-size:20px;margin-top:0}
+input,textarea,select{
+ width:100%;padding:13px;margin:7px 0 13px;
+ background:#101016;border:1px solid #49404c;
+ border-radius:7px;color:white;font-size:15px;
+}
+textarea{min-height:75px;resize:vertical}
+button{
+ background:#d4a63e;color:#15100a;border:0;
+ border-radius:7px;padding:12px 16px;
+ font-weight:bold;cursor:pointer;margin:4px;
+}
+button.secondary{background:#34313c;color:white}
+button.danger{background:#b73535;color:white}
+button:disabled{opacity:.5;cursor:not-allowed}
+.grid{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+ gap:12px;
+}
+.show{
+ background:#22212b;border:1px solid #49404c;
+ padding:15px;border-radius:10px;margin:12px 0;
+}
+.show h3{color:#f1c76a;margin:5px 0 12px}
+.small{font-size:13px;color:#aaa;overflow-wrap:anywhere}
+.status{color:#80e4a0;font-weight:bold}
+#error{color:#ff8585;white-space:pre-wrap}
+#success{color:#80e4a0;white-space:pre-wrap}
+.hidden{display:none!important}
+#posterCanvas{
+ width:100%;max-width:420px;background:#17131d;
+ border-radius:10px;margin:15px auto;display:block;
+}
+#qrHolder{display:none}
+hr{border:0;border-top:1px solid #39343d;margin:18px 0}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>🎵 MELODY MAGIC DIGITAL AUDITORIUM</h1>
+<p>HOST CONTROL DASHBOARD</p>
+</header>
+
+<div class="container">
+
+<div class="card" id="loginBox">
+<h2>Host Login</h2>
+<input id="email" type="email" placeholder="Host email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p id="loginMessage" class="small"></p>
+</div>
+
+<div id="dashboard" class="hidden">
+
+<div class="card">
+<h2>Welcome, Host</h2>
+<p id="hostInfo"></p>
+<p id="subscriptionInfo" class="status"></p>
+<button class="secondary" onclick="logout()">Logout</button>
+</div>
+
+<div class="card">
+<h2>➕ Create New Show</h2>
+
+<label>Show Name</label>
+<input id="showName" placeholder="Enter show name">
+
+<label>Show Description</label>
+<textarea id="showDescription" placeholder="About your show"></textarea>
+
+<div class="grid">
+<div>
+<label>Show Date</label>
+<input type="date" id="showDate">
+</div>
+<div>
+<label>Show Time (IST)</label>
+<input type="time" id="showTime">
+</div>
+</div>
+
+<label>Entry Type</label>
+<select id="entryType">
+<option value="free">Free Entry</option>
+<option value="paid">Paid Entry</option>
+</select>
+
+<label>Entry Fee (₹)</label>
+<input type="number" id="entryFee" min="0" value="0">
+
+<label>Maximum Singers</label>
+<input type="number" id="maxSingers" min="1" value="20">
+
+<label>Show Status</label>
+<select id="showStatus">
+<option value="published">Publish Show</option>
+<option value="draft">Save as Draft</option>
+</select>
+
+<button id="createButton" onclick="createShow()">CREATE SHOW</button>
+<p id="createMessage"></p>
+</div>
+
+<div class="card">
+<h2>🎤 My Shows</h2>
+<div id="showList">Loading shows...</div>
+</div>
+
+<div class="card" id="registrationSection">
+<h2>🎙 Performer Registrations</h2>
+<p class="small">Select a show to view and manage its singer registrations.</p>
+<select id="registrationShow" onchange="loadRegistrations()">
+<option value="">Select Show</option>
+</select>
+<div id="registrationList"></div>
+</div>
+
+<div class="card hidden" id="posterSection">
+<h2>🎨 Show Poster Generator</h2>
+<p id="posterTitle"></p>
+
+<canvas id="posterCanvas" width="900" height="1200"></canvas>
+
+<div id="qrHolder"></div>
+
+<button onclick="generatePoster()">GENERATE POSTER</button>
+<button onclick="downloadPoster()">DOWNLOAD POSTER</button>
+<button onclick="sharePoster()">SHARE POSTER</button>
+<button class="secondary" onclick="closePoster()">CLOSE</button>
+<p id="posterMessage" class="small"></p>
+</div>
+
+</div>
+
+<div class="card">
+<p id="error"></p>
+<p id="success"></p>
+</div>
+
+<footer style="text-align:center;padding:20px;color:#aaa">
+Melody Magic Music Studio<br>
+© Melody Magic Digital Auditorium
+</footer>
+
+</div>
+
+<script type="module">
+
+import { auth, db } from "./firebase-host.js";
+
+import {
+ ref, get, set, push, update, remove, onValue, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+import {
+ signInWithEmailAndPassword,
+ signOut,
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+
+/* =====================================
+   CONFIGURATION
+===================================== */
+
+const PATHS = {
+ applications: "hostApplications",
+ shows: "shows",
+ registrations: "showRegistrations",
+ posters: "showPosters"
+};
+
+const SINGER_PAGE = "singer.html";
+const AUDIENCE_PAGE = "audience.html";
+const LIVE_CONTROL_PAGE = "host-performance-control.html";
+
+let currentUser = null;
+let currentHost = null;
+let myShows = {};
+let selectedShow = null;
+let generatedPoster = false;
+
+
+/* =====================================
+   BASIC HELPERS
+===================================== */
+
+const $ = id => document.getElementById(id);
+
+function showError(message){
+ $("error").textContent = message;
+ $("success").textContent = "";
+}
+
+function showSuccess(message){
+ $("success").textContent = message;
+ $("error").textContent = "";
+}
+
+function escapeHTML(value){
+ return String(value ?? "").replace(/[&<>"']/g, c => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",
+  '"':"&quot;","'":"&#39;"
+ }[c]));
+}
+
+function showDate(date){
+ if(!date) return "";
+ const d = new Date(date + "T00:00:00");
+ return d.toLocaleDateString("en-IN",{
+  day:"2-digit",month:"short",year:"numeric"
+ });
+}
+
+function showTime(time){
+ if(!time) return "";
+ const [h,m] = time.split(":").map(Number);
+ const suffix = h >= 12 ? "PM" : "AM";
+ return `${h % 12 || 12}:${String(m).padStart(2,"0")} ${suffix}`;
+}
+
+function showUrl(page,id){
+ return new URL(
+  page + "?showId=" + encodeURIComponent(id),
+  window.location.href
+ ).href;
+}
+
+function isApproved(data){
+ return String(data?.status || "").toLowerCase() === "approved";
+}
+
+function subscriptionEnd(data){
+ return data?.subscriptionEnd ||
+        data?.subscriptionExpiry ||
+        data?.subscription?.endDate ||
+        data?.subscription?.expiryDate ||
+        "";
+}
+
+function subscriptionActive(data){
+ const status = String(
+  data?.subscriptionStatus ||
+  data?.subscription?.status ||
+  ""
+ ).toLowerCase();
+
+ const end = subscriptionEnd(data);
+
+ if(status && !["active","approved","paid"].includes(status)){
+  return false;
+ }
+
+ if(end){
+  const expiry = new Date(end);
+  expiry.setHours(23,59,59,999);
+  return !isNaN(expiry.getTime()) && expiry >= new Date();
+ }
+
+ return status === "active" ||
+        status === "approved" ||
+        status === "paid";
+}
+
+
+/* =====================================
+   LOGIN
+===================================== */
+
+window.login = async function(){
+
+ try{
+  $("loginMessage").textContent = "Logging in...";
+
+  await signInWithEmailAndPassword(
+   auth,
+   $("email").value.trim(),
+   $("password").value
+  );
+
+  $("loginMessage").textContent = "";
+
+ }catch(e){
+  $("loginMessage").textContent = e.message;
+ }
+
+};
+
+window.logout = async function(){
+ await signOut(auth);
+ location.reload();
+};
+
+
+/* =====================================
+   AUTHENTICATION AND HOST APPROVAL
+===================================== */
+
+onAuthStateChanged(auth, async user => {
+
+ currentUser = user;
+
+ if(!user){
+  $("loginBox").classList.remove("hidden");
+  $("dashboard").classList.add("hidden");
   return;
  }
 
- box.innerHTML=entries.map(([id,p])=>`
- <div class="registration">
-  <h3>${escapeHTML(p.singerName||p.name||"Performer")}</h3>
+ try{
 
-  <p>Mobile: ${escapeHTML(p.mobile||p.phone||"-")}</p>
-  <p>Song: ${escapeHTML(p.songName||p.song||"-")}</p>
-  <p>Movie: ${escapeHTML(p.movieName||p.movie||"-")}</p>
-  <p>Performance Type: ${escapeHTML(p.performanceType||p.type||"-")}</p>
+  const snap = await get(
+   ref(db, PATHS.applications + "/" + user.uid)
+  );
 
-  <p>
-   Status: <span class="pill">${escapeHTML(p.status||"Pending")}</span>
-   Payment: <span class="pill">${escapeHTML(p.paymentStatus||"Unpaid")}</span>
-  </p>
+  if(!snap.exists()){
+   throw new Error("Host application not found.");
+  }
 
-  <button class="success" data-approve="${escapeHTML(id)}">
-   APPROVE & ADD TO QUEUE
-  </button>
+  currentHost = snap.val();
 
-  <button class="danger" data-reject="${escapeHTML(id)}">
-   REJECT
-  </button>
- </div>
- `).join("");
+  if(!isApproved(currentHost)){
+   throw new Error("Your host account is not approved yet.");
+  }
 
- // APPROVE: automatically mark payment as Paid
- box.querySelectorAll("[data-approve]").forEach(b=>{
-  b.onclick=async()=>{
-   const id=b.dataset.approve;
+  if(!subscriptionActive(currentHost)){
+   throw new Error("Your host subscription is inactive or expired.");
+  }
 
-   if(!confirm("Confirm payment and approve this performer?"))return;
+  $("loginBox").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
 
-   b.disabled=true;
-   b.textContent="Approving...";
+  $("hostInfo").textContent =
+   currentHost.name ||
+   currentHost.hostName ||
+   user.email;
 
-   try{
-    const snap=await get(ref(db,`showRegistrations/${showId}/${id}`));
+  $("subscriptionInfo").textContent =
+   "✓ Approved Host | Active Subscription";
 
-    if(!snap.exists()){
-     throw new Error("Registration not found.");
-    }
+  showSuccess("Welcome to your Host Dashboard.");
 
-    const performer=snap.val();
+  loadShows();
 
-    if(!performer.singerUid){
-     throw new Error("Performer login UID is missing. Ask the performer to register again.");
-    }
+ }catch(e){
 
-    await updatePerformer(showId,id,{
-     status:"Approved",
-     paymentStatus:"Paid",
-     approvedAt:Date.now()
-    });
+  $("loginBox").classList.remove("hidden");
+  $("dashboard").classList.add("hidden");
+  showError(e.message);
 
-    await addRegistrationToQueue(showId,id);
+ }
 
-    alert("Payment confirmed! Performer approved and added to queue.");
+});
 
-   }catch(e){
-    alert("Approval failed: "+e.message);
-   }finally{
-    b.disabled=false;
-    b.textContent="APPROVE & ADD TO QUEUE";
-   }
+
+/* =====================================
+   CREATE SHOW
+===================================== */
+
+window.createShow = async function(){
+
+ try{
+
+  if(!currentUser || !currentHost){
+   throw new Error("Please login as an approved host.");
+  }
+
+  const name = $("showName").value.trim();
+  const date = $("showDate").value;
+  const time = $("showTime").value;
+  const entryType = $("entryType").value;
+  const fee = Number($("entryFee").value || 0);
+
+  if(!name || !date || !time){
+   throw new Error("Enter show name, date and time.");
+  }
+
+  if(entryType === "paid" && fee <= 0){
+   throw new Error("Enter a valid paid entry fee.");
+  }
+
+  if(entryType === "free" && fee !== 0){
+   throw new Error("Free shows must have zero entry fee.");
+  }
+
+  $("createButton").disabled = true;
+  $("createMessage").textContent = "Creating show...";
+
+  const showRef = push(ref(db, PATHS.shows));
+
+  const data = {
+   showId: showRef.key,
+   showName: name,
+   description: $("showDescription").value.trim(),
+   date: date,
+   time: time,
+   timeZone: "Asia/Kolkata",
+   timeZoneLabel: "IST",
+   entryType: entryType,
+   entryFee: entryType === "paid" ? fee : 0,
+   maxSingers: Math.max(1, Number($("maxSingers").value || 20)),
+   status: $("showStatus").value,
+   hostUid: currentUser.uid,
+   hostName: currentHost.name || currentHost.hostName || currentUser.email,
+   createdAt: Date.now(),
+   createdAtServer: serverTimestamp()
   };
- });
 
- // REJECT
- box.querySelectorAll("[data-reject]").forEach(b=>{
-  b.onclick=async()=>{
-   const id=b.dataset.reject;
+  await set(showRef, data);
 
-   if(!confirm("Reject this performer registration?"))return;
+  $("createMessage").textContent = "Show created successfully!";
 
-   b.disabled=true;
+  $("showName").value = "";
+  $("showDescription").value = "";
+  $("showDate").value = "";
+  $("showTime").value = "";
 
-   try{
-    await updatePerformer(showId,id,{
-     status:"Rejected"
-    });
+  showSuccess("Your show has been created.");
 
-    await remove(ref(db,`performanceQueue/${showId}/${id}`));
+ }catch(e){
 
-    alert("Registration rejected.");
+  $("createMessage").textContent = e.message;
 
-   }catch(e){
-    alert("Rejection failed: "+e.message);
-   }finally{
-    b.disabled=false;
+ }finally{
+  $("createButton").disabled = false;
+ }
+
+};
+
+
+/* =====================================
+   LOAD HOST SHOWS
+===================================== */
+
+function loadShows(){
+
+ onValue(ref(db, PATHS.shows), snapshot => {
+
+  myShows = {};
+
+  snapshot.forEach(child => {
+
+   const show = child.val();
+
+   if(show && show.hostUid === currentUser.uid){
+    myShows[child.key] = show;
    }
-  };
- });
+
+  });
+
+  renderShows();
+
+ }, error => showError("Unable to load shows: " + error.message));
+
 }
+
+
+function renderShows(){
+
+ const list = $("showList");
+ const selector = $("registrationShow");
+
+ list.innerHTML = "";
+ selector.innerHTML = '<option value="">Select Show</option>';
+
+ const entries = Object.entries(myShows);
+
+ if(!entries.length){
+  list.innerHTML = "<p>No shows created yet.</p>";
+  return;
+ }
+
+ entries.sort((a,b) =>
+  (b[1].createdAt || 0) - (a[1].createdAt || 0)
+ );
+
+ entries.forEach(([id,s]) => {
+
+  const option = document.createElement("option");
+  option.value = id;
+  option.textContent = s.showName || "Untitled Show";
+  selector.appendChild(option);
+
+  const div = document.createElement("div");
+  div.className = "show";
+
+  div.innerHTML = `
+   <h3>${escapeHTML(s.showName)}</h3>
+   <p>${escapeHTML(s.description || "")}</p>
+   <p>📅 ${escapeHTML(showDate(s.date))}</p>
+   <p>🕒 ${escapeHTML(showTime(s.time))} IST</p>
+   <p>Entry: ${s.entryType === "free" ? "FREE" : "₹" + escapeHTML(s.entryFee)}</p>
+   <p>Status: ${escapeHTML(s.status || "draft")}</p>
+
+   <button onclick="openShowPoster('${id}')">Poster</button>
+   <button onclick="openJoinLink('${id}','singer')">Performer Link</button>
+   <button onclick="openJoinLink('${id}','audience')">Audience Link</button>
+   <button onclick="openLiveControl('${id}')">Live Control</button>
+   <button class="secondary" onclick="toggleShowStatus('${id}')">
+    ${s.status === "published" ? "Make Draft" : "Publish"}
+   </button>
+   <button class="danger" onclick="deleteShow('${id}')">Delete Show</button>
+  `;
+
+  list.appendChild(div);
+
+ });
+
+}
+
+
+/* =====================================
+   SHOW LINKS
+===================================== */
+
+window.openJoinLink = function(id,type){
+
+ const page = type === "singer" ? SINGER_PAGE : AUDIENCE_PAGE;
+ const url = showUrl(page,id);
+
+ window.open(url,"_blank");
+
+};
+
+window.openLiveControl = function(id){
+
+ window.open(showUrl(LIVE_CONTROL_PAGE,id),"_blank");
+
+};
+
+
+/* =====================================
+   PUBLISH / DRAFT
+===================================== */
+
+window.toggleShowStatus = async function(id){
+
+ try{
+
+  const show = myShows[id];
+  if(!show) throw new Error("Show not found.");
+
+  const status = show.status === "published" ? "draft" : "published";
+
+  await update(ref(db, PATHS.shows + "/" + id),{
+   status: status
+  });
+
+  showSuccess("Show status updated: " + status);
+
+ }catch(e){
+  showError(e.message);
+ }
+
+};
+
+
+/* =====================================
+   DELETE SHOW
+===================================== */
+
+window.deleteShow = async function(id){
+
+ if(!confirm("Delete this show permanently?")) return;
+
+ try{
+
+  const show = myShows[id];
+
+  if(!show || show.hostUid !== currentUser.uid){
+   throw new Error("You cannot delete this show.");
+  }
+
+  await remove(ref(db, PATHS.shows + "/" + id));
+
+  showSuccess("Show deleted.");
+
+ }catch(e){
+  showError(e.message);
+ }
+
+};
+
+
+/* =====================================
+   PERFORMER REGISTRATIONS
+===================================== */
+
+window.loadRegistrations = function(){
+
+ const id = $("registrationShow").value;
+ const container = $("registrationList");
+
+ container.innerHTML = "";
+
+ if(!id) return;
+
+ if(!myShows[id]){
+  container.textContent = "Invalid show.";
+  return;
+ }
+
+ onValue(
+  ref(db, PATHS.registrations + "/" + id),
+  snapshot => {
+
+   container.innerHTML = "";
+
+   if(!snapshot.exists()){
+    container.innerHTML = "<p>No registrations yet.</p>";
+    return;
+   }
+
+   snapshot.forEach(child => {
+
+    const singer = child.val();
+    const uid = child.key;
+
+    const div = document.createElement("div");
+    div.className = "show";
+
+    div.innerHTML = `
+     <h3>${escapeHTML(singer.name || singer.singerName || "Singer")}</h3>
+     <p>Song: ${escapeHTML(singer.song || singer.songName || "")}</p>
+     <p>Mobile: ${escapeHTML(singer.mobile || "")}</p>
+     <p>Status: ${escapeHTML(singer.status || "pending")}</p>
+
+     <button onclick="updateSinger('${id}','${uid}','approved')">
+      Approve
+     </button>
+
+     <button class="danger" onclick="updateSinger('${id}','${uid}','rejected')">
+      Reject
+     </button>
+    `;
+
+    container.appendChild(div);
+
+   });
+
+  },
+  error => {
+   container.textContent = "Registration error: " + error.message;
+  }
+ );
+
+};
+
+
+window.updateSinger = async function(showId,uid,status){
+
+ try{
+
+  if(!myShows[showId]) throw new Error("Invalid show.");
+
+  await update(
+   ref(db, PATHS.registrations + "/" + showId + "/" + uid),
+   {status:status}
+  );
+
+  showSuccess("Singer status updated.");
+
+ }catch(e){
+  showError(e.message);
+ }
+
+};
+
+
+/* =====================================
+   POSTER GENERATOR
+===================================== */
+
+window.openShowPoster = function(id){
+
+ selectedShow = id;
+
+ const s = myShows[id];
+ if(!s) return;
+
+ $("posterSection").classList.remove("hidden");
+ $("posterTitle").textContent = s.showName;
+
+ generatePoster();
+
+ $("posterSection").scrollIntoView({behavior:"smooth"});
+
+};
+
+
+window.generatePoster = async function(){
+
+ try{
+
+  const s = myShows[selectedShow];
+  if(!s) throw new Error("Show not found.");
+
+  const canvas = $("posterCanvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = 900;
+  canvas.height = 1200;
+
+  const gradient = ctx.createLinearGradient(0,0,900,1200);
+  gradient.addColorStop(0,"#100d1a");
+  gradient.addColorStop(1,"#38213d");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0,0,900,1200);
+
+  ctx.strokeStyle = "#d8ad4d";
+  ctx.lineWidth = 12;
+  ctx.strokeRect(25,25,850,1150);
+
+  ctx.textAlign = "center";
+
+  ctx.fillStyle = "#e9c46b";
+  ctx.font = "bold 43px Arial";
+  ctx.fillText("MELODY MAGIC",450,115);
+
+  ctx.font = "bold 33px Arial";
+  ctx.fillText("DIGITAL AUDITORIUM",450,165);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 57px Arial";
+
+  const words = s.showName.split(" ");
+  let line = "";
+  let y = 350;
+
+  for(const word of words){
+
+   const test = line + word + " ";
+
+   if(ctx.measureText(test).width > 740){
+    ctx.fillText(line.trim(),450,y);
+    line = word + " ";
+    y += 75;
+   }else{
+    line = test;
+   }
+
+  }
+
+  if(line) ctx.fillText(line.trim(),450,y);
+
+  ctx.fillStyle = "#e9c46b";
+  ctx.font = "30px Arial";
+  ctx.fillText(showDate(s.date),450,530);
+  ctx.fillText(showTime(s.time) + " IST ONWARDS",450,590);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 38px Arial";
+
+  ctx.fillText(
+   s.entryType === "free" ? "FREE ENTRY" : "ENTRY FEE ₹" + s.entryFee,
+   450,690
+  );
+
+  ctx.font = "25px Arial";
+  ctx.fillText("Hosted by " + (s.hostName || "Melody Magic"),450,780);
+
+  ctx.font = "23px Arial";
+  ctx.fillText("JOIN OUR DIGITAL STAGE",450,870);
+
+  const joinURL = showUrl(AUDIENCE_PAGE,selectedShow);
+
+  const qr = $("qrHolder");
+  qr.innerHTML = "";
+
+  new QRCode(qr,{
+   text:joinURL,
+   width:180,
+   height:180,
+   colorDark:"#000000",
+   colorLight:"#ffffff"
+  });
+
+  await new Promise(resolve => setTimeout(resolve,300));
+
+  const qrCanvas = qr.querySelector("canvas");
+
+  if(qrCanvas){
+   ctx.fillStyle="#ffffff";
+   ctx.fillRect(350,910,200,200);
+   ctx.drawImage(qrCanvas,360,920,180,180);
+  }
+
+  ctx.fillStyle="#e9c46b";
+  ctx.font="bold 27px Arial";
+  ctx.fillText("SCAN TO JOIN",450,1150);
+
+  generatedPoster = true;
+
+  $("posterMessage").textContent = "Poster generated successfully.";
+
+  await set(
+   ref(db, PATHS.posters + "/" + selectedShow),
+   {
+    showId:selectedShow,
+    hostUid:currentUser.uid,
+    showName:s.showName,
+    generatedAt:Date.now(),
+    audienceLink:joinURL,
+    approvalStatus:"pending"
+   }
+  );
+
+ }catch(e){
+
+  $("posterMessage").textContent=e.message;
+
+ }
+
+};
+
+
+window.downloadPoster = function(){
+
+ if(!generatedPoster){
+  alert("Generate the poster first.");
+  return;
+ }
+
+ const link=document.createElement("a");
+ link.download="Melody-Magic-Show-Poster.png";
+ link.href=$("posterCanvas").toDataURL("image/png");
+ link.click();
+
+};
+
+
+window.sharePoster = async function(){
+
+ if(!generatedPoster){
+  alert("Generate the poster first.");
+  return;
+ }
+
+ try{
+
+  const blob=await new Promise(resolve =>
+   $("posterCanvas").toBlob(resolve,"image/png")
+  );
+
+  const file=new File([blob],"Melody-Magic-Poster.png",{
+   type:"image/png"
+  });
+
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+   await navigator.share({
+    title:"Melody Magic Digital Auditorium",
+    text:"Join our show!",
+    files:[file]
+   });
+  }else{
+   await navigator.clipboard.writeText(showUrl(AUDIENCE_PAGE,selectedShow));
+   alert("Audience link copied. Download the poster and share it.");
+  }
+
+ }catch(e){
+  $("posterMessage").textContent=e.message;
+ }
+
+};
+
+
+window.closePoster = function(){
+ $("posterSection").classList.add("hidden");
+ selectedShow=null;
+ generatedPoster=false;
+};
+
+</script>
+
+</body>
+</html>
