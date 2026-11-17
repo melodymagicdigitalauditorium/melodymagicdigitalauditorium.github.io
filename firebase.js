@@ -11,6 +11,8 @@ import {
 
 import {
   getAuth,
+  setPersistence,
+  browserLocalPersistence,
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -28,15 +30,18 @@ const firebaseConfig = {
   appId: "1:458186749712:web:311ecbed0c87367022d795"
 };
 
-// Initialize Firebase
+// INITIALIZE FIREBASE
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
+// SET PERSISTENT LOGIN
+const authReady = setPersistence(auth, browserLocalPersistence);
+
 // PERFORMER LOGIN
-// Reuse the existing login when available.
-// This helps the performer retain the same UID after refreshing.
 async function connectAuditorium() {
+  await authReady;
+
   if (auth.currentUser) {
     return auth.currentUser;
   }
@@ -98,6 +103,8 @@ async function registerHost(
     );
   }
 
+  await authReady;
+
   const result = await createUserWithEmailAndPassword(
     auth,
     email,
@@ -139,6 +146,10 @@ async function registerHost(
 
 // HOST LOGIN
 async function hostLogin(email, password) {
+  await authReady;
+
+  await setPersistence(auth, browserLocalPersistence);
+
   const result = await signInWithEmailAndPassword(
     auth,
     email,
@@ -150,6 +161,7 @@ async function hostLogin(email, password) {
 
 // HOST LOGOUT
 async function hostLogout() {
+  await authReady;
   await signOut(auth);
 }
 
