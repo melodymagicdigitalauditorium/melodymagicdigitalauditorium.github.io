@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +30,11 @@ input[type=text]{width:100%;padding:11px;border-radius:6px;border:1px solid #555
 .volume-box input[type=range]{width:100%;accent-color:#d4a52f;margin:15px 0}
 .volume-label{display:flex;justify-content:space-between;align-items:center;gap:10px}
 footer{text-align:center;color:#999;padding:20px}
-@media(max-width:600px){body{padding:8px}.card{padding:12px;margin:12px auto}button{padding:10px 11px}}
+@media(max-width:600px){
+  body{padding:8px}
+  .card{padding:12px;margin:12px auto}
+  button{padding:10px 11px}
+}
 </style>
 </head>
 
@@ -40,7 +45,7 @@ footer{text-align:center;color:#999;padding:20px}
 <section class="card">
   <h3 id="showTitle">Loading Auditorium...</h3>
   <p id="showStatus" class="small">Connecting...</p>
-  <p id="loginStatus" class="small"></p>
+  <p id="loginStatus" class="small">Connecting to Firebase authentication...</p>
 </section>
 
 <section class="card" id="queueSection">
@@ -63,7 +68,6 @@ footer{text-align:center;color:#999;padding:20px}
   <p class="small">Join the auditorium to connect your camera and microphone.</p>
 </section>
 
-<!-- Karaoke player appears below the Live Auditorium and stage. -->
 <section class="card" id="karaokeSection">
   <h3>🎵 Karaoke Performance</h3>
   <div id="videoMessage">Waiting for the host to select a karaoke video.</div>
@@ -111,17 +115,33 @@ window.youtubeApiReady=false;
 window.youtubeApiPromise=new Promise(resolve=>{
   window.youtubeApiResolve=resolve;
 });
+
 window.onYouTubeIframeAPIReady=function(){
   window.youtubeApiReady=true;
   window.youtubeApiResolve();
 };
 </script>
+
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script type="module">
-import {auth,db} from "./firebase.js";
-import {onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {ref,get,onValue,update,set} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+import {
+  auth,
+  db,
+  connectAuditorium
+} from "./firebase.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+  ref,
+  get,
+  onValue,
+  update,
+  set
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const showId=new URLSearchParams(location.search).get("showId");
 const $=id=>document.getElementById(id);
@@ -141,25 +161,40 @@ let playbackData=null;
 let playbackTimer=null;
 let applyingPlayback=false;
 
-function message(text){$("hostMessage").textContent=text;}
-function videoMessage(text){$("videoStatus").textContent=text;}
+let initializationUid=null;
+
+function message(text){
+  $("hostMessage").textContent=text;
+}
+
+function videoMessage(text){
+  $("videoStatus").textContent=text;
+}
 
 function escapeHTML(value){
   return String(value??"").replace(/[&<>"']/g,c=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
   })[c]);
 }
 
 function stopListeners(){
-  listeners.forEach(stop=>{try{stop();}catch(e){}});
+  listeners.forEach(stop=>{
+    try{stop();}catch(e){}
+  });
   listeners=[];
 }
 
 function getYouTubeVideoId(value){
   const input=String(value||"").trim();
+
   if(!input)return "";
 
-  if(/^[a-zA-Z0-9_-]{11}$/.test(input))return input;
+  if(/^[a-zA-Z0-9_-]{11}$/.test(input))
+    return input;
 
   try{
     const url=new URL(input);
@@ -169,10 +204,14 @@ function getYouTubeVideoId(value){
 
     if(url.hostname.includes("youtube.com")){
       const v=url.searchParams.get("v");
+
       if(v)return v;
 
       const parts=url.pathname.split("/").filter(Boolean);
-      const index=parts.findIndex(x=>["embed","shorts","live"].includes(x));
+
+      const index=parts.findIndex(x=>
+        ["embed","shorts","live"].includes(x)
+      );
 
       if(index>=0)return parts[index+1]||"";
     }
@@ -182,7 +221,8 @@ function getYouTubeVideoId(value){
 }
 
 async function createYouTubePlayer(){
-  if(playerReady&&youtubePlayer)return youtubePlayer;
+  if(playerReady&&youtubePlayer)
+    return youtubePlayer;
 
   await window.youtubeApiPromise;
 
@@ -208,18 +248,30 @@ async function createYouTubePlayer(){
         events:{
           onReady:function(){
             playerReady=true;
+
             $("videoPlayer").style.display="block";
             $("videoMessage").style.display="none";
-            youtubePlayer.setVolume(Number($("karaokeVolume").value));
+
+            youtubePlayer.setVolume(
+              Number($("karaokeVolume").value)
+            );
+
             videoMessage("YouTube player connected.");
             resolve(youtubePlayer);
           },
+
           onError:function(event){
             console.error("YouTube error:",event.data);
-            videoMessage("YouTube could not load this video. Check the URL or video embedding permissions.");
+
+            videoMessage(
+              "YouTube could not load this video. Check the URL or video embedding permissions."
+            );
           },
+
           onAutoplayBlocked:function(){
-            videoMessage("Browser blocked autoplay. Press PLAY FOR EVERYONE again.");
+            videoMessage(
+              "Browser blocked autoplay. Press PLAY FOR EVERYONE again."
+            );
           }
         }
       });
@@ -231,20 +283,28 @@ async function createYouTubePlayer(){
 
 function setKaraokeVolume(){
   const volume=Number($("karaokeVolume").value);
+
   $("volumeValue").textContent=volume+"%";
 
   if(!youtubePlayer||!playerReady)return;
 
   try{
     youtubePlayer.setVolume(volume);
-    if(volume===0)youtubePlayer.mute();
-    else youtubePlayer.unMute();
+
+    if(volume===0)
+      youtubePlayer.mute();
+    else
+      youtubePlayer.unMute();
+
   }catch(error){
     console.error("Volume error:",error);
   }
 }
 
-$("karaokeVolume").addEventListener("input",setKaraokeVolume);
+$("karaokeVolume").addEventListener(
+  "input",
+  setKaraokeVolume
+);
 
 function expectedPosition(data){
   if(!data)return 0;
@@ -253,8 +313,10 @@ function expectedPosition(data){
 
   if(data.state==="playing"){
     const startedAt=Number(data.startedAt||0);
-    if(startedAt>0)
+
+    if(startedAt>0){
       position+=Math.max(0,Date.now()-startedAt)/1000;
+    }
   }
 
   return Math.max(0,position);
@@ -264,6 +326,7 @@ async function applyPlayback(data){
   if(!data||!data.videoId)return;
 
   playbackData=data;
+
   if(applyingPlayback)return;
 
   applyingPlayback=true;
@@ -277,10 +340,12 @@ async function applyPlayback(data){
 
     if(newVideo){
       currentVideoId=data.videoId;
+
       youtubePlayer.cueVideoById({
         videoId:currentVideoId,
         startSeconds:Number(data.basePosition||0)
       });
+
       $("videoMessage").style.display="none";
       $("videoPlayer").style.display="block";
     }
@@ -298,11 +363,13 @@ async function applyPlayback(data){
         try{
           const current=youtubePlayer.getCurrentTime()||0;
 
-          if(Math.abs(current-position)>2)
+          if(Math.abs(current-position)>2){
             youtubePlayer.seekTo(position,true);
+          }
 
           youtubePlayer.playVideo();
           setKaraokeVolume();
+
         }catch(error){
           console.error("Play command error:",error);
         }
@@ -313,10 +380,12 @@ async function applyPlayback(data){
     }else if(data.state==="paused"){
       youtubePlayer.seekTo(expectedPosition(data),true);
       youtubePlayer.pauseVideo();
+
       videoMessage("Video paused for everyone.");
 
     }else if(data.state==="stopped"){
       youtubePlayer.stopVideo();
+
       videoMessage("Video stopped.");
 
     }else{
@@ -325,7 +394,11 @@ async function applyPlayback(data){
 
   }catch(error){
     console.error("Playback application error:",error);
-    videoMessage("Unable to apply playback: "+error.message);
+
+    videoMessage(
+      "Unable to apply playback: "+error.message
+    );
+
   }finally{
     applyingPlayback=false;
   }
@@ -334,23 +407,31 @@ async function applyPlayback(data){
 function startPlaybackListener(){
   const stop=onValue(
     ref(db,"karaokePlayback/"+showId),
+
     snap=>{
       const data=snap.val();
 
       if(!data){
         playbackData=null;
         currentVideoId="";
+
         $("videoPlayer").style.display="none";
         $("videoMessage").style.display="block";
-        $("videoMessage").textContent="No karaoke video has been selected yet.";
+        $("videoMessage").textContent=
+          "No karaoke video has been selected yet.";
+
         return;
       }
 
       applyPlayback(data);
     },
+
     error=>{
       console.error("Playback listener error:",error);
-      videoMessage("Firebase playback error: "+error.message);
+
+      videoMessage(
+        "Firebase playback error: "+error.message
+      );
     }
   );
 
@@ -382,23 +463,32 @@ async function loadSelectedVideo(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await set(
+      ref(db,"karaokePlayback/"+showId),
+      data
+    );
 
     currentVideoId=id;
     playbackData=data;
 
     await createYouTubePlayer();
+
     youtubePlayer.cueVideoById(id);
     setKaraokeVolume();
 
     $("videoMessage").style.display="none";
     $("videoPlayer").style.display="block";
 
-    videoMessage("Video loaded. Press PLAY FOR EVERYONE when ready.");
+    videoMessage(
+      "Video loaded. Press PLAY FOR EVERYONE when ready."
+    );
 
   }catch(error){
     console.error("Load video error:",error);
-    videoMessage("Could not save video: "+error.message);
+
+    videoMessage(
+      "Could not save video: "+error.message
+    );
   }
 }
 
@@ -431,12 +521,19 @@ async function playForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await set(
+      ref(db,"karaokePlayback/"+showId),
+      data
+    );
+
     playbackData=data;
 
     await createYouTubePlayer();
 
-    youtubePlayer.setVolume(Number($("karaokeVolume").value));
+    youtubePlayer.setVolume(
+      Number($("karaokeVolume").value)
+    );
+
     youtubePlayer.seekTo(0,true);
     youtubePlayer.playVideo();
 
@@ -444,7 +541,10 @@ async function playForEveryone(){
 
   }catch(error){
     console.error("Play error:",error);
-    videoMessage("Could not start video: "+error.message);
+
+    videoMessage(
+      "Could not start video: "+error.message
+    );
   }
 }
 
@@ -454,8 +554,9 @@ async function pauseForEveryone(){
   try{
     let position=0;
 
-    if(playerReady&&youtubePlayer)
+    if(playerReady&&youtubePlayer){
       position=youtubePlayer.getCurrentTime()||0;
+    }
 
     const data={
       videoId:currentVideoId,
@@ -466,15 +567,21 @@ async function pauseForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await set(
+      ref(db,"karaokePlayback/"+showId),
+      data
+    );
+
     playbackData=data;
 
-    if(youtubePlayer)youtubePlayer.pauseVideo();
+    if(youtubePlayer)
+      youtubePlayer.pauseVideo();
 
     videoMessage("Pause command sent to everyone.");
 
   }catch(error){
     console.error(error);
+
     videoMessage("Pause failed: "+error.message);
   }
 }
@@ -485,8 +592,9 @@ async function resumeForEveryone(){
   try{
     let position=expectedPosition(playbackData);
 
-    if(playerReady&&youtubePlayer)
+    if(playerReady&&youtubePlayer){
       position=youtubePlayer.getCurrentTime()||position;
+    }
 
     const data={
       videoId:currentVideoId,
@@ -497,11 +605,18 @@ async function resumeForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await set(
+      ref(db,"karaokePlayback/"+showId),
+      data
+    );
+
     playbackData=data;
 
     if(youtubePlayer){
-      youtubePlayer.setVolume(Number($("karaokeVolume").value));
+      youtubePlayer.setVolume(
+        Number($("karaokeVolume").value)
+      );
+
       youtubePlayer.seekTo(position,true);
       youtubePlayer.playVideo();
     }
@@ -510,6 +625,7 @@ async function resumeForEveryone(){
 
   }catch(error){
     console.error(error);
+
     videoMessage("Resume failed: "+error.message);
   }
 }
@@ -527,26 +643,37 @@ async function stopForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await set(
+      ref(db,"karaokePlayback/"+showId),
+      data
+    );
+
     playbackData=data;
 
-    if(youtubePlayer)youtubePlayer.stopVideo();
+    if(youtubePlayer)
+      youtubePlayer.stopVideo();
 
     videoMessage("Video stopped for everyone.");
 
   }catch(error){
     console.error(error);
+
     videoMessage("Stop failed: "+error.message);
   }
 }
 
 async function verifyHost(user){
-  if(!user||!showData||showData.hostUid!==user.uid)return false;
+  if(!user||!showData||showData.hostUid!==user.uid)
+    return false;
 
-  const snap=await get(ref(db,"hostApplications/"+user.uid));
+  const snap=await get(
+    ref(db,"hostApplications/"+user.uid)
+  );
+
   if(!snap.exists())return false;
 
-  const app=snap.val(),now=Date.now();
+  const app=snap.val();
+  const now=Date.now();
 
   return app.status==="Approved"&&
     Number(app.subscriptionStartAt||0)<=now&&
@@ -555,7 +682,9 @@ async function verifyHost(user){
 
 function renderCurrentPerformer(data){
   if(!data||!(data.name||data.currentPerformerName)){
-    $("currentPerformer").innerHTML='<p class="small">No performer is currently on stage.</p>';
+    $("currentPerformer").innerHTML=
+      '<p class="small">No performer is currently on stage.</p>';
+
     return;
   }
 
@@ -573,17 +702,25 @@ function renderCurrentPerformer(data){
     ${song?`<p>Song: ${escapeHTML(song)}</p>`:""}
     ${movie?`<p>Movie: ${escapeHTML(movie)}</p>`:""}
     <p>Solo songs: ${Number(solo)}</p>
-    <p>Duet songs: ${Number(duet)}</p>`;
+    <p>Duet songs: ${Number(duet)}</p>
+  `;
 }
 
 function startPerformanceListener(){
   const stop=onValue(
     ref(db,"livePerformance/"+showId),
+
     snap=>{
       currentPerformance=snap.val()||{};
       renderCurrentPerformer(currentPerformance);
     },
-    error=>console.error("Performance listener:",error)
+
+    error=>{
+      console.error("Performance listener:",error);
+
+      $("currentPerformer").textContent=
+        "Unable to load performer: "+error.message;
+    }
   );
 
   listeners.push(stop);
@@ -592,15 +729,21 @@ function startPerformanceListener(){
 function sortedQueue(){
   return Object.entries(queueData)
     .filter(([,person])=>person)
-    .sort((a,b)=>Number(a[1].createdAt||0)-Number(b[1].createdAt||0));
+    .sort((a,b)=>
+      Number(a[1].createdAt||0)-Number(b[1].createdAt||0)
+    );
 }
 
 function approvedWaiting(){
-  return sortedQueue().filter(([,person])=>["Queued","Approved"].includes(person.status));
+  return sortedQueue().filter(([,person])=>
+    ["Queued","Approved"].includes(person.status)
+  );
 }
 
 function findPlaying(){
-  return sortedQueue().find(([,person])=>person.status==="Playing")||null;
+  return sortedQueue().find(([,person])=>
+    person.status==="Playing"
+  )||null;
 }
 
 function renderQueue(){
@@ -615,11 +758,14 @@ function renderQueue(){
     ["Queued","Approved","Playing"].includes(person.status)
   );
 
-  if(!visible.length)
-    container.innerHTML='<p class="small">No approved performers are waiting.</p>';
+  if(!visible.length){
+    container.innerHTML=
+      '<p class="small">No approved performers are waiting.</p>';
+  }
 
   visible.forEach(([id,person])=>{
     const card=document.createElement("div");
+
     card.className="performer";
 
     card.innerHTML=`
@@ -629,28 +775,38 @@ function renderQueue(){
         Language: ${escapeHTML(person.language||"Not specified")}<br>
         Solo songs: ${Number(person.soloCount||0)}<br>
         Duet songs: ${Number(person.duetCount||0)}
-      </p>`;
+      </p>
+    `;
 
     container.appendChild(card);
   });
 
   if(isHost){
-    $("startBtn").disabled=actionRunning||!!playing||waiting.length===0;
-    $("nextBtn").disabled=actionRunning||!playing;
-    $("finishBtn").disabled=actionRunning||!playing;
+    $("startBtn").disabled=
+      actionRunning||!!playing||waiting.length===0;
+
+    $("nextBtn").disabled=
+      actionRunning||!playing;
+
+    $("finishBtn").disabled=
+      actionRunning||!playing;
   }
 }
 
 function startQueueListener(){
   const stop=onValue(
     ref(db,"performanceQueue/"+showId),
+
     snap=>{
       queueData=snap.val()||{};
       renderQueue();
     },
+
     error=>{
       console.error("Queue listener:",error);
-      $("performerQueue").textContent="Unable to load queue: "+error.message;
+
+      $("performerQueue").textContent=
+        "Unable to load queue: "+error.message;
     }
   );
 
@@ -658,61 +814,73 @@ function startQueueListener(){
 }
 
 async function clearLiveStage(){
-  await set(ref(db,"liveStage/"+showId),{
-    mode:"solo",
-    registrationIds:[],
-    singerUids:[],
-    singerNames:[],
-    updatedAt:Date.now()
-  });
+  await set(
+    ref(db,"liveStage/"+showId),
+    {
+      mode:"solo",
+      registrationIds:[],
+      singerUids:[],
+      singerNames:[],
+      updatedAt:Date.now()
+    }
+  );
 }
 
 async function publishPerformer(id,person){
   const name=person.name||person.singerName||"Performer";
 
-  await set(ref(db,"livePerformance/"+showId),{
-    showId,
-    registrationId:id,
-    singerUid:person.singerUid||person.uid||"",
-    currentPerformerId:id,
-    currentPerformerName:name,
-    name,
-    language:person.language||"",
-    soloCount:Number(person.soloCount||0),
-    duetCount:Number(person.duetCount||0),
-    currentSongName:person.songName||person.currentSongName||"",
-    currentMovieName:person.movieName||person.currentMovieName||"",
-    currentPerformanceType:person.performanceType||"",
-    currentKaraokeUrl:person.karaokeUrl||"",
-    currentKaraokeVideoId:person.karaokeVideoId||"",
-    performanceStatus:"Ready",
-    status:"Performing",
-    selectedAt:Date.now(),
-    updatedAt:Date.now()
-  });
+  await set(
+    ref(db,"livePerformance/"+showId),
+    {
+      showId,
+      registrationId:id,
+      singerUid:person.singerUid||person.uid||"",
+      currentPerformerId:id,
+      currentPerformerName:name,
+      name,
+      language:person.language||"",
+      soloCount:Number(person.soloCount||0),
+      duetCount:Number(person.duetCount||0),
+      currentSongName:person.songName||person.currentSongName||"",
+      currentMovieName:person.movieName||person.currentMovieName||"",
+      currentPerformanceType:person.performanceType||"",
+      currentKaraokeUrl:person.karaokeUrl||"",
+      currentKaraokeVideoId:person.karaokeVideoId||"",
+      performanceStatus:"Ready",
+      status:"Performing",
+      selectedAt:Date.now(),
+      updatedAt:Date.now()
+    }
+  );
 }
 
 async function markQueueStatus(id,status){
-  await update(ref(db,"performanceQueue/"+showId+"/"+id),{
-    status,
-    updatedAt:Date.now()
-  });
+  await update(
+    ref(db,"performanceQueue/"+showId+"/"+id),
+    {
+      status,
+      updatedAt:Date.now()
+    }
+  );
 }
 
 async function clearPublicPerformer(){
-  await update(ref(db,"livePerformance/"+showId),{
-    currentPerformerId:"",
-    currentPerformerName:"",
-    currentSongName:"",
-    currentMovieName:"",
-    currentPerformanceType:"",
-    currentKaraokeUrl:"",
-    currentKaraokeVideoId:"",
-    performanceStatus:"Finished",
-    status:"Waiting",
-    name:"",
-    updatedAt:Date.now()
-  });
+  await update(
+    ref(db,"livePerformance/"+showId),
+    {
+      currentPerformerId:"",
+      currentPerformerName:"",
+      currentSongName:"",
+      currentMovieName:"",
+      currentPerformanceType:"",
+      currentKaraokeUrl:"",
+      currentKaraokeVideoId:"",
+      performanceStatus:"Finished",
+      status:"Waiting",
+      name:"",
+      updatedAt:Date.now()
+    }
+  );
 }
 
 async function startNextPerformer(){
@@ -722,8 +890,9 @@ async function startNextPerformer(){
   renderQueue();
 
   try{
-    if(findPlaying())
+    if(findPlaying()){
       throw new Error("Finish the current performance first.");
+    }
 
     const next=approvedWaiting()[0];
 
@@ -738,11 +907,17 @@ async function startNextPerformer(){
     await publishPerformer(id,person);
     await clearLiveStage();
 
-    message("Performer started. Select the singer in the Live Auditorium stage controls.");
+    message(
+      "Performer started. Select the singer in the Live Auditorium stage controls."
+    );
 
   }catch(error){
     console.error(error);
-    message("Could not start performer: "+error.message);
+
+    message(
+      "Could not start performer: "+error.message
+    );
+
   }finally{
     actionRunning=false;
     renderQueue();
@@ -773,7 +948,11 @@ async function finishCurrent(){
 
   }catch(error){
     console.error(error);
-    message("Could not finish performance: "+error.message);
+
+    message(
+      "Could not finish performance: "+error.message
+    );
+
   }finally{
     actionRunning=false;
     renderQueue();
@@ -808,14 +987,23 @@ async function finishAndNext(){
       await markQueueStatus(nextId,"Playing");
       await publishPerformer(nextId,nextPerson);
 
-      message("Next performer started. Select them in the Live Auditorium stage controls.");
+      message(
+        "Next performer started. Select them in the Live Auditorium stage controls."
+      );
+
     }else{
-      message("Performance completed. No more performers are waiting.");
+      message(
+        "Performance completed. No more performers are waiting."
+      );
     }
 
   }catch(error){
     console.error(error);
-    message("Could not advance queue: "+error.message);
+
+    message(
+      "Could not advance queue: "+error.message
+    );
+
   }finally{
     actionRunning=false;
     renderQueue();
@@ -833,6 +1021,13 @@ $("resumeVideoBtn").addEventListener("click",resumeForEveryone);
 $("stopVideoBtn").addEventListener("click",stopForEveryone);
 
 async function initializeForUser(user){
+  if(!user)return;
+
+  // Avoid initializing the same authenticated user repeatedly.
+  if(initializationUid===user.uid)return;
+
+  initializationUid=user.uid;
+
   stopListeners();
 
   currentUser=user;
@@ -843,18 +1038,19 @@ async function initializeForUser(user){
 
   $("hostControls").style.display="none";
   $("karaokeControls").style.display="none";
+  $("queueSection").style.display="block";
+
   $("performerQueue").textContent="Loading queue...";
+  $("currentPerformer").textContent="Loading performer information...";
 
-  if(!user){
-    $("loginStatus").textContent="Please sign in to access the auditorium.";
-    $("showStatus").textContent="Sign-in required.";
-    return;
-  }
-
-  $("loginStatus").textContent="Connected to auditorium.";
+  $("loginStatus").textContent=
+    "Authenticated with Firebase.";
 
   try{
-    const snap=await get(ref(db,"shows/"+showId));
+    // Read the show only after Firebase authentication.
+    const snap=await get(
+      ref(db,"shows/"+showId)
+    );
 
     if(!snap.exists()){
       $("showStatus").textContent="Show not found.";
@@ -864,11 +1060,14 @@ async function initializeForUser(user){
     showData=snap.val();
 
     if(!["Published","Live"].includes(showData.status)){
-      $("showStatus").textContent="This show is not published or live.";
+      $("showStatus").textContent=
+        "This show is not published or live.";
+
       return;
     }
 
-    $("showTitle").textContent=showData.name||"Melody Magic Digital Auditorium";
+    $("showTitle").textContent=
+      showData.name||"Melody Magic Digital Auditorium";
 
     $("showStatus").textContent=
       "Show date: "+(showData.date||"")+
@@ -880,37 +1079,116 @@ async function initializeForUser(user){
     if(isHost){
       $("hostControls").style.display="block";
       $("karaokeControls").style.display="block";
-      $("loginStatus").textContent="Approved host with active subscription.";
+      $("queueSection").style.display="block";
+
+      $("loginStatus").textContent=
+        "Approved host with active subscription.";
+
       startQueueListener();
+
+      videoMessage(
+        "Host controls ready. Load a YouTube video to begin."
+      );
+
     }else{
-      $("loginStatus").textContent="You are viewing the auditorium.";
+      $("loginStatus").textContent=
+        "You are viewing the auditorium.";
+
       $("queueSection").style.display="none";
     }
 
     startPerformanceListener();
     startPlaybackListener();
 
-    if(isHost)
-      videoMessage("Host controls ready. Load a YouTube video to begin.");
-
   }catch(error){
     console.error("Initialization error:",error);
-    $("showStatus").textContent="Unable to connect: "+error.message;
+
+    $("showStatus").textContent=
+      "Unable to connect: "+error.message;
+
+    $("loginStatus").textContent=
+      "Firebase connection or permission error.";
   }
 }
 
-if(!showId){
-  $("showStatus").textContent="Show ID is missing.";
-  $("videoMessage").textContent="Open the auditorium using the correct show link.";
-}else{
-  onAuthStateChanged(auth,user=>{
-    initializeForUser(user);
-  });
+// Start the room only after Firebase authentication succeeds.
+async function bootAuditorium(){
+  if(!showId){
+    $("showStatus").textContent="Show ID is missing.";
+
+    $("videoMessage").textContent=
+      "Open the auditorium using the correct show link.";
+
+    $("loginStatus").textContent=
+      "A valid show link is required.";
+
+    return;
+  }
+
+  try{
+    $("loginStatus").textContent=
+      "Signing in securely to Firebase...";
+
+    // This signs in anonymously when no user is already signed in.
+    await connectAuditorium();
+
+    if(!auth.currentUser){
+      throw new Error(
+        "Firebase authentication did not return a user."
+      );
+    }
+
+    $("loginStatus").textContent=
+      "Firebase authentication successful.";
+
+    // Load LiveKit only after authentication is ready.
+    // This prevents its module from starting database work too early.
+    try{
+      await import("./livekit.js");
+    }catch(livekitError){
+      console.error("LiveKit module error:",livekitError);
+
+      $("loginStatus").textContent=
+        "Firebase connected. LiveKit module error: "+
+        livekitError.message;
+    }
+
+    onAuthStateChanged(auth,user=>{
+      if(!user){
+        initializationUid=null;
+
+        stopListeners();
+
+        $("loginStatus").textContent=
+          "Firebase sign-in is required.";
+
+        $("showStatus").textContent=
+          "Please reconnect to the auditorium.";
+
+        return;
+      }
+
+      initializeForUser(user);
+    });
+
+  }catch(error){
+    console.error("Firebase authentication error:",error);
+
+    $("loginStatus").textContent=
+      "Firebase sign-in failed: "+error.message;
+
+    $("showStatus").textContent=
+      "Unable to authenticate. Please refresh the page.";
+  }
 }
 
-window.addEventListener("beforeunload",stopListeners);
+bootAuditorium();
+
+window.addEventListener(
+  "beforeunload",
+  stopListeners
+);
 </script>
 
-<script type="module" src="./livekit.js"></script>
 </body>
 </html>
