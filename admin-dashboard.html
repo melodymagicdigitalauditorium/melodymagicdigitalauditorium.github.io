@@ -50,7 +50,7 @@ footer{text-align:center;color:#928b7b;padding:25px;font-size:12px}
 <div class="card"><h3>Pending</h3><div class="number" id="pendingCount">0</div></div>
 <div class="card"><h3>Approved</h3><div class="number" id="approvedCount">0</div></div>
 <div class="card"><h3>Rejected</h3><div class="number" id="rejectedCount">0</div></div>
-<div class="card"><h3>Expired</h3><div class="number" id="expiredCount">0</div></div>
+<div class="card"><h3>Expired / Inactive</h3><div class="number" id="expiredCount">0</div></div>
 </div>
 
 <h2>Host Applications</h2>
@@ -131,527 +131,585 @@ let currentShows = {};
 const DAY = 24 * 60 * 60 * 1000;
 
 const planDays = {
-daily: 1,
-weekly: 7,
-monthly: 30
+  daily: 1,
+  weekly: 7,
+  monthly: 30
 };
 
 const planPrices = {
-daily: "₹99 / 24 hours",
-weekly: "₹499 / 7 days",
-monthly: "₹1,499 / 30 days"
+  daily: "₹99 / 24 hours",
+  weekly: "₹499 / 7 days",
+  monthly: "₹1,499 / 30 days"
 };
 
 function planKey(value) {
-const text = String(value || "").trim().toLowerCase();
+  const text = String(value || "").trim().toLowerCase();
 
-if (text.includes("1499") || text.includes("monthly") || text.includes("30")) return "monthly";
-if (text.includes("499") || text.includes("weekly") || text.includes("7")) return "weekly";
-if (text.includes("99") || text.includes("daily") || text.includes("24") || text.includes("1 day")) return "daily";
+  if (text.includes("1499") || text.includes("monthly") || text.includes("30")) return "monthly";
+  if (text.includes("499") || text.includes("weekly") || text.includes("7")) return "weekly";
+  if (text.includes("99") || text.includes("daily") || text.includes("24") || text.includes("1 day")) return "daily";
 
-return "";
+  return "";
 }
 
 function planSelect(selected = "daily") {
-const select = document.createElement("select");
+  const select = document.createElement("select");
 
-[
-["daily", planPrices.daily],
-["weekly", planPrices.weekly],
-["monthly", planPrices.monthly]
-].forEach(([value, label]) => {
-const option = document.createElement("option");
-option.value = value;
-option.textContent = label;
-option.selected = value === selected;
-select.append(option);
-});
+  [
+    ["daily", planPrices.daily],
+    ["weekly", planPrices.weekly],
+    ["monthly", planPrices.monthly]
+  ].forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === selected;
+    select.append(option);
+  });
 
-return select;
+  return select;
 }
 
 function showMessage(text, error = false) {
-message.textContent = text;
-message.style.color = error ? "#ff9999" : "#e5bd60";
+  message.textContent = text;
+  message.style.color = error ? "#ff9999" : "#e5bd60";
 }
 
 function dateText(timestamp) {
-if (!timestamp) return "Not available";
-return new Date(Number(timestamp)).toLocaleString("en-IN");
+  const value = Number(timestamp);
+  if (!Number.isFinite(value) || value <= 0) return "Not available";
+  return new Date(value).toLocaleString("en-IN");
+}
+
+/* SUBSCRIPTION CHECK */
+
+function subscriptionIsActive(app) {
+  const start = Number(app?.subscriptionStartAt || 0);
+  const end = Number(app?.subscriptionEndAt || 0);
+  const now = Date.now();
+
+  return Number.isFinite(start) &&
+         Number.isFinite(end) &&
+         start > 0 &&
+         end > 0 &&
+         start <= now &&
+         end > now;
 }
 
 /* HOST APPLICATIONS */
 
 function renderApplications(data) {
-const records = Object.entries(data || {});
+  const records = Object.entries(data || {});
 
-let pending = 0;
-let approved = 0;
-let rejected = 0;
-let expired = 0;
+  let pending = 0;
+  let approved = 0;
+  let rejected = 0;
+  let expired = 0;
 
-records.forEach(([uid, app]) => {
-if (!app || typeof app !== "object") return;
+  records.forEach(([uid, app]) => {
+    if (!app || typeof app !== "object") return;
 
-const status = String(app.status || "").toLowerCase();
+    const status = String(app.status || "").toLowerCase();
 
-if (status === "pending") pending++;
-if (status === "approved") approved++;
-if (status === "rejected") rejected++;
+    if (status === "pending") pending++;
+    if (status === "approved") {
+      approved++;
+      if (!subscriptionIsActive(app)) expired++;
+    }
+    if (status === "rejected") rejected++;
+  });
 
-if (
-status === "approved" &&
-Number(app.subscriptionEndAt || 0) <= Date.now()
-) expired++;
-});
+  document.getElementById("pendingCount").textContent = pending;
+  document.getElementById("approvedCount").textContent = approved;
+  document.getElementById("rejectedCount").textContent = rejected;
+  document.getElementById("expiredCount").textContent = expired;
 
-document.getElementById("pendingCount").textContent = pending;
-document.getElementById("approvedCount").textContent = approved;
-document.getElementById("rejectedCount").textContent = rejected;
-document.getElementById("expiredCount").textContent = expired;
+  applications.replaceChildren();
 
-applications.replaceChildren();
+  if (!records.length) {
+    applications.innerHTML = '<p class="empty">No host applications found.</p>';
+    return;
+  }
 
-if (!records.length) {
-applications.innerHTML = '<p class="empty">No host applications found.</p>';
-return;
-}
+  records.forEach(([uid, app]) => {
+    if (!app || typeof app !== "object") return;
 
-records.forEach(([uid, app]) => {
-if (!app || typeof app !== "object") return;
+    if (String(app.status || "").toLowerCase() !== "pending") return;
 
-if (String(app.status || "").toLowerCase() !== "pending") return;
+    const card = document.createElement("div");
+    card.className = "application";
 
-const card = document.createElement("div");
-card.className = "application";
+    const heading = document.createElement("h3");
+    heading.textContent = app.name || "Unnamed host";
 
-const heading = document.createElement("h3");
-heading.textContent = app.name || "Unnamed host";
+    const details = document.createElement("p");
+    details.textContent =
+      "Email: " + (app.email || "—") +
+      "\nMobile: " + (app.mobile || "—") +
+      "\nPlan: " + (app.plan || "—") +
+      "\nStatus: " + (app.status || "Unknown") +
+      "\nApplied: " + dateText(app.createdAt);
 
-const details = document.createElement("p");
-details.textContent =
-"Email: " + (app.email || "—") +
-"\nMobile: " + (app.mobile || "—") +
-"\nPlan: " + (app.plan || "—") +
-"\nStatus: " + (app.status || "Unknown") +
-"\nApplied: " + dateText(app.createdAt);
+    const status = document.createElement("p");
+    status.className = "status";
+    status.textContent = "Verify payment independently before approval.";
 
-const status = document.createElement("p");
-status.className = "status";
-status.textContent = "Verify payment independently before approval.";
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
 
-const label = document.createElement("label");
-const checkbox = document.createElement("input");
-checkbox.type = "checkbox";
+    label.append(
+      checkbox,
+      document.createTextNode(" I have independently verified the subscription payment.")
+    );
 
-label.append(
-checkbox,
-document.createTextNode(" I have independently verified the subscription payment.")
-);
+    const approveButton = document.createElement("button");
+    approveButton.className = "approve";
+    approveButton.textContent = "Approve & Activate";
+    approveButton.disabled = true;
 
-const approveButton = document.createElement("button");
-approveButton.className = "approve";
-approveButton.textContent = "Approve & Activate";
-approveButton.disabled = true;
+    checkbox.addEventListener("change", () => {
+      approveButton.disabled = !checkbox.checked;
+    });
 
-checkbox.addEventListener("change", () => {
-approveButton.disabled = !checkbox.checked;
-});
+    approveButton.addEventListener("click", async () => {
+      const selectedPlan = planKey(app.plan);
 
-approveButton.addEventListener("click", async () => {
-const selectedPlan = planKey(app.plan);
+      if (!selectedPlan || !checkbox.checked) {
+        showMessage("Verify payment and check the host's plan.", true);
+        return;
+      }
 
-if (!selectedPlan || !checkbox.checked) {
-showMessage("Verify payment and check the host's plan.", true);
-return;
-}
+      if (!confirm(
+        "Approve " + (app.name || "this host") +
+        " with " + planPrices[selectedPlan] + "?"
+      )) return;
 
-if (!confirm("Approve " + (app.name || "this host") + " with " + planPrices[selectedPlan] + "?")) return;
+      approveButton.disabled = true;
+      approveButton.textContent = "Activating...";
 
-approveButton.disabled = true;
+      try {
+        /* Subscription starts at the exact approval time. */
+        const approvalTime = Date.now();
+        const days = planDays[selectedPlan];
+        const expiryTime = approvalTime + days * DAY;
 
-try {
-const now = Date.now();
-const days = planDays[selectedPlan];
+        await set(ref(db, "hostApplications/" + uid), {
+          ...app,
+          status: "Approved",
+          plan: selectedPlan,
+          paymentStatus: "Verified by administrator",
+          approvedAt: approvalTime,
+          subscriptionStartAt: approvalTime,
+          subscriptionEndAt: expiryTime
+        });
 
-await set(ref(db, "hostApplications/" + uid), {
-...app,
-status: "Approved",
-plan: selectedPlan,
-paymentStatus: "Verified by administrator",
-approvedAt: now,
-subscriptionStartAt: now,
-subscriptionEndAt: now + days * DAY
-});
+        showMessage(
+          "Host approved. Subscription started immediately. Expiry: " +
+          dateText(expiryTime)
+        );
 
-showMessage("Host approved and subscription activated.");
+      } catch (error) {
+        showMessage("Approval failed: " + error.message, true);
+        approveButton.disabled = false;
+        approveButton.textContent = "Approve & Activate";
+      }
+    });
 
-} catch (error) {
-showMessage("Approval failed: " + error.message, true);
-approveButton.disabled = false;
-}
-});
+    const rejectButton = document.createElement("button");
+    rejectButton.className = "reject";
+    rejectButton.textContent = "Reject";
 
-const rejectButton = document.createElement("button");
-rejectButton.className = "reject";
-rejectButton.textContent = "Reject";
+    rejectButton.addEventListener("click", async () => {
+      if (!confirm("Reject this host application?")) return;
 
-rejectButton.addEventListener("click", async () => {
-if (!confirm("Reject this host application?")) return;
+      rejectButton.disabled = true;
 
-rejectButton.disabled = true;
+      try {
+        await set(ref(db, "hostApplications/" + uid), {
+          ...app,
+          status: "Rejected",
+          rejectedAt: Date.now()
+        });
 
-try {
-await set(ref(db, "hostApplications/" + uid), {
-...app,
-status: "Rejected",
-rejectedAt: Date.now()
-});
+        showMessage("Application rejected.");
 
-showMessage("Application rejected.");
+      } catch (error) {
+        showMessage("Rejection failed: " + error.message, true);
+        rejectButton.disabled = false;
+      }
+    });
 
-} catch (error) {
-showMessage("Rejection failed: " + error.message, true);
-rejectButton.disabled = false;
-}
-});
+    card.append(
+      heading,
+      details,
+      status,
+      label,
+      document.createElement("br"),
+      approveButton,
+      rejectButton
+    );
 
-card.append(
-heading,
-details,
-status,
-label,
-document.createElement("br"),
-approveButton,
-rejectButton
-);
+    applications.append(card);
+  });
 
-applications.append(card);
-});
-
-if (!applications.children.length) {
-applications.innerHTML = '<p class="empty">No pending applications.</p>';
-}
+  if (!applications.children.length) {
+    applications.innerHTML = '<p class="empty">No pending applications.</p>';
+  }
 }
 
 /* HOST SUBSCRIPTION RENEWALS */
 
 function renderRenewals(data) {
-const records = Object.entries(data || {}).filter(([uid, app]) =>
-app &&
-typeof app === "object" &&
-String(app.status || "").toLowerCase() === "approved"
-);
+  const records = Object.entries(data || {}).filter(([uid, app]) =>
+    app &&
+    typeof app === "object" &&
+    String(app.status || "").toLowerCase() === "approved"
+  );
 
-renewals.replaceChildren();
+  renewals.replaceChildren();
 
-if (!records.length) {
-renewals.innerHTML = '<p class="empty">No approved host accounts available for renewal.</p>';
-return;
-}
+  if (!records.length) {
+    renewals.innerHTML = '<p class="empty">No approved host accounts available for renewal.</p>';
+    return;
+  }
 
-records.forEach(([uid, app]) => {
-const card = document.createElement("div");
-card.className = "application";
+  records.forEach(([uid, app]) => {
+    const card = document.createElement("div");
+    card.className = "application";
 
-const heading = document.createElement("h3");
-heading.textContent = app.name || "Approved host";
+    const heading = document.createElement("h3");
+    heading.textContent = app.name || "Approved host";
 
-const endAt = Number(app.subscriptionEndAt || 0);
-const active = endAt > Date.now();
+    const endAt = Number(app.subscriptionEndAt || 0);
+    const active = subscriptionIsActive(app);
 
-const details = document.createElement("p");
-details.textContent =
-"Email: " + (app.email || "—") +
-"\nMobile: " + (app.mobile || "—") +
-"\nCurrent plan: " + (app.plan || "—") +
-"\nSubscription status: " + (active ? "Active" : "Expired / inactive") +
-"\nCurrent expiry: " + dateText(endAt);
+    const details = document.createElement("p");
+    details.textContent =
+      "Email: " + (app.email || "—") +
+      "\nMobile: " + (app.mobile || "—") +
+      "\nCurrent plan: " + (app.plan || "—") +
+      "\nSubscription status: " + (active ? "Active" : "Expired / inactive") +
+      "\nSubscription start: " + dateText(app.subscriptionStartAt) +
+      "\nCurrent expiry: " + dateText(endAt);
 
-const state = document.createElement("p");
-state.className = "status";
-state.textContent = active
-? "This host still has an active subscription."
-: "This host needs renewal to regain access.";
+    const state = document.createElement("p");
+    state.className = "status";
+    state.textContent = active
+      ? "This host has an active subscription."
+      : "This host needs renewal to regain access.";
 
-const select = planSelect("daily");
+    const select = planSelect("daily");
 
-const label = document.createElement("label");
-const checkbox = document.createElement("input");
-checkbox.type = "checkbox";
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
 
-label.append(
-checkbox,
-document.createTextNode(" I have independently verified the renewal payment.")
-);
+    label.append(
+      checkbox,
+      document.createTextNode(" I have independently verified the renewal payment.")
+    );
 
-const button = document.createElement("button");
-button.className = "approve";
-button.textContent = "Approve Renewal & Activate";
-button.disabled = true;
+    const button = document.createElement("button");
+    button.className = "approve";
+    button.textContent = "Approve Renewal & Activate";
+    button.disabled = true;
 
-checkbox.addEventListener("change", () => {
-button.disabled = !checkbox.checked;
-});
+    checkbox.addEventListener("change", () => {
+      button.disabled = !checkbox.checked;
+    });
 
-button.addEventListener("click", async () => {
-if (!checkbox.checked) {
-showMessage("Verify renewal payment before approval.", true);
-return;
-}
+    button.addEventListener("click", async () => {
+      if (!checkbox.checked) {
+        showMessage("Verify renewal payment before approval.", true);
+        return;
+      }
 
-const selectedPlan = select.value;
-const days = planDays[selectedPlan];
+      const selectedPlan = select.value;
+      const days = planDays[selectedPlan];
 
-if (!days) {
-showMessage("Select a valid renewal plan.", true);
-return;
-}
+      if (!days) {
+        showMessage("Select a valid renewal plan.", true);
+        return;
+      }
 
-if (!confirm(
-"Activate " + planPrices[selectedPlan] +
-" for " + (app.name || "this host") + "?"
-)) return;
+      if (!confirm(
+        "Activate " + planPrices[selectedPlan] +
+        " for " + (app.name || "this host") + "?"
+      )) return;
 
-button.disabled = true;
-button.textContent = "Activating...";
+      button.disabled = true;
+      button.textContent = "Activating...";
 
-try {
-const now = Date.now();
-const oldEnd = Number(app.subscriptionEndAt || 0);
+      try {
+        const now = Date.now();
 
-/* Active plan: extend from old expiry.
-   Expired plan: start from current time. */
-const startAt = oldEnd > now ? oldEnd : now;
-const newEnd = startAt + days * DAY;
+        const oldStart = Number(app.subscriptionStartAt || 0);
+        const oldEnd = Number(app.subscriptionEndAt || 0);
 
-await set(ref(db, "hostApplications/" + uid), {
-...app,
-status: "Approved",
-plan: selectedPlan,
-renewalPlan: selectedPlan,
-paymentStatus: "Renewal payment verified by administrator",
-renewedAt: now,
-subscriptionStartAt: startAt,
-subscriptionEndAt: newEnd
-});
+        /*
+          IMPORTANT RENEWAL FIX:
 
-showMessage(
-"Renewal activated for " +
-(app.name || "host") +
-". New expiry: " + dateText(newEnd)
-);
+          If the old subscription is genuinely active:
+          - Keep its original start date.
+          - Extend its expiry from the previous expiry.
 
-} catch (error) {
-showMessage("Renewal failed: " + error.message, true);
-button.disabled = false;
-button.textContent = "Approve Renewal & Activate";
-}
-});
+          If expired or its dates are invalid:
+          - Start the new subscription immediately.
+          - Calculate expiry from the current approval time.
 
-card.append(
-heading,
-details,
-state,
-select,
-label,
-document.createElement("br"),
-button
-);
+          This prevents a future subscriptionStartAt from blocking
+          an already approved host.
+        */
 
-renewals.append(card);
-});
+        const oldSubscriptionIsActive =
+          Number.isFinite(oldStart) &&
+          Number.isFinite(oldEnd) &&
+          oldStart > 0 &&
+          oldStart <= now &&
+          oldEnd > now;
+
+        let newStart;
+        let newEnd;
+
+        if (oldSubscriptionIsActive) {
+          newStart = oldStart;
+          newEnd = oldEnd + days * DAY;
+        } else {
+          newStart = now;
+          newEnd = now + days * DAY;
+        }
+
+        await set(ref(db, "hostApplications/" + uid), {
+          ...app,
+          status: "Approved",
+          plan: selectedPlan,
+          renewalPlan: selectedPlan,
+          paymentStatus: "Renewal payment verified by administrator",
+          renewedAt: now,
+          subscriptionStartAt: newStart,
+          subscriptionEndAt: newEnd
+        });
+
+        showMessage(
+          "Subscription activated successfully for " +
+          (app.name || "host") +
+          ". New expiry: " + dateText(newEnd)
+        );
+
+      } catch (error) {
+        showMessage("Renewal failed: " + error.message, true);
+        button.disabled = false;
+        button.textContent = "Approve Renewal & Activate";
+      }
+    });
+
+    card.append(
+      heading,
+      details,
+      state,
+      select,
+      label,
+      document.createElement("br"),
+      button
+    );
+
+    renewals.append(card);
+  });
 }
 
 /* HOST SHOW MANAGEMENT */
 
 function getHostShows(data) {
-return Object.entries(data || {}).filter(([key, show]) =>
-show &&
-typeof show === "object" &&
-typeof show.hostUid === "string" &&
-show.hostUid.trim() !== ""
-);
+  return Object.entries(data || {}).filter(([key, show]) =>
+    show &&
+    typeof show === "object" &&
+    typeof show.hostUid === "string" &&
+    show.hostUid.trim() !== ""
+  );
 }
 
 function renderHostShows(data) {
-currentShows = data || {};
+  currentShows = data || {};
 
-const records = getHostShows(currentShows);
+  const records = getHostShows(currentShows);
 
-document.getElementById("showCount").textContent = records.length;
-deleteAllButton.disabled = records.length === 0;
+  document.getElementById("showCount").textContent = records.length;
+  deleteAllButton.disabled = records.length === 0;
 
-hostShows.replaceChildren();
+  hostShows.replaceChildren();
 
-if (!records.length) {
-hostShows.innerHTML = '<p class="empty">No host-created shows found.</p>';
-return;
-}
+  if (!records.length) {
+    hostShows.innerHTML = '<p class="empty">No host-created shows found.</p>';
+    return;
+  }
 
-records.forEach(([key, show]) => {
-const card = document.createElement("div");
-card.className = "show-card";
+  records.forEach(([key, show]) => {
+    const card = document.createElement("div");
+    card.className = "show-card";
 
-const heading = document.createElement("h3");
-heading.textContent = show.name || show.title || "Untitled Show";
+    const heading = document.createElement("h3");
+    heading.textContent = show.name || show.title || show.showName || "Untitled Show";
 
-const details = document.createElement("p");
-details.textContent =
-"Show ID: " + (show.showId || key) +
-"\nHost: " + (show.hostName || "Not available") +
-"\nHost UID: " + show.hostUid +
-"\nDate: " + (show.date || show.showDate || "Not available") +
-"\nTime: " + (show.time || show.showTime || "Not available") +
-"\nEntry Fee: " + (show.entryFee ?? "Not available") +
-"\nStatus: " + (show.status || "Not available");
+    const details = document.createElement("p");
+    details.textContent =
+      "Show ID: " + (show.showId || key) +
+      "\nHost: " + (show.hostName || "Not available") +
+      "\nHost UID: " + show.hostUid +
+      "\nDate: " + (show.date || show.showDate || "Not available") +
+      "\nTime: " + (show.time || show.showTime || "Not available") +
+      "\nEntry Fee: " + (show.entryFee ?? "Not available") +
+      "\nStatus: " + (show.status || "Not available");
 
-const deleteButton = document.createElement("button");
-deleteButton.className = "delete";
-deleteButton.textContent = "Delete This Show";
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "delete";
+    deleteButton.textContent = "Delete This Show";
 
-deleteButton.addEventListener("click", async () => {
-const latestShow = currentShows[key];
+    deleteButton.addEventListener("click", async () => {
+      const latestShow = currentShows[key];
 
-if (!latestShow || !latestShow.hostUid) {
-showMessage("Show not found or not eligible for deletion.", true);
-return;
-}
+      if (!latestShow || !latestShow.hostUid) {
+        showMessage("Show not found or not eligible for deletion.", true);
+        return;
+      }
 
-const showName = latestShow.name || latestShow.title || "Untitled Show";
+      const showName =
+        latestShow.name || latestShow.title || latestShow.showName || "Untitled Show";
 
-if (!confirm('Permanently delete "' + showName + '"?')) return;
+      if (!confirm('Permanently delete "' + showName + '"?')) return;
 
-deleteButton.disabled = true;
+      deleteButton.disabled = true;
 
-try {
-await remove(ref(db, "shows/" + key));
-showMessage("Show deleted successfully: " + showName);
+      try {
+        await remove(ref(db, "shows/" + key));
+        showMessage("Show deleted successfully: " + showName);
 
-} catch (error) {
-showMessage("Show deletion failed: " + error.message, true);
-deleteButton.disabled = false;
-}
-});
+      } catch (error) {
+        showMessage("Show deletion failed: " + error.message, true);
+        deleteButton.disabled = false;
+      }
+    });
 
-card.append(heading, details, deleteButton);
-hostShows.append(card);
-});
+    card.append(heading, details, deleteButton);
+    hostShows.append(card);
+  });
 }
 
 /* DELETE ALL HOST SHOWS */
 
 deleteAllButton.addEventListener("click", async () => {
-const records = getHostShows(currentShows);
+  const records = getHostShows(currentShows);
 
-if (!records.length) {
-showMessage("No host-created shows available.");
-return;
-}
+  if (!records.length) {
+    showMessage("No host-created shows available.");
+    return;
+  }
 
-if (!confirm(
-"WARNING: Permanently delete all " +
-records.length +
-" host-created shows?\n\nOther Firebase sections will not be deleted."
-)) return;
+  if (!confirm(
+    "WARNING: Permanently delete all " +
+    records.length +
+    " host-created shows?\n\nOther Firebase sections will not be deleted."
+  )) return;
 
-const typed = prompt("Type DELETE ALL SHOWS to confirm:");
+  const typed = prompt("Type DELETE ALL SHOWS to confirm:");
 
-if (typed !== "DELETE ALL SHOWS") {
-showMessage("Bulk deletion cancelled.", true);
-return;
-}
+  if (typed !== "DELETE ALL SHOWS") {
+    showMessage("Bulk deletion cancelled.", true);
+    return;
+  }
 
-deleteAllButton.disabled = true;
-deleteAllButton.textContent = "Deleting...";
+  deleteAllButton.disabled = true;
+  deleteAllButton.textContent = "Deleting...";
 
-try {
-const latestSnapshot = await new Promise((resolve, reject) => {
-onValue(
-ref(db, "shows"),
-snapshot => resolve(snapshot),
-error => reject(error),
-{ onlyOnce: true }
-);
-});
+  try {
+    const latestSnapshot = await new Promise((resolve, reject) => {
+      onValue(
+        ref(db, "shows"),
+        snapshot => resolve(snapshot),
+        error => reject(error),
+        { onlyOnce: true }
+      );
+    });
 
-const latestShows = latestSnapshot.val() || {};
-const latestRecords = getHostShows(latestShows);
-const updates = {};
+    const latestShows = latestSnapshot.val() || {};
+    const latestRecords = getHostShows(latestShows);
+    const updates = {};
 
-latestRecords.forEach(([key, show]) => {
-updates["shows/" + key] = null;
-});
+    latestRecords.forEach(([key, show]) => {
+      updates["shows/" + key] = null;
+    });
 
-if (Object.keys(updates).length) {
-await update(ref(db), updates);
-}
+    if (Object.keys(updates).length) {
+      await update(ref(db), updates);
+    }
 
-showMessage(latestRecords.length + " host show records deleted successfully.");
+    showMessage(
+      latestRecords.length + " host show records deleted successfully."
+    );
 
-} catch (error) {
-showMessage("Bulk deletion failed: " + error.message, true);
+  } catch (error) {
+    showMessage("Bulk deletion failed: " + error.message, true);
 
-} finally {
-deleteAllButton.textContent = "DELETE ALL HOST SHOWS";
-deleteAllButton.disabled = getHostShows(currentShows).length === 0;
-}
+  } finally {
+    deleteAllButton.textContent = "DELETE ALL HOST SHOWS";
+    deleteAllButton.disabled = getHostShows(currentShows).length === 0;
+  }
 });
 
 /* ADMIN AUTHENTICATION */
 
 onAuthStateChanged(auth, user => {
-if (stopApplicationsListener) {
-stopApplicationsListener();
-stopApplicationsListener = null;
-}
+  if (stopApplicationsListener) {
+    stopApplicationsListener();
+    stopApplicationsListener = null;
+  }
 
-if (stopShowsListener) {
-stopShowsListener();
-stopShowsListener = null;
-}
+  if (stopShowsListener) {
+    stopShowsListener();
+    stopShowsListener = null;
+  }
 
-if (!user) {
-dashboard.hidden = true;
-showMessage("Please sign in with the administrator account first.", true);
-return;
-}
+  if (!user) {
+    dashboard.hidden = true;
+    showMessage("Please sign in with the administrator account first.", true);
+    return;
+  }
 
-if (user.uid !== ADMIN_UID) {
-dashboard.hidden = true;
-showMessage("Access denied. This account is not an administrator.", true);
-return;
-}
+  if (user.uid !== ADMIN_UID) {
+    dashboard.hidden = true;
+    showMessage("Access denied. This account is not an administrator.", true);
+    return;
+  }
 
-dashboard.hidden = false;
-showMessage("Administrator verified. Connected to Firebase.");
+  dashboard.hidden = false;
+  showMessage("Administrator verified. Connected to Firebase.");
 
-stopApplicationsListener = onValue(
-ref(db, "hostApplications"),
-snapshot => {
-const hostData = snapshot.val() || {};
-renderApplications(hostData);
-renderRenewals(hostData);
-},
-error => showMessage("Could not load applications: " + error.message, true)
-);
+  stopApplicationsListener = onValue(
+    ref(db, "hostApplications"),
+    snapshot => {
+      const hostData = snapshot.val() || {};
+      renderApplications(hostData);
+      renderRenewals(hostData);
+    },
+    error => showMessage("Could not load applications: " + error.message, true)
+  );
 
-stopShowsListener = onValue(
-ref(db, "shows"),
-snapshot => renderHostShows(snapshot.val() || {}),
-error => showMessage("Could not load host shows: " + error.message, true)
-);
+  stopShowsListener = onValue(
+    ref(db, "shows"),
+    snapshot => renderHostShows(snapshot.val() || {}),
+    error => showMessage("Could not load host shows: " + error.message, true)
+  );
 });
 
 /* SIGN OUT */
 
 document.getElementById("logoutButton").addEventListener("click", async () => {
-try {
-await signOut(auth);
-window.location.href = "admin-login.html";
-} catch (error) {
-showMessage("Sign out failed: " + error.message, true);
-}
+  try {
+    await signOut(auth);
+    window.location.href = "admin-login.html";
+  } catch (error) {
+    showMessage("Sign out failed: " + error.message, true);
+  }
 });
 
 </script>
