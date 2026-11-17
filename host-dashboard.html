@@ -3,63 +3,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Melody Magic Digital Auditorium - Host Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;background:#09090d;color:#fff;
- font-family:Arial,sans-serif;
-}
-header{
- background:#17131d;padding:20px;
- text-align:center;border-bottom:2px solid #c99b38;
-}
-header h1{color:#e8bd59;margin:0;font-size:23px}
-header p{color:#aaa;margin:7px 0 0}
+body{margin:0;background:#09090d;color:white;font-family:Arial,sans-serif}
+header{background:#17131d;padding:20px;text-align:center;border-bottom:2px solid #c99b38}
+header h1{color:#e8bd59;margin:0;font-size:22px}
+header p{color:#aaa}
 .container{max-width:1050px;margin:auto;padding:18px}
-.card{
- background:#17171f;padding:20px;margin-bottom:18px;
- border:1px solid #38313e;border-radius:12px;
-}
-h2{color:#e8bd59;font-size:20px;margin-top:0}
-input,textarea,select{
- width:100%;padding:13px;margin:7px 0 13px;
- background:#101016;border:1px solid #49404c;
- border-radius:7px;color:white;font-size:15px;
-}
-textarea{min-height:75px;resize:vertical}
-button{
- background:#d4a63e;color:#15100a;border:0;
- border-radius:7px;padding:12px 16px;
- font-weight:bold;cursor:pointer;margin:4px;
-}
+.card{background:#17171f;padding:20px;margin-bottom:18px;border:1px solid #38313e;border-radius:12px}
+h2{color:#e8bd59;font-size:20px}
+input,textarea,select{width:100%;padding:13px;margin:7px 0 13px;background:#101016;border:1px solid #49404c;border-radius:7px;color:white;font-size:15px}
+textarea{min-height:75px}
+button{background:#d4a63e;color:#15100a;border:0;border-radius:7px;padding:12px 16px;font-weight:bold;cursor:pointer;margin:4px}
 button.secondary{background:#34313c;color:white}
 button.danger{background:#b73535;color:white}
-button:disabled{opacity:.5;cursor:not-allowed}
-.grid{
- display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
- gap:12px;
-}
-.show{
- background:#22212b;border:1px solid #49404c;
- padding:15px;border-radius:10px;margin:12px 0;
-}
-.show h3{color:#f1c76a;margin:5px 0 12px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.show{background:#22212b;border:1px solid #49404c;padding:15px;border-radius:10px;margin:12px 0}
+.show h3{color:#f1c76a}
 .small{font-size:13px;color:#aaa;overflow-wrap:anywhere}
 .status{color:#80e4a0;font-weight:bold}
-#error{color:#ff8585;white-space:pre-wrap}
-#success{color:#80e4a0;white-space:pre-wrap}
 .hidden{display:none!important}
-#posterCanvas{
- width:100%;max-width:420px;background:#17131d;
- border-radius:10px;margin:15px auto;display:block;
-}
+#posterCanvas{width:100%;max-width:420px;background:#17131d;border-radius:10px;margin:15px auto;display:block}
 #qrHolder{display:none}
-hr{border:0;border-top:1px solid #39343d;margin:18px 0}
+#expiredPlanBox{border:2px solid #e34b4b;text-align:center;background:#251419}
+#expiredPlanBox h2{color:#ff6969}
+.renewButton{background:#e3b343;color:#17100a;font-size:17px;padding:16px 30px}
+#success{color:#80e4a0;white-space:pre-wrap}
+#error{color:#ff8585;white-space:pre-wrap}
 </style>
 </head>
 
@@ -72,24 +48,59 @@ hr{border:0;border-top:1px solid #39343d;margin:18px 0}
 
 <div class="container">
 
+<!-- LOGIN -->
+
 <div class="card" id="loginBox">
 <h2>Host Login</h2>
 <input id="email" type="email" placeholder="Host email">
 <input id="password" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
+<button onclick="login()">LOGIN</button>
 <p id="loginMessage" class="small"></p>
 </div>
 
 <div id="dashboard" class="hidden">
 
+<!-- HOST INFORMATION -->
+
 <div class="card">
 <h2>Welcome, Host</h2>
 <p id="hostInfo"></p>
 <p id="subscriptionInfo" class="status"></p>
-<button class="secondary" onclick="logout()">Logout</button>
+<button class="secondary" onclick="logout()">LOGOUT</button>
 </div>
 
-<div class="card">
+<!-- EXPIRED PLAN -->
+
+<div id="expiredPlanBox" class="card hidden">
+
+<h2>⚠ YOUR HOST PLAN HAS EXPIRED</h2>
+
+<p>Your host subscription has expired.</p>
+<p>You can renew your subscription by contacting the administrator.</p>
+
+<p id="expiryDateText"></p>
+
+<button class="renewButton" onclick="renewHostPlan()">
+🔄 RENEW PLAN
+</button>
+
+<p class="small">
+After administrator approval, your dashboard access will automatically be restored.
+</p>
+
+</div>
+
+<!-- PENDING APPROVAL -->
+
+<div id="pendingPlanBox" class="card hidden" style="text-align:center">
+<h2>SUBSCRIPTION NOT ACTIVE</h2>
+<p>Your subscription is pending approval or activation.</p>
+<button class="renewButton" onclick="renewHostPlan()">CONTACT ADMINISTRATOR</button>
+</div>
+
+<!-- CREATE SHOW -->
+
+<div class="card" id="createShowCard">
 <h2>➕ Create New Show</h2>
 
 <label>Show Name</label>
@@ -104,7 +115,7 @@ hr{border:0;border-top:1px solid #39343d;margin:18px 0}
 <input type="date" id="showDate">
 </div>
 <div>
-<label>Show Time (IST)</label>
+<label>Show Time</label>
 <input type="time" id="showTime">
 </div>
 </div>
@@ -131,22 +142,30 @@ hr{border:0;border-top:1px solid #39343d;margin:18px 0}
 <p id="createMessage"></p>
 </div>
 
+<!-- SHOW LIST -->
+
 <div class="card">
-<h2>🎤 My Shows</h2>
+<h2>🎭 My Shows</h2>
 <div id="showList">Loading shows...</div>
 </div>
 
-<div class="card" id="registrationSection">
-<h2>🎙 Performer Registrations</h2>
-<p class="small">Select a show to view and manage its singer registrations.</p>
+<!-- SINGER REGISTRATIONS -->
+
+<div class="card">
+<h2>🎤 Performer Registrations</h2>
+
 <select id="registrationShow" onchange="loadRegistrations()">
 <option value="">Select Show</option>
 </select>
+
 <div id="registrationList"></div>
 </div>
 
+<!-- POSTER -->
+
 <div class="card hidden" id="posterSection">
 <h2>🎨 Show Poster Generator</h2>
+
 <p id="posterTitle"></p>
 
 <canvas id="posterCanvas" width="900" height="1200"></canvas>
@@ -157,15 +176,14 @@ hr{border:0;border-top:1px solid #39343d;margin:18px 0}
 <button onclick="downloadPoster()">DOWNLOAD POSTER</button>
 <button onclick="sharePoster()">SHARE POSTER</button>
 <button class="secondary" onclick="closePoster()">CLOSE</button>
+
 <p id="posterMessage" class="small"></p>
 </div>
 
 </div>
 
-<div class="card">
 <p id="error"></p>
 <p id="success"></p>
-</div>
 
 <footer style="text-align:center;padding:20px;color:#aaa">
 Melody Magic Music Studio<br>
@@ -176,10 +194,10 @@ Melody Magic Music Studio<br>
 
 <script type="module">
 
-import { auth, db } from "./firebase-host.js";
+import {auth,db} from "./firebase-host.js";
 
 import {
- ref, get, set, push, update, remove, onValue, serverTimestamp
+ ref,get,set,push,update,remove,onValue,serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 import {
@@ -193,103 +211,159 @@ import {
    CONFIGURATION
 ===================================== */
 
+// CHANGE THIS TO YOUR ADMIN WHATSAPP NUMBER
+// Example: 919876543210 (country code + number)
+
+const ADMIN_WHATSAPP = "91XXXXXXXXXX";
+
 const PATHS = {
- applications: "hostApplications",
- shows: "shows",
- registrations: "showRegistrations",
- posters: "showPosters"
+ applications:"hostApplications",
+ shows:"shows",
+ registrations:"showRegistrations",
+ posters:"showPosters"
 };
 
 const SINGER_PAGE = "singer.html";
 const AUDIENCE_PAGE = "audience.html";
 const LIVE_CONTROL_PAGE = "host-performance-control.html";
 
-let currentUser = null;
-let currentHost = null;
-let myShows = {};
-let selectedShow = null;
-let generatedPoster = false;
+let currentUser=null;
+let currentHost=null;
+let myShows={};
+let selectedShow=null;
+let generatedPoster=false;
+
+let planActive=false;
+let planApproved=false;
 
 
 /* =====================================
-   BASIC HELPERS
+   HELPERS
 ===================================== */
 
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
 
 function showError(message){
- $("error").textContent = message;
- $("success").textContent = "";
+ $("error").textContent=message;
+ $("success").textContent="";
 }
 
 function showSuccess(message){
- $("success").textContent = message;
- $("error").textContent = "";
+ $("success").textContent=message;
+ $("error").textContent="";
 }
 
 function escapeHTML(value){
- return String(value ?? "").replace(/[&<>"']/g, c => ({
+ return String(value??"").replace(/[&<>"']/g,c=>({
   "&":"&amp;","<":"&lt;",">":"&gt;",
   '"':"&quot;","'":"&#39;"
  }[c]));
 }
 
 function showDate(date){
- if(!date) return "";
- const d = new Date(date + "T00:00:00");
- return d.toLocaleDateString("en-IN",{
+ if(!date)return "";
+ return new Date(date+"T00:00:00").toLocaleDateString("en-IN",{
   day:"2-digit",month:"short",year:"numeric"
  });
 }
 
 function showTime(time){
- if(!time) return "";
- const [h,m] = time.split(":").map(Number);
- const suffix = h >= 12 ? "PM" : "AM";
- return `${h % 12 || 12}:${String(m).padStart(2,"0")} ${suffix}`;
+ if(!time)return "";
+ const [h,m]=time.split(":").map(Number);
+ return `${h%12||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}`;
 }
 
 function showUrl(page,id){
  return new URL(
-  page + "?showId=" + encodeURIComponent(id),
-  window.location.href
+  page+"?showId="+encodeURIComponent(id),
+  location.href
  ).href;
 }
 
-function isApproved(data){
- return String(data?.status || "").toLowerCase() === "approved";
-}
 
-function subscriptionEnd(data){
+/* =====================================
+   SUBSCRIPTION CHECK
+===================================== */
+
+function getExpiry(data){
+
  return data?.subscriptionEnd ||
         data?.subscriptionExpiry ||
         data?.subscription?.endDate ||
         data?.subscription?.expiryDate ||
         "";
+
 }
 
-function subscriptionActive(data){
- const status = String(
+function checkSubscription(data){
+
+ const status=String(
   data?.subscriptionStatus ||
   data?.subscription?.status ||
   ""
  ).toLowerCase();
 
- const end = subscriptionEnd(data);
+ const expiry=getExpiry(data);
 
- if(status && !["active","approved","paid"].includes(status)){
-  return false;
+ const approvedStatus=[
+  "active","approved","paid"
+ ];
+
+ planApproved=approvedStatus.includes(status);
+
+ if(!expiry){
+  planActive=planApproved;
+  return;
  }
 
- if(end){
-  const expiry = new Date(end);
-  expiry.setHours(23,59,59,999);
-  return !isNaN(expiry.getTime()) && expiry >= new Date();
+ const end=new Date(expiry);
+ end.setHours(23,59,59,999);
+
+ planActive=
+  !isNaN(end.getTime()) &&
+  end>=new Date() &&
+  planApproved;
+
+}
+
+function updatePlanDisplay(){
+
+ $("expiredPlanBox").classList.toggle(
+  "hidden",
+  !planApproved || planActive
+ );
+
+ $("pendingPlanBox").classList.toggle(
+  "hidden",
+  planApproved
+ );
+
+ $("createShowCard").classList.toggle(
+  "hidden",
+  !planActive
+ );
+
+ $("createButton").disabled=!planActive;
+
+ if(planActive){
+
+  $("subscriptionInfo").textContent="✓ ACTIVE HOST SUBSCRIPTION";
+
+ }else if(planApproved){
+
+  $("subscriptionInfo").textContent="⚠ HOST PLAN EXPIRED";
+
+  const expiry=getExpiry(currentHost);
+
+  $("expiryDateText").textContent=
+   expiry ? "Expiry date: "+expiry : "";
+
+ }else{
+
+  $("subscriptionInfo").textContent="⚠ SUBSCRIPTION PENDING";
+
  }
 
- return status === "active" ||
-        status === "approved" ||
-        status === "paid";
 }
 
 
@@ -297,10 +371,11 @@ function subscriptionActive(data){
    LOGIN
 ===================================== */
 
-window.login = async function(){
+window.login=async function(){
 
  try{
-  $("loginMessage").textContent = "Logging in...";
+
+  $("loginMessage").textContent="Logging in...";
 
   await signInWithEmailAndPassword(
    auth,
@@ -308,66 +383,104 @@ window.login = async function(){
    $("password").value
   );
 
-  $("loginMessage").textContent = "";
+  $("loginMessage").textContent="";
 
  }catch(e){
-  $("loginMessage").textContent = e.message;
+
+  $("loginMessage").textContent=e.message;
+
  }
 
 };
 
-window.logout = async function(){
+window.logout=async function(){
  await signOut(auth);
  location.reload();
 };
 
 
 /* =====================================
-   AUTHENTICATION AND HOST APPROVAL
+   RENEW PLAN
 ===================================== */
 
-onAuthStateChanged(auth, async user => {
+window.renewHostPlan=function(){
 
- currentUser = user;
+ if(ADMIN_WHATSAPP==="91XXXXXXXXXX"){
+  alert("Please enter the administrator WhatsApp number in the HTML configuration first.");
+  return;
+ }
+
+ const name=currentHost?.name ||
+             currentHost?.hostName ||
+             "";
+
+ const email=currentUser?.email || "";
+
+ const message=
+ `Hello Melody Magic Digital Auditorium Admin,
+
+I want to renew my host subscription.
+
+Host Name: ${name}
+Email: ${email}
+
+My host plan has expired.
+Please share the renewal details and reactivate my account.
+
+Thank you.`;
+
+ const url="https://wa.me/"+
+  ADMIN_WHATSAPP+
+  "?text="+encodeURIComponent(message);
+
+ window.open(url,"_blank");
+
+};
+
+
+/* =====================================
+   AUTH AND HOST VERIFICATION
+===================================== */
+
+onAuthStateChanged(auth,async user=>{
+
+ currentUser=user;
 
  if(!user){
+
   $("loginBox").classList.remove("hidden");
   $("dashboard").classList.add("hidden");
   return;
+
  }
 
  try{
 
-  const snap = await get(
-   ref(db, PATHS.applications + "/" + user.uid)
+  const snap=await get(
+   ref(db,PATHS.applications+"/"+user.uid)
   );
 
   if(!snap.exists()){
-   throw new Error("Host application not found.");
+   throw new Error("Host application not found. Contact administrator.");
   }
 
-  currentHost = snap.val();
+  currentHost=snap.val();
 
-  if(!isApproved(currentHost)){
-   throw new Error("Your host account is not approved yet.");
+  if(String(currentHost.status||"").toLowerCase()!=="approved"){
+   throw new Error("Your host account is not approved.");
   }
 
-  if(!subscriptionActive(currentHost)){
-   throw new Error("Your host subscription is inactive or expired.");
-  }
+  checkSubscription(currentHost);
 
   $("loginBox").classList.add("hidden");
   $("dashboard").classList.remove("hidden");
 
-  $("hostInfo").textContent =
+  $("hostInfo").textContent=
    currentHost.name ||
    currentHost.hostName ||
    user.email;
 
-  $("subscriptionInfo").textContent =
-   "✓ Approved Host | Active Subscription";
-
-  showSuccess("Welcome to your Host Dashboard.");
+  updatePlanDisplay();
 
   loadShows();
 
@@ -375,6 +488,7 @@ onAuthStateChanged(auth, async user => {
 
   $("loginBox").classList.remove("hidden");
   $("dashboard").classList.add("hidden");
+
   showError(e.message);
 
  }
@@ -386,149 +500,156 @@ onAuthStateChanged(auth, async user => {
    CREATE SHOW
 ===================================== */
 
-window.createShow = async function(){
+window.createShow=async function(){
 
  try{
 
-  if(!currentUser || !currentHost){
-   throw new Error("Please login as an approved host.");
+  if(!planActive){
+   throw new Error("Your plan has expired. Please renew your subscription.");
   }
 
-  const name = $("showName").value.trim();
-  const date = $("showDate").value;
-  const time = $("showTime").value;
-  const entryType = $("entryType").value;
-  const fee = Number($("entryFee").value || 0);
+  const name=$("showName").value.trim();
+  const date=$("showDate").value;
+  const time=$("showTime").value;
+  const entryType=$("entryType").value;
+  const fee=Number($("entryFee").value||0);
 
-  if(!name || !date || !time){
+  if(!name||!date||!time){
    throw new Error("Enter show name, date and time.");
   }
 
-  if(entryType === "paid" && fee <= 0){
-   throw new Error("Enter a valid paid entry fee.");
+  if(entryType==="paid"&&fee<=0){
+   throw new Error("Enter a valid entry fee.");
   }
 
-  if(entryType === "free" && fee !== 0){
+  if(entryType==="free"&&fee!==0){
    throw new Error("Free shows must have zero entry fee.");
   }
 
-  $("createButton").disabled = true;
-  $("createMessage").textContent = "Creating show...";
+  $("createButton").disabled=true;
+  $("createMessage").textContent="Creating show...";
 
-  const showRef = push(ref(db, PATHS.shows));
+  const showRef=push(ref(db,PATHS.shows));
 
-  const data = {
-   showId: showRef.key,
-   showName: name,
-   description: $("showDescription").value.trim(),
-   date: date,
-   time: time,
-   timeZone: "Asia/Kolkata",
-   timeZoneLabel: "IST",
-   entryType: entryType,
-   entryFee: entryType === "paid" ? fee : 0,
-   maxSingers: Math.max(1, Number($("maxSingers").value || 20)),
-   status: $("showStatus").value,
-   hostUid: currentUser.uid,
-   hostName: currentHost.name || currentHost.hostName || currentUser.email,
-   createdAt: Date.now(),
-   createdAtServer: serverTimestamp()
+  const data={
+   showId:showRef.key,
+   showName:name,
+   description:$("showDescription").value.trim(),
+   date:date,
+   time:time,
+   timeZone:"Asia/Kolkata",
+   timeZoneLabel:"IST",
+   entryType:entryType,
+   entryFee:entryType==="paid"?fee:0,
+   maxSingers:Math.max(1,Number($("maxSingers").value||20)),
+   status:$("showStatus").value,
+   hostUid:currentUser.uid,
+   hostName:currentHost.name||currentHost.hostName||currentUser.email,
+   createdAt:Date.now()
   };
 
-  await set(showRef, data);
+  await set(showRef,data);
 
-  $("createMessage").textContent = "Show created successfully!";
+  $("createMessage").textContent="Show created successfully!";
 
-  $("showName").value = "";
-  $("showDescription").value = "";
-  $("showDate").value = "";
-  $("showTime").value = "";
+  $("showName").value="";
+  $("showDescription").value="";
+  $("showDate").value="";
+  $("showTime").value="";
 
   showSuccess("Your show has been created.");
 
  }catch(e){
 
-  $("createMessage").textContent = e.message;
+  $("createMessage").textContent=e.message;
 
  }finally{
-  $("createButton").disabled = false;
+
+  $("createButton").disabled=!planActive;
+
  }
 
 };
 
 
 /* =====================================
-   LOAD HOST SHOWS
+   LOAD SHOWS
 ===================================== */
 
 function loadShows(){
 
- onValue(ref(db, PATHS.shows), snapshot => {
+ onValue(ref(db,PATHS.shows),snapshot=>{
 
-  myShows = {};
+  myShows={};
 
-  snapshot.forEach(child => {
+  snapshot.forEach(child=>{
 
-   const show = child.val();
+   const s=child.val();
 
-   if(show && show.hostUid === currentUser.uid){
-    myShows[child.key] = show;
+   if(s&&s.hostUid===currentUser.uid){
+    myShows[child.key]=s;
    }
 
   });
 
   renderShows();
 
- }, error => showError("Unable to load shows: " + error.message));
+ },error=>showError("Unable to load shows: "+error.message));
 
 }
 
 
 function renderShows(){
 
- const list = $("showList");
- const selector = $("registrationShow");
+ const list=$("showList");
+ const selector=$("registrationShow");
 
- list.innerHTML = "";
- selector.innerHTML = '<option value="">Select Show</option>';
+ list.innerHTML="";
+ selector.innerHTML='<option value="">Select Show</option>';
 
- const entries = Object.entries(myShows);
+ const entries=Object.entries(myShows);
 
  if(!entries.length){
-  list.innerHTML = "<p>No shows created yet.</p>";
+  list.innerHTML="<p>No shows created yet.</p>";
   return;
  }
 
- entries.sort((a,b) =>
-  (b[1].createdAt || 0) - (a[1].createdAt || 0)
+ entries.sort((a,b)=>
+  (b[1].createdAt||0)-(a[1].createdAt||0)
  );
 
- entries.forEach(([id,s]) => {
+ entries.forEach(([id,s])=>{
 
-  const option = document.createElement("option");
-  option.value = id;
-  option.textContent = s.showName || "Untitled Show";
+  const option=document.createElement("option");
+  option.value=id;
+  option.textContent=s.showName||"Untitled Show";
   selector.appendChild(option);
 
-  const div = document.createElement("div");
-  div.className = "show";
+  const div=document.createElement("div");
+  div.className="show";
 
-  div.innerHTML = `
+  div.innerHTML=`
    <h3>${escapeHTML(s.showName)}</h3>
-   <p>${escapeHTML(s.description || "")}</p>
+   <p>${escapeHTML(s.description||"")}</p>
    <p>📅 ${escapeHTML(showDate(s.date))}</p>
    <p>🕒 ${escapeHTML(showTime(s.time))} IST</p>
-   <p>Entry: ${s.entryType === "free" ? "FREE" : "₹" + escapeHTML(s.entryFee)}</p>
-   <p>Status: ${escapeHTML(s.status || "draft")}</p>
+   <p>Entry: ${s.entryType==="free"?"FREE":"₹"+escapeHTML(s.entryFee)}</p>
+   <p>Status: ${escapeHTML(s.status||"draft")}</p>
 
-   <button onclick="openShowPoster('${id}')">Poster</button>
-   <button onclick="openJoinLink('${id}','singer')">Performer Link</button>
-   <button onclick="openJoinLink('${id}','audience')">Audience Link</button>
-   <button onclick="openLiveControl('${id}')">Live Control</button>
-   <button class="secondary" onclick="toggleShowStatus('${id}')">
-    ${s.status === "published" ? "Make Draft" : "Publish"}
+   <button onclick="openShowPoster('${id}')">POSTER</button>
+   <button onclick="openJoinLink('${id}','singer')">SINGER LINK</button>
+   <button onclick="openJoinLink('${id}','audience')">AUDIENCE LINK</button>
+   <button onclick="openLiveControl('${id}')">LIVE CONTROL</button>
+
+   <button class="secondary"
+    ${!planActive?"disabled":""}
+    onclick="toggleShowStatus('${id}')">
+    ${s.status==="published"?"MAKE DRAFT":"PUBLISH"}
    </button>
-   <button class="danger" onclick="deleteShow('${id}')">Delete Show</button>
+
+   <button class="danger"
+    ${!planActive?"disabled":""}
+    onclick="deleteShow('${id}')">DELETE SHOW</button>
   `;
 
   list.appendChild(div);
@@ -539,19 +660,32 @@ function renderShows(){
 
 
 /* =====================================
-   SHOW LINKS
+   LINKS
 ===================================== */
 
-window.openJoinLink = function(id,type){
+window.openJoinLink=function(id,type){
 
- const page = type === "singer" ? SINGER_PAGE : AUDIENCE_PAGE;
- const url = showUrl(page,id);
+ if(!myShows[id])return;
 
- window.open(url,"_blank");
+ if(!planActive){
+  showError("Please renew your host plan to manage shows.");
+  return;
+ }
+
+ const page=type==="singer"?SINGER_PAGE:AUDIENCE_PAGE;
+
+ window.open(showUrl(page,id),"_blank");
 
 };
 
-window.openLiveControl = function(id){
+window.openLiveControl=function(id){
+
+ if(!planActive){
+  showError("Please renew your host plan to use Live Control.");
+  return;
+ }
+
+ if(!myShows[id])return;
 
  window.open(showUrl(LIVE_CONTROL_PAGE,id),"_blank");
 
@@ -562,20 +696,20 @@ window.openLiveControl = function(id){
    PUBLISH / DRAFT
 ===================================== */
 
-window.toggleShowStatus = async function(id){
+window.toggleShowStatus=async function(id){
 
  try{
 
-  const show = myShows[id];
-  if(!show) throw new Error("Show not found.");
+  if(!planActive)throw new Error("Please renew your plan.");
 
-  const status = show.status === "published" ? "draft" : "published";
+  const s=myShows[id];
+  if(!s)throw new Error("Show not found.");
 
-  await update(ref(db, PATHS.shows + "/" + id),{
-   status: status
+  await update(ref(db,PATHS.shows+"/"+id),{
+   status:s.status==="published"?"draft":"published"
   });
 
-  showSuccess("Show status updated: " + status);
+  showSuccess("Show status updated.");
 
  }catch(e){
   showError(e.message);
@@ -588,19 +722,22 @@ window.toggleShowStatus = async function(id){
    DELETE SHOW
 ===================================== */
 
-window.deleteShow = async function(id){
+window.deleteShow=async function(id){
 
- if(!confirm("Delete this show permanently?")) return;
+ if(!planActive){
+  showError("Please renew your plan.");
+  return;
+ }
+
+ if(!confirm("Delete this show permanently?"))return;
 
  try{
 
-  const show = myShows[id];
-
-  if(!show || show.hostUid !== currentUser.uid){
+  if(!myShows[id]||myShows[id].hostUid!==currentUser.uid){
    throw new Error("You cannot delete this show.");
   }
 
-  await remove(ref(db, PATHS.shows + "/" + id));
+  await remove(ref(db,PATHS.shows+"/"+id));
 
   showSuccess("Show deleted.");
 
@@ -612,54 +749,63 @@ window.deleteShow = async function(id){
 
 
 /* =====================================
-   PERFORMER REGISTRATIONS
+   REGISTRATIONS
 ===================================== */
 
-window.loadRegistrations = function(){
+let registrationUnsubscribe=null;
 
- const id = $("registrationShow").value;
- const container = $("registrationList");
+window.loadRegistrations=function(){
 
- container.innerHTML = "";
+ if(registrationUnsubscribe){
+  registrationUnsubscribe();
+  registrationUnsubscribe=null;
+ }
 
- if(!id) return;
+ const id=$("registrationShow").value;
+ const container=$("registrationList");
+
+ container.innerHTML="";
+
+ if(!id)return;
 
  if(!myShows[id]){
-  container.textContent = "Invalid show.";
+  container.textContent="Invalid show.";
   return;
  }
 
- onValue(
-  ref(db, PATHS.registrations + "/" + id),
-  snapshot => {
+ registrationUnsubscribe=onValue(
+  ref(db,PATHS.registrations+"/"+id),
+  snapshot=>{
 
-   container.innerHTML = "";
+   container.innerHTML="";
 
    if(!snapshot.exists()){
-    container.innerHTML = "<p>No registrations yet.</p>";
+    container.innerHTML="<p>No registrations yet.</p>";
     return;
    }
 
-   snapshot.forEach(child => {
+   snapshot.forEach(child=>{
 
-    const singer = child.val();
-    const uid = child.key;
+    const singer=child.val();
+    const uid=child.key;
 
-    const div = document.createElement("div");
-    div.className = "show";
+    const div=document.createElement("div");
+    div.className="show";
 
-    div.innerHTML = `
-     <h3>${escapeHTML(singer.name || singer.singerName || "Singer")}</h3>
-     <p>Song: ${escapeHTML(singer.song || singer.songName || "")}</p>
-     <p>Mobile: ${escapeHTML(singer.mobile || "")}</p>
-     <p>Status: ${escapeHTML(singer.status || "pending")}</p>
+    div.innerHTML=`
+     <h3>${escapeHTML(singer.name||singer.singerName||"Singer")}</h3>
+     <p>Song: ${escapeHTML(singer.song||singer.songName||"")}</p>
+     <p>Mobile: ${escapeHTML(singer.mobile||"")}</p>
+     <p>Status: ${escapeHTML(singer.status||"pending")}</p>
 
-     <button onclick="updateSinger('${id}','${uid}','approved')">
-      Approve
+     <button ${!planActive?"disabled":""}
+      onclick="updateSinger('${id}','${uid}','approved')">
+      APPROVE
      </button>
 
-     <button class="danger" onclick="updateSinger('${id}','${uid}','rejected')">
-      Reject
+     <button class="danger" ${!planActive?"disabled":""}
+      onclick="updateSinger('${id}','${uid}','rejected')">
+      REJECT
      </button>
     `;
 
@@ -668,22 +814,22 @@ window.loadRegistrations = function(){
    });
 
   },
-  error => {
-   container.textContent = "Registration error: " + error.message;
-  }
+  error=>container.textContent="Registration error: "+error.message
  );
 
 };
 
 
-window.updateSinger = async function(showId,uid,status){
+window.updateSinger=async function(showId,uid,status){
 
  try{
 
-  if(!myShows[showId]) throw new Error("Invalid show.");
+  if(!planActive)throw new Error("Please renew your plan.");
+
+  if(!myShows[showId])throw new Error("Invalid show.");
 
   await update(
-   ref(db, PATHS.registrations + "/" + showId + "/" + uid),
+   ref(db,PATHS.registrations+"/"+showId+"/"+uid),
    {status:status}
   );
 
@@ -700,15 +846,14 @@ window.updateSinger = async function(showId,uid,status){
    POSTER GENERATOR
 ===================================== */
 
-window.openShowPoster = function(id){
+window.openShowPoster=function(id){
 
- selectedShow = id;
+ if(!myShows[id])return;
 
- const s = myShows[id];
- if(!s) return;
+ selectedShow=id;
 
  $("posterSection").classList.remove("hidden");
- $("posterTitle").textContent = s.showName;
+ $("posterTitle").textContent=myShows[id].showName;
 
  generatePoster();
 
@@ -717,85 +862,84 @@ window.openShowPoster = function(id){
 };
 
 
-window.generatePoster = async function(){
+window.generatePoster=async function(){
 
  try{
 
-  const s = myShows[selectedShow];
-  if(!s) throw new Error("Show not found.");
+  const s=myShows[selectedShow];
+  if(!s)throw new Error("Show not found.");
 
-  const canvas = $("posterCanvas");
-  const ctx = canvas.getContext("2d");
+  const canvas=$("posterCanvas");
+  const ctx=canvas.getContext("2d");
 
-  canvas.width = 900;
-  canvas.height = 1200;
+  canvas.width=900;
+  canvas.height=1200;
 
-  const gradient = ctx.createLinearGradient(0,0,900,1200);
+  const gradient=ctx.createLinearGradient(0,0,900,1200);
   gradient.addColorStop(0,"#100d1a");
   gradient.addColorStop(1,"#38213d");
 
-  ctx.fillStyle = gradient;
+  ctx.fillStyle=gradient;
   ctx.fillRect(0,0,900,1200);
 
-  ctx.strokeStyle = "#d8ad4d";
-  ctx.lineWidth = 12;
+  ctx.strokeStyle="#d8ad4d";
+  ctx.lineWidth=12;
   ctx.strokeRect(25,25,850,1150);
 
-  ctx.textAlign = "center";
-
-  ctx.fillStyle = "#e9c46b";
-  ctx.font = "bold 43px Arial";
+  ctx.textAlign="center";
+  ctx.fillStyle="#e9c46b";
+  ctx.font="bold 43px Arial";
   ctx.fillText("MELODY MAGIC",450,115);
 
-  ctx.font = "bold 33px Arial";
+  ctx.font="bold 33px Arial";
   ctx.fillText("DIGITAL AUDITORIUM",450,165);
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 57px Arial";
+  ctx.fillStyle="#ffffff";
+  ctx.font="bold 55px Arial";
 
-  const words = s.showName.split(" ");
-  let line = "";
-  let y = 350;
+  const words=s.showName.split(" ");
+  let line="";
+  let y=350;
 
   for(const word of words){
 
-   const test = line + word + " ";
+   const test=line+word+" ";
 
-   if(ctx.measureText(test).width > 740){
+   if(ctx.measureText(test).width>740){
     ctx.fillText(line.trim(),450,y);
-    line = word + " ";
-    y += 75;
+    line=word+" ";
+    y+=75;
    }else{
-    line = test;
+    line=test;
    }
 
   }
 
-  if(line) ctx.fillText(line.trim(),450,y);
+  if(line)ctx.fillText(line.trim(),450,y);
 
-  ctx.fillStyle = "#e9c46b";
-  ctx.font = "30px Arial";
+  ctx.fillStyle="#e9c46b";
+  ctx.font="30px Arial";
   ctx.fillText(showDate(s.date),450,530);
-  ctx.fillText(showTime(s.time) + " IST ONWARDS",450,590);
+  ctx.fillText(showTime(s.time)+" IST ONWARDS",450,590);
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 38px Arial";
+  ctx.fillStyle="#fff";
+  ctx.font="bold 38px Arial";
 
   ctx.fillText(
-   s.entryType === "free" ? "FREE ENTRY" : "ENTRY FEE ₹" + s.entryFee,
+   s.entryType==="free"?"FREE ENTRY":"ENTRY FEE ₹"+s.entryFee,
    450,690
   );
 
-  ctx.font = "25px Arial";
-  ctx.fillText("Hosted by " + (s.hostName || "Melody Magic"),450,780);
+  ctx.font="25px Arial";
+  ctx.fillText("Hosted by "+(s.hostName||"Melody Magic"),450,780);
 
-  ctx.font = "23px Arial";
+  ctx.font="23px Arial";
   ctx.fillText("JOIN OUR DIGITAL STAGE",450,870);
 
-  const joinURL = showUrl(AUDIENCE_PAGE,selectedShow);
+  const joinURL=showUrl(AUDIENCE_PAGE,selectedShow);
 
-  const qr = $("qrHolder");
-  qr.innerHTML = "";
+  const qr=$("qrHolder");
+  qr.innerHTML="";
 
   new QRCode(qr,{
    text:joinURL,
@@ -805,9 +949,9 @@ window.generatePoster = async function(){
    colorLight:"#ffffff"
   });
 
-  await new Promise(resolve => setTimeout(resolve,300));
+  await new Promise(resolve=>setTimeout(resolve,300));
 
-  const qrCanvas = qr.querySelector("canvas");
+  const qrCanvas=qr.querySelector("canvas");
 
   if(qrCanvas){
    ctx.fillStyle="#ffffff";
@@ -819,21 +963,8 @@ window.generatePoster = async function(){
   ctx.font="bold 27px Arial";
   ctx.fillText("SCAN TO JOIN",450,1150);
 
-  generatedPoster = true;
-
-  $("posterMessage").textContent = "Poster generated successfully.";
-
-  await set(
-   ref(db, PATHS.posters + "/" + selectedShow),
-   {
-    showId:selectedShow,
-    hostUid:currentUser.uid,
-    showName:s.showName,
-    generatedAt:Date.now(),
-    audienceLink:joinURL,
-    approvalStatus:"pending"
-   }
-  );
+  generatedPoster=true;
+  $("posterMessage").textContent="Poster generated successfully.";
 
  }catch(e){
 
@@ -844,7 +975,7 @@ window.generatePoster = async function(){
 };
 
 
-window.downloadPoster = function(){
+window.downloadPoster=function(){
 
  if(!generatedPoster){
   alert("Generate the poster first.");
@@ -859,7 +990,7 @@ window.downloadPoster = function(){
 };
 
 
-window.sharePoster = async function(){
+window.sharePoster=async function(){
 
  if(!generatedPoster){
   alert("Generate the poster first.");
@@ -868,33 +999,44 @@ window.sharePoster = async function(){
 
  try{
 
-  const blob=await new Promise(resolve =>
+  const blob=await new Promise(resolve=>
    $("posterCanvas").toBlob(resolve,"image/png")
   );
+
+  if(!blob)throw new Error("Could not create poster image.");
 
   const file=new File([blob],"Melody-Magic-Poster.png",{
    type:"image/png"
   });
 
-  if(navigator.canShare && navigator.canShare({files:[file]})){
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+
    await navigator.share({
     title:"Melody Magic Digital Auditorium",
     text:"Join our show!",
     files:[file]
    });
+
   }else{
-   await navigator.clipboard.writeText(showUrl(AUDIENCE_PAGE,selectedShow));
-   alert("Audience link copied. Download the poster and share it.");
+
+   await navigator.clipboard.writeText(
+    showUrl(AUDIENCE_PAGE,selectedShow)
+   );
+
+   alert("Audience link copied. Download and share the poster.");
+
   }
 
  }catch(e){
+
   $("posterMessage").textContent=e.message;
+
  }
 
 };
 
 
-window.closePoster = function(){
+window.closePoster=function(){
  $("posterSection").classList.add("hidden");
  selectedShow=null;
  generatedPoster=false;
