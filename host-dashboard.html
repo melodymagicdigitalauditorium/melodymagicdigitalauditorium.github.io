@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Melody Magic Digital Auditorium - Host Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#090909;color:#f5f5f5;font-family:Arial,sans-serif}
@@ -18,6 +19,7 @@ main{max-width:950px;margin:22px auto;padding:12px}
 h2{margin-top:0;font-size:20px}
 input,select,button{width:100%;padding:12px;margin:7px 0;border-radius:7px;border:1px solid #555;font-size:15px}
 input,select{background:#090909;color:white}
+input:disabled{opacity:.45}
 button{background:#c99b35;color:#111;font-weight:bold;border:0;cursor:pointer}
 button.secondary{background:#333;color:white;border:1px solid #777}
 button.danger{background:#a52b2b;color:white}
@@ -30,6 +32,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .hidden{display:none!important}
 .registration{border-width:1px 0 0;border-radius:0}
 .registration button{width:auto;min-width:100px}
+.fee-box{background:#101010;border:1px solid #51401c;border-radius:9px;padding:14px;margin:12px 0}
+.fee-box h3{margin:0 0 8px}
+.fee-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fee-choice button{margin:3px 0;background:#333;color:white;border:1px solid #777}
+.fee-choice button.active{background:#c99b35;color:#111;border-color:#c99b35}
+.fee-amount{margin-top:8px}
+.fee-note{font-size:12px;color:#aaa}
 #posterPreview{background:#fff8e8;color:#111;padding:20px;text-align:center;border-radius:10px;max-width:420px;margin:12px auto}
 #posterPreview h2{color:#8a5a00;font-size:25px}
 #posterPreview p{color:#222}
@@ -39,6 +48,7 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 @media(max-width:600px){.row{grid-template-columns:1fr}}
 </style>
 </head>
+
 <body>
 <header>
 <h1>MELODY MAGIC DIGITAL AUDITORIUM</h1>
@@ -46,6 +56,7 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 </header>
 
 <main>
+
 <section class="card" id="loginSection">
 <h2>Host Login</h2>
 <p class="small">Sign in using your registered host email and password.</p>
@@ -56,10 +67,15 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 </section>
 
 <section class="card hidden" id="dashboardSection">
+
 <div class="row">
-<div><h2>Welcome, Host</h2><div id="hostEmail" class="small"></div></div>
+<div>
+<h2>Welcome, Host</h2>
+<div id="hostEmail" class="small"></div>
+</div>
 <div><button class="secondary" id="logoutBtn">Logout</button></div>
 </div>
+
 <div id="hostStatus" class="status">Checking account...</div>
 
 <div id="renewBox" class="status hidden">
@@ -74,35 +90,88 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <div id="renewRequestMessage" class="small"></div>
 <button id="renewBtn" class="secondary">Contact Admin on WhatsApp</button>
 </div>
+
 <div id="expiryReminder" class="status hidden"></div>
 
 <div id="hostTools">
+
 <section class="card">
 <h2>Create New Show</h2>
-<input id="showName" placeholder="Show name">
+
+<label class="small">Show name</label>
+<input id="showName" placeholder="Enter show name">
+
 <div class="row">
-<div><label class="small">Show date</label><input id="showDate" type="date"></div>
-<div><label class="small">Show time</label><input id="showTime" type="time"></div>
+<div>
+<label class="small">Show date</label>
+<input id="showDate" type="date">
+</div>
+<div>
+<label class="small">Show time</label>
+<input id="showTime" type="time">
+</div>
 </div>
 
-<h3>Separate Fees (₹)</h3>
-<div class="row">
-<div><label class="small">Audience entry type</label>
-<select id="entryType"><option value="free">Free entry</option><option value="paid">Paid entry</option></select></div>
-<div><label class="small">Audience entry fee</label>
-<input id="audienceFee" type="number" min="0" value="0"></div>
+<h3>Independent Fee Settings</h3>
+<p class="small">
+Choose FREE or PAID separately for solo performances, duet performances and audience entry.
+If all three are FREE, the entire show is free.
+</p>
+
+<div class="fee-box">
+<h3>1. Solo Performer – Per Song</h3>
+<div class="fee-choice">
+<button type="button" id="soloFreeBtn" class="active">FREE</button>
+<button type="button" id="soloPaidBtn">PAID</button>
 </div>
-<div class="row">
-<div><label class="small">Solo song fee</label><input id="soloSongFee" type="number" min="0" value="0"></div>
-<div><label class="small">Duet song fee</label><input id="duetSongFee" type="number" min="0" value="0"></div>
+<div id="soloAmountBox" class="fee-amount hidden">
+<label class="small">Solo fee per song (₹)</label>
+<input id="soloSongFee" type="number" min="1" step="1" placeholder="Enter solo per song fee">
 </div>
+<div id="soloFeeNote" class="fee-note">Solo performance is FREE.</div>
+</div>
+
+<div class="fee-box">
+<h3>2. Duet Performer – Per Song</h3>
+<div class="fee-choice">
+<button type="button" id="duetFreeBtn" class="active">FREE</button>
+<button type="button" id="duetPaidBtn">PAID</button>
+</div>
+<div id="duetAmountBox" class="fee-amount hidden">
+<label class="small">Duet fee per song (₹)</label>
+<input id="duetSongFee" type="number" min="1" step="1" placeholder="Enter duet per song fee">
+</div>
+<div id="duetFeeNote" class="fee-note">Duet performance is FREE.</div>
+</div>
+
+<div class="fee-box">
+<h3>3. Audience Entry</h3>
+<div class="fee-choice">
+<button type="button" id="audienceFreeBtn" class="active">FREE</button>
+<button type="button" id="audiencePaidBtn">PAID</button>
+</div>
+<div id="audienceAmountBox" class="fee-amount hidden">
+<label class="small">Audience entry fee (₹)</label>
+<input id="audienceFee" type="number" min="1" step="1" placeholder="Enter audience entry fee">
+</div>
+<div id="audienceFeeNote" class="fee-note">Audience entry is FREE.</div>
+</div>
+
+<div class="status" id="feeSummary">
+Solo: FREE<br>
+Duet: FREE<br>
+Audience: FREE ENTRY
+</div>
+
 <label class="small">Maximum singers</label>
 <input id="maxSingers" type="number" min="1" max="100" value="20">
+
 <label class="small">Show status</label>
 <select id="showStatus">
 <option value="Published">Publish show</option>
 <option value="Draft">Save as draft</option>
 </select>
+
 <button id="createShowBtn">Create Show</button>
 <div id="createMessage" class="small"></div>
 </section>
@@ -112,28 +181,40 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <p class="small">Your active named shows are listed below.</p>
 <div id="myShows"><p class="small">Loading shows...</p></div>
 </section>
+
 </div>
 </section>
 
 <section class="card hidden" id="posterSection">
 <h2>Show Poster</h2>
+
 <div id="posterPreview">
 <h2>MELODY MAGIC DIGITAL AUDITORIUM</h2>
 <h3 id="posterName">Show Name</h3>
-<p id="posterDate"></p><p id="posterTime"></p>
+<p id="posterDate"></p>
+<p id="posterTime"></p>
 <p id="posterAudienceFee"></p>
-<p id="posterSoloFee"></p><p id="posterDuetFee"></p>
+<p id="posterSoloFee"></p>
+<p id="posterDuetFee"></p>
 <div id="qrBox"></div>
 <p>Scan QR code to join the show</p>
 <p style="font-size:12px">Melody Magic Music Studio</p>
 </div>
+
 <button id="downloadPosterBtn">Download Generated Poster</button>
+
 <hr style="border-color:#51401c">
+
 <h3>Upload Your Custom Poster</h3>
-<p class="small">Choose an image. It will be uploaded to Cloudinary and submitted to Admin for approval. It will not appear publicly until approved.</p>
+<p class="small">
+Choose an image. It will be uploaded to Cloudinary and submitted to Admin for approval.
+It will not appear publicly until approved.
+</p>
+
 <input type="file" id="customPosterFile" accept="image/png,image/jpeg,image/webp">
 <button id="uploadPosterBtn">Upload Poster for Admin Approval</button>
 <div id="posterUploadMessage" class="status">No custom poster uploaded yet.</div>
+
 <button id="sharePosterBtn" class="secondary">Share Show Link</button>
 <button id="whatsappShareBtn" class="secondary">Share on WhatsApp</button>
 <button id="facebookShareBtn" class="secondary">Share on Facebook</button>
@@ -146,27 +227,47 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <div id="registrationsList"></div>
 <button id="closeRegistrationsBtn" class="secondary">Close Registrations</button>
 </section>
+
 </main>
 
-<footer>Melody Magic Music Studio<br>© Melody Magic Digital Auditorium</footer>
+<footer>
+Melody Magic Music Studio<br>
+© Melody Magic Digital Auditorium
+</footer>
 
 <script type="module">
+
 import {auth,db} from "./firebase-host.js";
-import {signInWithEmailAndPassword,signOut,onAuthStateChanged}
-from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {ref,get,set,push,remove,onValue}
-from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+import {
+signInWithEmailAndPassword,
+signOut,
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+ref,get,set,push,remove,onValue
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const CLOUD_NAME="quqojlew";
 const UPLOAD_PRESET="melody_magic_posters";
 const ADMIN_WHATSAPP="91XXXXXXXXXX";
+
 const AUDIENCE_PAGE="audience.html";
 const LIVE_PAGE="host-performance-control.html";
-const ADMIN_EMAIL_OR_CONTACT="Melody Magic Admin";
 
-let currentUser=null,hostApplication=null,planActive=false;
-let myShows={},selectedShowId=null,currentShowLink="";
-let stopShowsListener=null,stopHostListener=null;
+let currentUser=null;
+let hostApplication=null;
+let planActive=false;
+let myShows={};
+let selectedShowId=null;
+let currentShowLink="";
+let stopShowsListener=null;
+let stopHostListener=null;
+
+let soloType="free";
+let duetType="free";
+let audienceType="free";
 
 const $=id=>document.getElementById(id);
 const DAY=86400000;
@@ -175,350 +276,955 @@ function message(id,text,error=false){
   $(id).textContent=text;
   $(id).className="status "+(error?"bad":"good");
 }
-function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+
+function esc(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  }[c]));
+}
+
 function parseTimestamp(v){
   if(v===undefined||v===null||v==="")return NaN;
   if(typeof v==="number")return v<1e12?v*1000:v;
-  const n=Number(v);if(Number.isFinite(n))return n<1e12?n*1000:n;
+  const n=Number(v);
+  if(Number.isFinite(n))return n<1e12?n*1000:n;
   return Date.parse(v);
 }
+
 function subscriptionIsActive(d){
-  const s=parseTimestamp(d?.subscriptionStartAt),e=parseTimestamp(d?.subscriptionEndAt);
+  const s=parseTimestamp(d?.subscriptionStartAt);
+  const e=parseTimestamp(d?.subscriptionEndAt);
   return Number.isFinite(s)&&Number.isFinite(e)&&s<=Date.now()&&e>Date.now();
 }
+
 function cleanPhone(v){
   let p=String(v||"").replace(/\D/g,"");
   if(p.length===10)p="91"+p;
   return p;
 }
+
 function hostPhone(){
-  return cleanPhone(hostApplication?.mobile||hostApplication?.whatsappNumber||hostApplication?.phone||"");
+  return cleanPhone(
+    hostApplication?.mobile||
+    hostApplication?.whatsappNumber||
+    hostApplication?.phone||
+    ""
+  );
 }
+
 function audienceUrl(id){
-  const u=new URL(AUDIENCE_PAGE,location.href);u.searchParams.set("showId",id);return u.href;
+  const u=new URL(AUDIENCE_PAGE,location.href);
+  u.searchParams.set("showId",id);
+  return u.href;
 }
+
 function showExpiryReminder(d){
-  const box=$("expiryReminder"),end=parseTimestamp(d?.subscriptionEndAt);
-  if(!Number.isFinite(end)){box.classList.add("hidden");return;}
-  const left=end-Date.now(),days=Math.ceil(left/DAY);
+  const box=$("expiryReminder");
+  const end=parseTimestamp(d?.subscriptionEndAt);
+
+  if(!Number.isFinite(end)){
+    box.classList.add("hidden");
+    return;
+  }
+
+  const left=end-Date.now();
+  const days=Math.ceil(left/DAY);
   let t="";
+
   if(left<=0)t="Your subscription has expired. Please request renewal.";
   else if(left<=DAY)t="Reminder: your subscription expires within 24 hours.";
   else if(days<=3)t="Reminder: your subscription expires in "+days+" days.";
   else if(days<=7)t="Advance reminder: your subscription expires in "+days+" days.";
-  if(!t){box.classList.add("hidden");return;}
-  box.textContent=t;box.classList.remove("hidden");
+
+  if(!t){
+    box.classList.add("hidden");
+    return;
+  }
+
+  box.textContent=t;
+  box.classList.remove("hidden");
 }
+
 function showLogin(){
   $("loginSection").classList.remove("hidden");
   $("dashboardSection").classList.add("hidden");
   $("posterSection").classList.add("hidden");
   $("registrationsSection").classList.add("hidden");
 }
+
 function showDashboard(){
   $("loginSection").classList.add("hidden");
   $("dashboardSection").classList.remove("hidden");
   $("hostEmail").textContent=currentUser?.email||"";
 }
+
 function setHostAccess(active){
   planActive=active;
   $("hostTools").classList.toggle("hidden",!active);
   $("renewBox").classList.toggle("hidden",active);
-  message("hostStatus",active?"Host approved. Subscription active.":"Host approved, but subscription inactive or expired.",!active);
+
+  message(
+    "hostStatus",
+    active
+      ?"Host approved. Subscription active."
+      :"Host approved, but subscription inactive or expired.",
+    !active
+  );
 }
+
 const HOST_PLANS={
- day:{name:"24 Hours",price:99,durationMs:DAY},
- week:{name:"7 Days",price:499,durationMs:7*DAY},
- month:{name:"30 Days",price:1499,durationMs:30*DAY}
+  day:{name:"24 Hours",price:99,durationMs:DAY},
+  week:{name:"7 Days",price:499,durationMs:7*DAY},
+  month:{name:"30 Days",price:1499,durationMs:30*DAY}
 };
+
+/* ---------------- FEE CONTROLS ---------------- */
+
+function setFeeType(which,type){
+  if(which==="solo")soloType=type;
+  if(which==="duet")duetType=type;
+  if(which==="audience")audienceType=type;
+
+  const config={
+    solo:{
+      free:"soloFreeBtn",
+      paid:"soloPaidBtn",
+      box:"soloAmountBox",
+      input:"soloSongFee",
+      note:"soloFeeNote"
+    },
+    duet:{
+      free:"duetFreeBtn",
+      paid:"duetPaidBtn",
+      box:"duetAmountBox",
+      input:"duetSongFee",
+      note:"duetFeeNote"
+    },
+    audience:{
+      free:"audienceFreeBtn",
+      paid:"audiencePaidBtn",
+      box:"audienceAmountBox",
+      input:"audienceFee",
+      note:"audienceFeeNote"
+    }
+  }[which];
+
+  const isPaid=type==="paid";
+
+  $(config.free).classList.toggle("active",!isPaid);
+  $(config.paid).classList.toggle("active",isPaid);
+  $(config.box).classList.toggle("hidden",!isPaid);
+  $(config.input).disabled=!isPaid;
+
+  if(!isPaid){
+    $(config.input).value="0";
+    $(config.note).textContent=
+      which==="audience"
+      ?"Audience entry is FREE."
+      ? "Audience entry is FREE."
+      : which==="solo"
+      ?"Solo performance is FREE."
+      :"Duet performance is FREE.";
+  }else{
+    $(config.note).textContent="Enter the amount in rupees.";
+    if(Number($(config.input).value)<=0)$(config.input).value="";
+  }
+
+  updateFeeSummary();
+}
+
+function updateFeeSummary(){
+  const solo=soloType==="free"
+    ?"FREE"
+    :"₹"+($("soloSongFee").value||"Enter amount")+" per song";
+
+  const duet=duetType==="free"
+    ?"FREE"
+    :"₹"+($("duetSongFee").value||"Enter amount")+" per song";
+
+  const audience=audienceType==="free"
+    ?"FREE ENTRY"
+    :"₹"+($("audienceFee").value||"Enter amount")+" entry";
+
+  $("feeSummary").innerHTML=
+    "Solo per song: "+esc(solo)+
+    "<br>Duet per song: "+esc(duet)+
+    "<br>Audience: "+esc(audience);
+}
+
+$("soloFreeBtn").onclick=()=>setFeeType("solo","free");
+$("soloPaidBtn").onclick=()=>setFeeType("solo","paid");
+$("duetFreeBtn").onclick=()=>setFeeType("duet","free");
+$("duetPaidBtn").onclick=()=>setFeeType("duet","paid");
+$("audienceFreeBtn").onclick=()=>setFeeType("audience","free");
+$("audiencePaidBtn").onclick=()=>setFeeType("audience","paid");
+
+["soloSongFee","duetSongFee","audienceFee"].forEach(id=>{
+  $(id).addEventListener("input",updateFeeSummary);
+});
+
+function feeLabel(type,amount,unit){
+  if(type==="free"||Number(amount||0)===0)return "FREE";
+  return "₹"+Number(amount)+" "+unit;
+}
+
+function savedFeeType(show,typeField,amountField){
+  if(show[typeField])return show[typeField];
+  return Number(show[amountField]||0)>0?"paid":"free";
+}
 
 async function checkHostAccount(user){
   if(stopHostListener)stopHostListener();
-  stopHostListener=onValue(ref(db,"hostApplications/"+user.uid),snap=>{
-    if(!snap.exists()){
-      hostApplication=null;$("hostTools").classList.add("hidden");$("renewBox").classList.add("hidden");
-      message("hostStatus","Host application not found. Contact administrator.",true);return;
-    }
-    hostApplication=snap.val();showExpiryReminder(hostApplication);
-    if(String(hostApplication.status||"").toLowerCase()!=="approved"){
-      $("hostTools").classList.add("hidden");$("renewBox").classList.add("hidden");
-      message("hostStatus","Host account not approved. Status: "+(hostApplication.status||"Pending"),true);return;
-    }
-    setHostAccess(subscriptionIsActive(hostApplication));
-  },e=>message("hostStatus","Could not read host account: "+e.message,true));
+
+  stopHostListener=onValue(
+    ref(db,"hostApplications/"+user.uid),
+    snap=>{
+      if(!snap.exists()){
+        hostApplication=null;
+        $("hostTools").classList.add("hidden");
+        $("renewBox").classList.add("hidden");
+        message("hostStatus","Host application not found. Contact administrator.",true);
+        return;
+      }
+
+      hostApplication=snap.val();
+      showExpiryReminder(hostApplication);
+
+      if(String(hostApplication.status||"").toLowerCase()!=="approved"){
+        $("hostTools").classList.add("hidden");
+        $("renewBox").classList.add("hidden");
+        message(
+          "hostStatus",
+          "Host account not approved. Status: "+(hostApplication.status||"Pending"),
+          true
+        );
+        return;
+      }
+
+      setHostAccess(subscriptionIsActive(hostApplication));
+    },
+    e=>message("hostStatus","Could not read host account: "+e.message,true)
+  );
 }
 
 async function submitRenewalRequest(){
-  if(!currentUser||!hostApplication||String(hostApplication.status).toLowerCase()!=="approved"){
-    alert("Only an approved host can request renewal.");return;
+  if(!currentUser||!hostApplication||
+    String(hostApplication.status).toLowerCase()!=="approved"){
+    alert("Only an approved host can request renewal.");
+    return;
   }
-  const planId=$("renewPlan").value,plan=HOST_PLANS[planId],btn=$("requestRenewalBtn");
+
+  const planId=$("renewPlan").value;
+  const plan=HOST_PLANS[planId];
+  const btn=$("requestRenewalBtn");
+
   btn.disabled=true;
+
   try{
     const snap=await get(ref(db,"hostRenewalRequests/"+currentUser.uid));
-    if(snap.exists()&&Object.values(snap.val()).some(x=>x&&String(x.status).toLowerCase()==="pending")){
-      $("renewRequestMessage").textContent="You already have a pending renewal request.";return;
+
+    if(snap.exists()&&Object.values(snap.val()).some(
+      x=>x&&String(x.status).toLowerCase()==="pending"
+    )){
+      $("renewRequestMessage").textContent=
+        "You already have a pending renewal request.";
+      return;
     }
+
     await set(push(ref(db,"hostRenewalRequests/"+currentUser.uid)),{
-      hostUid:currentUser.uid,hostEmail:currentUser.email||"",
+      hostUid:currentUser.uid,
+      hostEmail:currentUser.email||"",
       hostName:hostApplication.name||hostApplication.fullName||"Host",
-      planId,planName:plan.name,amount:plan.price,status:"Pending",requestedAt:Date.now()
+      planId,
+      planName:plan.name,
+      amount:plan.price,
+      status:"Pending",
+      requestedAt:Date.now()
     });
-    $("renewRequestMessage").textContent="Renewal request sent. Await Admin verification.";
-  }catch(e){$("renewRequestMessage").textContent="Request failed: "+e.message;}
-  finally{btn.disabled=false;}
+
+    $("renewRequestMessage").textContent=
+      "Renewal request sent. Await Admin verification.";
+
+  }catch(e){
+    $("renewRequestMessage").textContent="Request failed: "+e.message;
+  }finally{
+    btn.disabled=false;
+  }
 }
+
+/* ---------------- SHOW LIST ---------------- */
 
 function startShowsListener(){
   if(stopShowsListener)stopShowsListener();
+
   stopShowsListener=onValue(ref(db,"shows"),snap=>{
     myShows={};
+
     Object.entries(snap.val()||{}).forEach(([id,s])=>{
       if(!s||s.hostUid!==currentUser.uid)return;
+
       const name=String(s.showName||s.name||"").trim();
-      if(!name||name.toLowerCase()==="untitled show"||String(s.status).toLowerCase()==="deleted")return;
+
+      if(!name||
+        name.toLowerCase()==="untitled show"||
+        String(s.status).toLowerCase()==="deleted")return;
+
       myShows[id]=s;
     });
+
     renderShows();
-  },e=>$("myShows").textContent="Could not load shows: "+e.message);
+
+  },e=>{
+    $("myShows").textContent="Could not load shows: "+e.message;
+  });
 }
+
 function renderShows(){
-  const box=$("myShows");box.replaceChildren();
+  const box=$("myShows");
+  box.replaceChildren();
+
   const entries=Object.entries(myShows);
-  if(!entries.length){box.innerHTML='<p class="small">You have not created any active named shows yet.</p>';return;}
+
+  if(!entries.length){
+    box.innerHTML=
+      '<p class="small">You have not created any active named shows yet.</p>';
+    return;
+  }
+
   entries.forEach(([id,s])=>{
-    const div=document.createElement("div");div.className="show";
-    const audienceFee=Number(s.audienceFee??s.entryFee??0);
-    div.innerHTML=`<h3>${esc(s.showName||s.name)}</h3>
-    <p class="small">Date: ${esc(s.showDate||s.date||"Not set")}<br>
-    Time: ${esc(s.showTime||s.time||"Not set")}<br>
-    Audience entry: ${audienceFee===0?"FREE":"₹"+audienceFee}<br>
-    Solo song fee: ₹${esc(s.soloSongFee??0)}<br>
-    Duet song fee: ₹${esc(s.duetSongFee??0)}<br>
-    Status: ${esc(s.status||"Draft")}<br>Maximum singers: ${esc(s.maxSingers||20)}</p>
-    <button class="poster">Generate / Upload Poster</button>
-    <button class="regs secondary">Singer Registrations</button>
-    <button class="live secondary">Open Live Control Room</button>
-    <button class="del danger">DELETE MY SHOW</button>`;
+    const div=document.createElement("div");
+    div.className="show";
+
+    const audienceTypeSaved=savedFeeType(s,"audienceFeeType","audienceFee");
+    const soloTypeSaved=savedFeeType(s,"soloSongFeeType","soloSongFee");
+    const duetTypeSaved=savedFeeType(s,"duetSongFeeType","duetSongFee");
+
+    div.innerHTML=`
+      <h3>${esc(s.showName||s.name)}</h3>
+      <p class="small">
+      Date: ${esc(s.showDate||s.date||"Not set")}<br>
+      Time: ${esc(s.showTime||s.time||"Not set")}<br>
+      Audience entry: ${esc(feeLabel(audienceTypeSaved,s.audienceFee??s.entryFee,"entry"))}<br>
+      Solo per song: ${esc(feeLabel(soloTypeSaved,s.soloSongFee,"per song"))}<br>
+      Duet per song: ${esc(feeLabel(duetTypeSaved,s.duetSongFee,"per song"))}<br>
+      Status: ${esc(s.status||"Draft")}<br>
+      Maximum singers: ${esc(s.maxSingers||20)}
+      </p>
+      <button class="poster">Generate / Upload Poster</button>
+      <button class="regs secondary">Singer Registrations</button>
+      <button class="live secondary">Open Live Control Room</button>
+      <button class="del danger">DELETE MY SHOW</button>
+    `;
+
     div.querySelector(".poster").onclick=()=>generatePoster(id);
     div.querySelector(".regs").onclick=()=>openRegistrations(id);
+
     div.querySelector(".live").onclick=()=>{
-      const u=new URL(LIVE_PAGE,location.href);u.searchParams.set("showId",id);location.href=u.href;
+      const u=new URL(LIVE_PAGE,location.href);
+      u.searchParams.set("showId",id);
+      location.href=u.href;
     };
+
     div.querySelector(".del").onclick=()=>deleteMyShow(id);
+
     box.append(div);
   });
 }
 
+/* ---------------- CREATE SHOW ---------------- */
+
 $("createShowBtn").onclick=async()=>{
-  if(!currentUser||!planActive){message("createMessage","Active subscription required.",true);return;}
-  const showName=$("showName").value.trim(),showDate=$("showDate").value,showTime=$("showTime").value;
-  const entryType=$("entryType").value,audienceFee=Number($("audienceFee").value||0);
-  const soloSongFee=Number($("soloSongFee").value||0),duetSongFee=Number($("duetSongFee").value||0);
-  const maxSingers=Number($("maxSingers").value||20),status=$("showStatus").value;
-  if(!showName||!showDate||!showTime){message("createMessage","Enter show name, date and time.",true);return;}
-  if(![audienceFee,soloSongFee,duetSongFee].every(n=>Number.isFinite(n)&&n>=0)){
-    message("createMessage","All fees must be zero or greater.",true);return;
+  if(!currentUser||!planActive){
+    message("createMessage","Active subscription required.",true);
+    return;
   }
-  if((entryType==="paid"&&audienceFee<=0)||(entryType==="free"&&audienceFee!==0)){
-    message("createMessage","Please check the audience entry type and fee.",true);return;
+
+  const showName=$("showName").value.trim();
+  const showDate=$("showDate").value;
+  const showTime=$("showTime").value;
+
+  const soloSongFee=soloType==="paid"?Number($("soloSongFee").value):0;
+  const duetSongFee=duetType==="paid"?Number($("duetSongFee").value):0;
+  const audienceFee=audienceType==="paid"?Number($("audienceFee").value):0;
+
+  const maxSingers=Number($("maxSingers").value||20);
+  const status=$("showStatus").value;
+
+  if(!showName||!showDate||!showTime){
+    message("createMessage","Enter show name, date and time.",true);
+    return;
   }
+
+  if(
+    (soloType==="paid"&&(!Number.isFinite(soloSongFee)||soloSongFee<=0))||
+    (duetType==="paid"&&(!Number.isFinite(duetSongFee)||duetSongFee<=0))||
+    (audienceType==="paid"&&(!Number.isFinite(audienceFee)||audienceFee<=0))
+  ){
+    message("createMessage","Enter a valid amount for every PAID fee.",true);
+    return;
+  }
+
   if(!Number.isInteger(maxSingers)||maxSingers<1||maxSingers>100){
-    message("createMessage","Maximum singers must be between 1 and 100.",true);return;
+    message("createMessage","Maximum singers must be between 1 and 100.",true);
+    return;
   }
-  const btn=$("createShowBtn");btn.disabled=true;
+
+  const btn=$("createShowBtn");
+  btn.disabled=true;
+
   try{
     const phone=hostPhone();
+
     const record={
-      showName,name:showName,title:showName,showDate,date:showDate,showTime,time:showTime,
-      entryType,audienceFee,entryFee:audienceFee,soloSongFee,duetSongFee,maxSingers,
-      status,hostUid:currentUser.uid,hostEmail:currentUser.email||"",
-      hostName:hostApplication?.name||hostApplication?.fullName||"Show Host",
-      hostWhatsApp:phone,createdAt:Date.now()
+      showName,
+      name:showName,
+      title:showName,
+
+      showDate,
+      date:showDate,
+
+      showTime,
+      time:showTime,
+
+      /* Independent fee types and amounts */
+      soloSongFeeType:soloType,
+      soloSongFee,
+
+      duetSongFeeType:duetType,
+      duetSongFee,
+
+      audienceFeeType:audienceType,
+      audienceFee,
+
+      /* Compatibility with older audience page */
+      entryType:audienceType,
+      entryFee:audienceFee,
+
+      maxSingers,
+      status,
+
+      hostUid:currentUser.uid,
+      hostEmail:currentUser.email||"",
+      hostName:hostApplication?.name||
+               hostApplication?.fullName||
+               "Show Host",
+      hostWhatsApp:phone,
+
+      createdAt:Date.now()
     };
+
     await set(push(ref(db,"shows")),record);
-    ["showName","showDate","showTime"].forEach(id=>$(id).value="");
-    $("entryType").value="free";$("audienceFee").value="0";
-    $("soloSongFee").value="0";$("duetSongFee").value="0";
-    $("maxSingers").value="20";$("showStatus").value="Published";
+
+    $("showName").value="";
+    $("showDate").value="";
+    $("showTime").value="";
+
+    $("soloSongFee").value="";
+    $("duetSongFee").value="";
+    $("audienceFee").value="";
+
+    $("maxSingers").value="20";
+    $("showStatus").value="Published";
+
+    setFeeType("solo","free");
+    setFeeType("duet","free");
+    setFeeType("audience","free");
+
     message("createMessage","Show created successfully.");
-  }catch(e){message("createMessage","Show creation failed: "+e.message,true);}
-  finally{btn.disabled=false;}
+
+  }catch(e){
+    message("createMessage","Show creation failed: "+e.message,true);
+  }finally{
+    btn.disabled=false;
+  }
 };
+
+/* ---------------- DELETE SHOW ---------------- */
 
 async function deleteMyShow(id){
   const s=myShows[id];
-  if(!s||s.hostUid!==currentUser.uid){alert("You can only delete your own show.");return;}
-  if(!planActive){alert("Your subscription is inactive.");return;}
+
+  if(!s||s.hostUid!==currentUser.uid){
+    alert("You can only delete your own show.");
+    return;
+  }
+
+  if(!planActive){
+    alert("Your subscription is inactive.");
+    return;
+  }
+
   if(!confirm('Delete "'+(s.showName||s.name)+'"? This cannot be undone.'))return;
+
   try{
     await remove(ref(db,"shows/"+id));
-    try{await remove(ref(db,"showRegistrations/"+id));}catch(e){console.warn(e);}
+
+    try{
+      await remove(ref(db,"showRegistrations/"+id));
+    }catch(e){
+      console.warn(e);
+    }
+
     alert("Show deleted.");
-    $("posterSection").classList.add("hidden");$("registrationsSection").classList.add("hidden");
-  }catch(e){alert("Delete failed: "+e.message);}
+
+    $("posterSection").classList.add("hidden");
+    $("registrationsSection").classList.add("hidden");
+
+  }catch(e){
+    alert("Delete failed: "+e.message);
+  }
 }
+
+/* ---------------- SINGER REGISTRATIONS ---------------- */
 
 async function openRegistrations(id){
-  if(!myShows[id]||myShows[id].hostUid!==currentUser.uid)return alert("Not your show.");
-  selectedShowId=id;$("registrationShowName").textContent="Show: "+(myShows[id].showName||myShows[id].name);
-  $("registrationsSection").classList.remove("hidden");$("registrationsList").textContent="Loading...";
+  if(!myShows[id]||myShows[id].hostUid!==currentUser.uid){
+    return alert("Not your show.");
+  }
+
+  selectedShowId=id;
+
+  $("registrationShowName").textContent=
+    "Show: "+(myShows[id].showName||myShows[id].name);
+
+  $("registrationsSection").classList.remove("hidden");
+  $("registrationsList").textContent="Loading...";
+
   try{
-    const snap=await get(ref(db,"showRegistrations/"+id)),list=$("registrationsList");list.replaceChildren();
-    if(!snap.exists()){list.textContent="No singer registrations found.";return;}
+    const snap=await get(ref(db,"showRegistrations/"+id));
+    const list=$("registrationsList");
+
+    list.replaceChildren();
+
+    if(!snap.exists()){
+      list.textContent="No singer registrations found.";
+      return;
+    }
+
     Object.entries(snap.val()).forEach(([rid,s])=>{
-      const item=document.createElement("div");item.className="registration";
-      item.innerHTML=`<strong>${esc(s.singerName||s.name||"Singer")}</strong>
-      <p class="small">Song: ${esc(s.songName||s.song||"Not provided")}<br>
-      Mobile: ${esc(s.mobile||"Not provided")}<br>Status: ${esc(s.status||"Pending")}</p>
-      <button class="approve">Approve</button><button class="reject danger">Reject</button>`;
-      item.querySelector(".approve").onclick=()=>updateSingerStatus(id,rid,"Approved");
-      item.querySelector(".reject").onclick=()=>updateSingerStatus(id,rid,"Rejected");
+      const item=document.createElement("div");
+      item.className="registration";
+
+      item.innerHTML=`
+        <strong>${esc(s.singerName||s.name||"Singer")}</strong>
+        <p class="small">
+        Song: ${esc(s.songName||s.song||"Not provided")}<br>
+        Mobile: ${esc(s.mobile||"Not provided")}<br>
+        Status: ${esc(s.status||"Pending")}
+        </p>
+        <button class="approve">Approve</button>
+        <button class="reject danger">Reject</button>
+      `;
+
+      item.querySelector(".approve").onclick=
+        ()=>updateSingerStatus(id,rid,"Approved");
+
+      item.querySelector(".reject").onclick=
+        ()=>updateSingerStatus(id,rid,"Rejected");
+
       list.append(item);
     });
-  }catch(e){$("registrationsList").textContent="Could not load: "+e.message;}
+
+  }catch(e){
+    $("registrationsList").textContent="Could not load: "+e.message;
+  }
 }
+
 async function updateSingerStatus(id,rid,status){
-  if(!myShows[id]||myShows[id].hostUid!==currentUser.uid)return alert("Not your show.");
+  if(!myShows[id]||myShows[id].hostUid!==currentUser.uid){
+    return alert("Not your show.");
+  }
+
   try{
     const snap=await get(ref(db,"showRegistrations/"+id+"/"+rid));
+
     if(!snap.exists())throw new Error("Registration not found.");
+
     const old=snap.val();
-    await set(ref(db,"showRegistrations/"+id+"/"+rid),{...old,status});
+
+    await set(
+      ref(db,"showRegistrations/"+id+"/"+rid),
+      {...old,status}
+    );
+
     openRegistrations(id);
-  }catch(e){alert("Could not update status: "+e.message);}
+
+  }catch(e){
+    alert("Could not update status: "+e.message);
+  }
 }
-$("closeRegistrationsBtn").onclick=()=>$("registrationsSection").classList.add("hidden");
+
+$("closeRegistrationsBtn").onclick=()=>{
+  $("registrationsSection").classList.add("hidden");
+};
+
+/* ---------------- POSTER GENERATION ---------------- */
 
 function generatePoster(id){
-  const s=myShows[id];if(!s||s.hostUid!==currentUser.uid)return alert("Not your show.");
-  selectedShowId=id;currentShowLink=audienceUrl(id);
+  const s=myShows[id];
+
+  if(!s||s.hostUid!==currentUser.uid){
+    return alert("Not your show.");
+  }
+
+  selectedShowId=id;
+  currentShowLink=audienceUrl(id);
+
   $("posterName").textContent=s.showName||s.name||"Singing Show";
   $("posterDate").textContent="Date: "+(s.showDate||s.date||"");
   $("posterTime").textContent="Time: "+(s.showTime||s.time||"");
-  const fee=Number(s.audienceFee??s.entryFee??0);
-  $("posterAudienceFee").textContent=fee===0?"AUDIENCE ENTRY: FREE":"AUDIENCE ENTRY: ₹"+fee;
-  $("posterSoloFee").textContent="SOLO SONG FEE: ₹"+Number(s.soloSongFee||0);
-  $("posterDuetFee").textContent="DUET SONG FEE: ₹"+Number(s.duetSongFee||0);
+
+  const audienceTypeSaved=savedFeeType(s,"audienceFeeType","audienceFee");
+  const soloTypeSaved=savedFeeType(s,"soloSongFeeType","soloSongFee");
+  const duetTypeSaved=savedFeeType(s,"duetSongFeeType","duetSongFee");
+
+  $("posterAudienceFee").textContent=
+    "AUDIENCE ENTRY: "+
+    feeLabel(audienceTypeSaved,s.audienceFee??s.entryFee,"");
+
+  $("posterSoloFee").textContent=
+    "SOLO PER SONG: "+
+    feeLabel(soloTypeSaved,s.soloSongFee,"per song");
+
+  $("posterDuetFee").textContent=
+    "DUET PER SONG: "+
+    feeLabel(duetTypeSaved,s.duetSongFee,"per song");
+
   $("qrBox").replaceChildren();
-  new QRCode($("qrBox"),{text:currentShowLink,width:120,height:120});
-  $("posterUploadMessage").textContent="Check existing poster approval status below.";
+
+  new QRCode($("qrBox"),{
+    text:currentShowLink,
+    width:120,
+    height:120
+  });
+
+  $("posterUploadMessage").textContent=
+    "Check existing poster approval status below.";
+
   get(ref(db,"showPosters/"+id)).then(snap=>{
-    if(snap.exists())$("posterUploadMessage").textContent="Custom poster status: "+snap.val().status;
+    if(snap.exists()){
+      $("posterUploadMessage").textContent=
+        "Custom poster status: "+snap.val().status;
+    }else{
+      $("posterUploadMessage").textContent=
+        "No custom poster submitted yet.";
+    }
   }).catch(()=>{});
+
   $("posterSection").classList.remove("hidden");
   $("posterSection").scrollIntoView({behavior:"smooth"});
 }
+
 function wrapText(ctx,text,x,y,max,lineHeight){
-  let line="",cy=y;
+  let line="";
+  let cy=y;
+
   for(const word of String(text).split(/\s+/)){
     const test=line?line+" "+word:word;
-    if(ctx.measureText(test).width>max&&line){ctx.fillText(line,x,cy);line=word;cy+=lineHeight;}
-    else line=test;
+
+    if(ctx.measureText(test).width>max&&line){
+      ctx.fillText(line,x,cy);
+      line=word;
+      cy+=lineHeight;
+    }else{
+      line=test;
+    }
   }
+
   if(line)ctx.fillText(line,x,cy);
 }
+
 async function makePosterBlob(){
-  const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d");
-  canvas.width=900;canvas.height=1200;
-  ctx.fillStyle="#fff8e8";ctx.fillRect(0,0,900,1200);
-  ctx.strokeStyle="#b78622";ctx.lineWidth=14;ctx.strokeRect(20,20,860,1160);
-  ctx.textAlign="center";ctx.fillStyle="#8a5a00";ctx.font="bold 44px Arial";
-  ctx.fillText("MELODY MAGIC",450,105);ctx.fillText("DIGITAL AUDITORIUM",450,160);
-  ctx.fillStyle="#111";ctx.font="bold 48px Arial";wrapText(ctx,$("posterName").textContent,450,270,760,58);
-  ctx.font="30px Arial";ctx.fillText($("posterDate").textContent,450,440);ctx.fillText($("posterTime").textContent,450,500);
-  ctx.fillStyle="#8a5a00";ctx.font="bold 34px Arial";
+  const canvas=document.createElement("canvas");
+  const ctx=canvas.getContext("2d");
+
+  canvas.width=900;
+  canvas.height=1200;
+
+  ctx.fillStyle="#fff8e8";
+  ctx.fillRect(0,0,900,1200);
+
+  ctx.strokeStyle="#b78622";
+  ctx.lineWidth=14;
+  ctx.strokeRect(20,20,860,1160);
+
+  ctx.textAlign="center";
+  ctx.fillStyle="#8a5a00";
+  ctx.font="bold 44px Arial";
+
+  ctx.fillText("MELODY MAGIC",450,105);
+  ctx.fillText("DIGITAL AUDITORIUM",450,160);
+
+  ctx.fillStyle="#111";
+  ctx.font="bold 48px Arial";
+
+  wrapText(
+    ctx,
+    $("posterName").textContent,
+    450,270,760,58
+  );
+
+  ctx.font="30px Arial";
+  ctx.fillText($("posterDate").textContent,450,440);
+  ctx.fillText($("posterTime").textContent,450,500);
+
+  ctx.fillStyle="#8a5a00";
+  ctx.font="bold 34px Arial";
   ctx.fillText($("posterAudienceFee").textContent,450,580);
-  ctx.font="28px Arial";ctx.fillText($("posterSoloFee").textContent,450,640);ctx.fillText($("posterDuetFee").textContent,450,690);
+
+  ctx.font="28px Arial";
+  ctx.fillText($("posterSoloFee").textContent,450,640);
+  ctx.fillText($("posterDuetFee").textContent,450,690);
+
   const qr=$("qrBox").querySelector("canvas");
+
   if(qr)ctx.drawImage(qr,350,740,200,200);
-  ctx.fillStyle="#333";ctx.font="24px Arial";ctx.fillText("Scan QR code to join the show",450,1000);
-  ctx.font="22px Arial";ctx.fillText("Melody Magic Music Studio",450,1070);
-  return new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+
+  ctx.fillStyle="#333";
+  ctx.font="24px Arial";
+  ctx.fillText("Scan QR code to join the show",450,1000);
+
+  ctx.font="22px Arial";
+  ctx.fillText("Melody Magic Music Studio",450,1070);
+
+  return new Promise(resolve=>{
+    canvas.toBlob(resolve,"image/png");
+  });
 }
+
 $("downloadPosterBtn").onclick=async()=>{
   try{
-    const blob=await makePosterBlob();if(!blob)throw new Error("Could not create image.");
-    const a=document.createElement("a"),url=URL.createObjectURL(blob);
-    a.href=url;a.download="Melody-Magic-Show-Poster.png";a.click();URL.revokeObjectURL(url);
-  }catch(e){alert("Poster download failed: "+e.message);}
+    const blob=await makePosterBlob();
+
+    if(!blob)throw new Error("Could not create image.");
+
+    const a=document.createElement("a");
+    const url=URL.createObjectURL(blob);
+
+    a.href=url;
+    a.download="Melody-Magic-Show-Poster.png";
+    a.click();
+
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+  }catch(e){
+    alert("Poster download failed: "+e.message);
+  }
 };
 
+/* ---------------- CUSTOM POSTER UPLOAD ---------------- */
+
 $("uploadPosterBtn").onclick=async()=>{
-  if(!selectedShowId||!myShows[selectedShowId])return alert("Select a show first.");
-  if(!planActive)return alert("Active subscription required.");
+  if(!selectedShowId||!myShows[selectedShowId]){
+    return alert("Select a show first.");
+  }
+
+  if(!planActive){
+    return alert("Active subscription required.");
+  }
+
   const file=$("customPosterFile").files[0];
+
   if(!file)return alert("Please choose a poster image.");
-  if(!["image/jpeg","image/png","image/webp"].includes(file.type))return alert("Choose JPG, PNG or WEBP.");
-  if(file.size>8*1024*1024)return alert("Maximum image size is 8 MB.");
-  const btn=$("uploadPosterBtn");btn.disabled=true;message("posterUploadMessage","Uploading image to Cloudinary...");
+
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+    return alert("Choose JPG, PNG or WEBP.");
+  }
+
+  if(file.size>8*1024*1024){
+    return alert("Maximum image size is 8 MB.");
+  }
+
+  const btn=$("uploadPosterBtn");
+  btn.disabled=true;
+
+  message("posterUploadMessage","Uploading image to Cloudinary...");
+
   try{
     const existing=await get(ref(db,"showPosters/"+selectedShowId));
-    if(existing.exists()&&existing.val().status==="Pending")throw new Error("A poster is already awaiting admin approval.");
-    if(existing.exists()&&existing.val().status==="Approved")throw new Error("Your poster is already approved. Contact Admin if you need to replace it.");
-    const form=new FormData();form.append("file",file);form.append("upload_preset",UPLOAD_PRESET);
-    const response=await fetch("https://api.cloudinary.com/v1_1/"+CLOUD_NAME+"/image/upload",{method:"POST",body:form});
+
+    if(existing.exists()&&existing.val().status==="Pending"){
+      throw new Error("A poster is already awaiting admin approval.");
+    }
+
+    if(existing.exists()&&existing.val().status==="Approved"){
+      throw new Error("Your poster is already approved. Contact Admin if you need to replace it.");
+    }
+
+    const form=new FormData();
+
+    form.append("file",file);
+    form.append("upload_preset",UPLOAD_PRESET);
+
+    const response=await fetch(
+      "https://api.cloudinary.com/v1_1/"+CLOUD_NAME+"/image/upload",
+      {method:"POST",body:form}
+    );
+
     const result=await response.json();
-    if(!response.ok)throw new Error(result.error?.message||"Cloudinary upload failed.");
+
+    if(!response.ok){
+      throw new Error(result.error?.message||"Cloudinary upload failed.");
+    }
+
     const s=myShows[selectedShowId];
+
     await set(ref(db,"showPosters/"+selectedShowId),{
-      hostUid:currentUser.uid,showId:selectedShowId,imageUrl:result.secure_url,
-      publicId:result.public_id||"",status:"Pending",submittedAt:Date.now(),
+      hostUid:currentUser.uid,
+      showId:selectedShowId,
+      imageUrl:result.secure_url,
+      publicId:result.public_id||"",
+      status:"Pending",
+      submittedAt:Date.now(),
       showName:s.showName||s.name||"Singing Show"
     });
-    message("posterUploadMessage","Uploaded successfully. Status: PENDING ADMIN APPROVAL. It is not public yet.");
-  }catch(e){message("posterUploadMessage","Upload failed: "+e.message,true);}
-  finally{btn.disabled=false;}
+
+    message(
+      "posterUploadMessage",
+      "Uploaded successfully. Status: PENDING ADMIN APPROVAL. It is not public yet."
+    );
+
+  }catch(e){
+    message("posterUploadMessage","Upload failed: "+e.message,true);
+  }finally{
+    btn.disabled=false;
+  }
 };
+
+/* ---------------- SHARING ---------------- */
 
 $("sharePosterBtn").onclick=async()=>{
   if(!currentShowLink)return;
+
   const title=$("posterName").textContent;
   const text="Join my show on Melody Magic Digital Auditorium: "+title;
+
   if(navigator.share){
-    try{await navigator.share({title,text,url:currentShowLink});}
-    catch(e){if(e.name!=="AbortError")alert(e.message);}
+    try{
+      await navigator.share({
+        title,
+        text,
+        url:currentShowLink
+      });
+    }catch(e){
+      if(e.name!=="AbortError")alert(e.message);
+    }
   }else{
-    try{await navigator.clipboard.writeText(text+"\n"+currentShowLink);alert("Show link copied.");}
-    catch{prompt("Copy show link:",currentShowLink);}
+    try{
+      await navigator.clipboard.writeText(text+"\n"+currentShowLink);
+      alert("Show link copied.");
+    }catch{
+      prompt("Copy show link:",currentShowLink);
+    }
   }
 };
+
 $("whatsappShareBtn").onclick=()=>{
   if(!currentShowLink)return;
-  const text=encodeURIComponent("Join my show: "+$("posterName").textContent+"\n"+currentShowLink);
+
+  const text=encodeURIComponent(
+    "Join my show: "+$("posterName").textContent+"\n"+currentShowLink
+  );
+
   window.open("https://wa.me/?text="+text,"_blank");
 };
+
 $("facebookShareBtn").onclick=()=>{
   if(!currentShowLink)return;
-  window.open("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(currentShowLink),"_blank");
+
+  window.open(
+    "https://www.facebook.com/sharer/sharer.php?u="+
+    encodeURIComponent(currentShowLink),
+    "_blank"
+  );
 };
-$("closePosterBtn").onclick=()=>$("posterSection").classList.add("hidden");
+
+$("closePosterBtn").onclick=()=>{
+  $("posterSection").classList.add("hidden");
+};
+
+/* ---------------- LOGIN / LOGOUT ---------------- */
 
 $("loginBtn").onclick=async()=>{
-  const email=$("email").value.trim(),password=$("password").value;
-  if(!email||!password)return message("loginMessage","Enter email and password.",true);
-  const b=$("loginBtn");b.disabled=true;
-  try{await signInWithEmailAndPassword(auth,email,password);message("loginMessage","Login successful.");}
-  catch(e){message("loginMessage","Login failed: "+e.message,true);}
-  finally{b.disabled=false;}
+  const email=$("email").value.trim();
+  const password=$("password").value;
+
+  if(!email||!password){
+    return message("loginMessage","Enter email and password.",true);
+  }
+
+  const b=$("loginBtn");
+  b.disabled=true;
+
+  try{
+    await signInWithEmailAndPassword(auth,email,password);
+    message("loginMessage","Login successful.");
+  }catch(e){
+    message("loginMessage","Login failed: "+e.message,true);
+  }finally{
+    b.disabled=false;
+  }
 };
-$("logoutBtn").onclick=async()=>{try{await signOut(auth);}catch(e){alert(e.message);}};
+
+$("logoutBtn").onclick=async()=>{
+  try{
+    await signOut(auth);
+  }catch(e){
+    alert(e.message);
+  }
+};
+
 $("requestRenewalBtn").onclick=submitRenewalRequest;
+
 $("renewBtn").onclick=()=>{
-  if(ADMIN_WHATSAPP.includes("X"))return alert("Admin WhatsApp number has not been configured yet.");
-  const text=encodeURIComponent("Hello Admin, I want to renew my Melody Magic Digital Auditorium host subscription. Plan: "+HOST_PLANS[$("renewPlan").value].name);
-  window.open("https://wa.me/"+ADMIN_WHATSAPP+"?text="+text,"_blank");
+  if(ADMIN_WHATSAPP.includes("X")){
+    return alert("Admin WhatsApp number has not been configured yet.");
+  }
+
+  const text=encodeURIComponent(
+    "Hello Admin, I want to renew my Melody Magic Digital Auditorium host subscription. Plan: "+
+    HOST_PLANS[$("renewPlan").value].name
+  );
+
+  window.open(
+    "https://wa.me/"+ADMIN_WHATSAPP+"?text="+text,
+    "_blank"
+  );
 };
+
+/* ---------------- AUTH STATE ---------------- */
 
 onAuthStateChanged(auth,async user=>{
   currentUser=user;
+
   if(!user){
-    if(stopShowsListener)stopShowsListener();if(stopHostListener)stopHostListener();
-    stopShowsListener=null;stopHostListener=null;hostApplication=null;myShows={};planActive=false;
-    showLogin();return;
+    if(stopShowsListener)stopShowsListener();
+    if(stopHostListener)stopHostListener();
+
+    stopShowsListener=null;
+    stopHostListener=null;
+    hostApplication=null;
+    myShows={};
+    planActive=false;
+
+    showLogin();
+    return;
   }
-  showDashboard();await checkHostAccount(user);startShowsListener();
+
+  showDashboard();
+  await checkHostAccount(user);
+  startShowsListener();
 });
+
+/* Initial fee defaults */
+setFeeType("solo","free");
+setFeeType("duet","free");
+setFeeType("audience","free");
+
 </script>
 </body>
 </html>
