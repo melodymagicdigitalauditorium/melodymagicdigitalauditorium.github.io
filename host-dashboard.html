@@ -85,6 +85,7 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <div id="renewRequestMessage" class="small"></div>
 <button id="renewBtn" class="secondary">Contact Admin on WhatsApp</button>
 </div>
+
 <div id="expiryReminder" class="status hidden"></div>
 
 <div id="hostTools">
@@ -92,6 +93,7 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <section class="card">
 <h2>Create New Show</h2>
 <input id="showName" placeholder="Show name">
+
 <div class="row">
 <div>
 <label class="small">Show date</label>
@@ -130,7 +132,7 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 
 <section class="card">
 <h2>My Shows</h2>
-<p class="small">You can manage and delete only shows created by your account.</p>
+<p class="small">Only active shows created by your account are displayed here. Deleted and unnamed old records are hidden.</p>
 <div id="myShows"><p class="small">Loading your shows...</p></div>
 </section>
 
@@ -186,12 +188,9 @@ import {
   onValue
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-/* UPDATE THIS NUMBER to your official WhatsApp number.
-   Include country code, without + or spaces. */
 const ADMIN_WHATSAPP = "91XXXXXXXXXX";
 
 const AUDIENCE_PAGE = "audience.html";
-const SINGER_PAGE = "singer.html";
 const LIVE_PAGE = "host-performance-control.html";
 
 let currentUser = null;
@@ -259,48 +258,88 @@ const HOST_PLANS = {
 function showExpiryReminder(data) {
   const box = $("expiryReminder");
   const end = parseTimestamp(data?.subscriptionEndAt);
-  if (!Number.isFinite(end)) { box.classList.add("hidden"); return; }
+
+  if (!Number.isFinite(end)) {
+    box.classList.add("hidden");
+    return;
+  }
+
   const remaining = end - Date.now();
   const days = Math.ceil(remaining / 86400000);
   let text = "";
+
   if (remaining <= 0) text = "Your subscription has expired. Choose a renewal plan and contact Admin.";
   else if (remaining <= 86400000) text = "Reminder: your host subscription expires within 24 hours. Please contact Admin for renewal.";
-  else if (days <= 1) text = "Reminder: your host subscription expires tomorrow. Please arrange renewal.";
   else if (days <= 3) text = "Reminder: your host subscription expires in " + days + " days. Please arrange renewal.";
   else if (days <= 7) text = "Advance reminder: your host subscription expires in " + days + " days.";
-  if (!text) { box.classList.add("hidden"); return; }
+
+  if (!text) {
+    box.classList.add("hidden");
+    return;
+  }
+
   box.textContent = text;
   box.classList.remove("hidden");
 }
 
 async function submitRenewalRequest() {
-  if (!currentUser || !hostApplication || String(hostApplication.status || "").toLowerCase() !== "approved") {
-    alert("Only an approved host can request a subscription renewal."); return;
+  if (!currentUser || !hostApplication ||
+      String(hostApplication.status || "").toLowerCase() !== "approved") {
+    alert("Only an approved host can request a subscription renewal.");
+    return;
   }
+
   const planId = $("renewPlan").value;
   const plan = HOST_PLANS[planId];
   if (!plan) return;
-  const existing = await get(ref(db, "hostRenewalRequests/" + currentUser.uid));
-  if (existing.exists() && Object.values(existing.val()).some(item => item && String(item.status || "").toLowerCase() === "pending")) {
-    $("renewRequestMessage").textContent = "You already have a pending renewal request. Please wait for Admin to review it.";
-    return;
-  }
+
   const btn = $("requestRenewalBtn");
   btn.disabled = true;
+
   try {
+    const existing = await get(ref(db, "hostRenewalRequests/" + currentUser.uid));
+
+    if (existing.exists() &&
+        Object.values(existing.val()).some(item =>
+          item && String(item.status || "").toLowerCase() === "pending"
+        )) {
+      $("renewRequestMessage").textContent =
+        "You already have a pending renewal request. Please wait for Admin to review it.";
+      return;
+    }
+
     const requestRef = push(ref(db, "hostRenewalRequests/" + currentUser.uid));
+
     await set(requestRef, {
-      hostUid: currentUser.uid, hostEmail: currentUser.email || "",
-      hostName: hostApplication.fullName || hostApplication.name || hostApplication.hostName || currentUser.email || "Host",
-      planId, planName: plan.name, amount: plan.price, status: "Pending",
+      hostUid: currentUser.uid,
+      hostEmail: currentUser.email || "",
+      hostName: hostApplication.fullName || hostApplication.name ||
+                hostApplication.hostName || currentUser.email || "Host",
+      planId,
+      planName: plan.name,
+      amount: plan.price,
+      status: "Pending",
       requestedAt: Date.now()
     });
-    $("renewRequestMessage").textContent = "Renewal request sent to Admin. Please complete payment after confirming with Admin. Your subscription remains locked until approval.";
-    const waText = encodeURIComponent("Hello Admin, I have submitted a host renewal request. Plan: " + plan.name + ", Amount: ₹" + plan.price + ". Host: " + (currentUser.email || currentUser.uid));
-    if (!ADMIN_WHATSAPP.includes("X")) window.open("https://wa.me/" + ADMIN_WHATSAPP + "?text=" + waText, "_blank");
+
+    $("renewRequestMessage").textContent =
+      "Renewal request sent to Admin. Your subscription remains locked until approval.";
+
+    if (!ADMIN_WHATSAPP.includes("X")) {
+      const waText = encodeURIComponent(
+        "Hello Admin, I have submitted a host renewal request. Plan: " +
+        plan.name + ", Amount: ₹" + plan.price +
+        ". Host: " + (currentUser.email || currentUser.uid)
+      );
+      window.open("https://wa.me/" + ADMIN_WHATSAPP + "?text=" + waText, "_blank");
+    }
+
   } catch (error) {
-    $("renewRequestMessage").textContent = "Could not send renewal request: " + error.message;
-  } finally { btn.disabled = false; }
+    $("renewRequestMessage").textContent =
+      "Could not send renewal request: " + error.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function showLogin() {
@@ -324,7 +363,8 @@ async function checkHostAccount(user) {
   stopHostListener = onValue(applicationRef, snapshot => {
     if (!snapshot.exists()) {
       hostApplication = null;
-      $("hostStatus").textContent = "Host application not found. Please contact the administrator.";
+      $("hostStatus").textContent =
+        "Host application not found. Please contact the administrator.";
       $("hostTools").classList.add("hidden");
       $("renewBox").classList.add("hidden");
       return;
@@ -336,7 +376,9 @@ async function checkHostAccount(user) {
     const status = String(hostApplication.status || "").toLowerCase();
 
     if (status !== "approved") {
-      $("hostStatus").textContent = "Your host account is not approved yet. Current status: " + (hostApplication.status || "Pending");
+      $("hostStatus").textContent =
+        "Your host account is not approved yet. Current status: " +
+        (hostApplication.status || "Pending");
       $("hostTools").classList.add("hidden");
       $("renewBox").classList.add("hidden");
       return;
@@ -348,6 +390,7 @@ async function checkHostAccount(user) {
   });
 }
 
+/* SHOW LISTENER: ONLY THIS HOST'S NAMED, NON-DELETED SHOWS */
 function startShowsListener() {
   if (stopShowsListener) stopShowsListener();
 
@@ -360,16 +403,28 @@ function startShowsListener() {
       const allShows = snapshot.val();
 
       Object.entries(allShows).forEach(([id, show]) => {
-        if (show && show.hostUid === currentUser.uid) {
-          myShows[id] = show;
-        }
+        if (!show) return;
+
+        // Only shows created by the currently logged-in host.
+        if (show.hostUid !== currentUser.uid) return;
+
+        // Hide deleted shows.
+        const status = String(show.status || "").trim().toLowerCase();
+        if (status === "deleted") return;
+
+        // Hide old records with no valid show name.
+        const name = String(show.showName || "").trim();
+        if (!name || name.toLowerCase() === "untitled show") return;
+
+        myShows[id] = show;
       });
     }
 
     renderShows();
   }, error => {
     $("myShows").innerHTML =
-      '<p class="bad">Could not load shows: ' + escapeHtml(error.message) + '</p>';
+      '<p class="bad">Could not load shows: ' +
+      escapeHtml(error.message) + '</p>';
   });
 }
 
@@ -388,7 +443,8 @@ function renderShows() {
   const entries = Object.entries(myShows);
 
   if (!entries.length) {
-    container.innerHTML = '<p class="small">You have not created any shows yet.</p>';
+    container.innerHTML =
+      '<p class="small">You have not created any active named shows yet. Create a new show above.</p>';
     return;
   }
 
@@ -403,7 +459,7 @@ function renderShows() {
       : "Free entry";
 
     div.innerHTML = `
-      <h3>${escapeHtml(show.showName || "Untitled Show")}</h3>
+      <h3>${escapeHtml(show.showName)}</h3>
       <p class="small">
         Date: ${escapeHtml(show.showDate || "Not set")}<br>
         Time: ${escapeHtml(show.showTime || "Not set")}<br>
@@ -419,11 +475,13 @@ function renderShows() {
 
     div.querySelector(".posterButton").addEventListener("click", () => generatePoster(id));
     div.querySelector(".registrationButton").addEventListener("click", () => openRegistrations(id));
+
     div.querySelector(".liveButton").addEventListener("click", () => {
       const url = new URL(LIVE_PAGE, window.location.href);
       url.searchParams.set("showId", id);
       window.location.href = url.href;
     });
+
     div.querySelector(".deleteButton").addEventListener("click", () => deleteMyShow(id));
 
     container.appendChild(div);
@@ -465,6 +523,9 @@ $("createShowBtn").addEventListener("click", async () => {
     return;
   }
 
+  const btn = $("createShowBtn");
+  btn.disabled = true;
+
   try {
     const newShowRef = push(ref(db, "shows"));
 
@@ -482,9 +543,18 @@ $("createShowBtn").addEventListener("click", async () => {
     });
 
     $("showName").value = "";
+    $("showDate").value = "";
+    $("showTime").value = "";
+    $("entryType").value = "free";
+    $("entryFee").value = "0";
+    $("maxSingers").value = "20";
+    $("showStatus").value = "published";
+
     message("createMessage", "Show created successfully.");
   } catch (error) {
     message("createMessage", "Show creation failed: " + error.message, true);
+  } finally {
+    btn.disabled = false;
   }
 });
 
@@ -508,13 +578,12 @@ async function deleteMyShow(showId) {
   }
 
   const confirmed = confirm(
-    'Delete "' + (show.showName || "this show") + '"?\n\nThis action cannot be undone.'
+    'Delete "' + show.showName + '"?\n\nThis action cannot be undone.'
   );
 
   if (!confirmed) return;
 
   try {
-    /* Re-check ownership from Firebase before deletion. */
     const showRef = ref(db, "shows/" + showId);
     const snapshot = await get(showRef);
 
@@ -532,7 +601,6 @@ async function deleteMyShow(showId) {
 
     await remove(showRef);
 
-    /* Remove this show's singer registrations too, if permitted by your rules. */
     try {
       await remove(ref(db, "showRegistrations/" + showId));
     } catch (registrationError) {
@@ -557,11 +625,13 @@ async function openRegistrations(showId) {
   }
 
   selectedShowId = showId;
+
   $("registrationShowName").textContent =
-    "Show: " + (myShows[showId].showName || "");
+    "Show: " + myShows[showId].showName;
 
   $("registrationsSection").classList.remove("hidden");
-  $("registrationsList").innerHTML = '<p class="small">Loading registrations...</p>';
+  $("registrationsList").innerHTML =
+    '<p class="small">Loading registrations...</p>';
 
   try {
     const snapshot = await get(ref(db, "showRegistrations/" + showId));
@@ -648,9 +718,10 @@ function generatePoster(showId) {
   audienceUrl.searchParams.set("showId", showId);
   currentShowLink = audienceUrl.href;
 
-  $("posterName").textContent = show.showName || "Melody Magic Show";
+  $("posterName").textContent = show.showName;
   $("posterDate").textContent = "Date: " + (show.showDate || "");
   $("posterTime").textContent = "Time: " + (show.showTime || "");
+
   $("posterFee").textContent = show.entryType === "paid"
     ? "Entry Fee: ₹" + (show.entryFee || 0)
     : "FREE ENTRY";
@@ -668,11 +739,10 @@ function generatePoster(showId) {
 }
 
 $("downloadPosterBtn").addEventListener("click", async () => {
-  const poster = $("posterPreview");
-
   try {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
+
     canvas.width = 900;
     canvas.height = 1100;
 
@@ -762,7 +832,8 @@ function loadImage(src) {
 $("sharePosterBtn").addEventListener("click", async () => {
   if (!currentShowLink) return;
 
-  const text = "Join my show on Melody Magic Digital Auditorium:\n" +
+  const text =
+    "Join my show on Melody Magic Digital Auditorium:\n" +
     $("posterName").textContent + "\n" + currentShowLink;
 
   if (navigator.share) {
@@ -799,11 +870,16 @@ $("loginBtn").addEventListener("click", async () => {
     return;
   }
 
+  const btn = $("loginBtn");
+  btn.disabled = true;
+
   try {
     await signInWithEmailAndPassword(auth, email, password);
     message("loginMessage", "Login successful.");
   } catch (error) {
     message("loginMessage", "Login failed: " + error.message, true);
+  } finally {
+    btn.disabled = false;
   }
 });
 
@@ -827,7 +903,10 @@ $("renewBtn").addEventListener("click", () => {
   }
 
   const text = encodeURIComponent(
-    "Hello, I want to renew my Melody Magic Digital Auditorium host subscription. Host: " + (currentUser?.email || currentUser?.uid || "") + ". Selected plan: " + (HOST_PLANS[$("renewPlan")?.value]?.name || "Please advise")
+    "Hello, I want to renew my Melody Magic Digital Auditorium host subscription. Host: " +
+    (currentUser?.email || currentUser?.uid || "") +
+    ". Selected plan: " +
+    (HOST_PLANS[$("renewPlan").value]?.name || "Please advise")
   );
 
   window.open("https://wa.me/" + ADMIN_WHATSAPP + "?text=" + text, "_blank");
