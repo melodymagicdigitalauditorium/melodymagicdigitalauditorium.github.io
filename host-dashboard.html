@@ -50,21 +50,13 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 </head>
 
 <body>
+
 <header>
 <h1>MELODY MAGIC DIGITAL AUDITORIUM</h1>
 <p>HOST CONTROL DASHBOARD</p>
 </header>
 
 <main>
-
-<section class="card" id="loginSection">
-<h2>Host Login</h2>
-<p class="small">Sign in using your registered host email and password.</p>
-<input id="email" type="email" placeholder="Host email">
-<input id="password" type="password" placeholder="Password">
-<button id="loginBtn">Login</button>
-<div id="loginMessage" class="status">Please log in to continue.</div>
-</section>
 
 <section class="card hidden" id="dashboardSection">
 
@@ -73,7 +65,9 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <h2>Welcome, Host</h2>
 <div id="hostEmail" class="small"></div>
 </div>
-<div><button class="secondary" id="logoutBtn">Logout</button></div>
+<div>
+<button class="secondary" id="logoutBtn">Logout</button>
+</div>
 </div>
 
 <div id="hostStatus" class="status">Checking account...</div>
@@ -81,11 +75,13 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <div id="renewBox" class="status hidden">
 <strong>Your subscription is inactive or expired.</strong>
 <p class="small">Request renewal. Admin must verify payment and approve it.</p>
+
 <select id="renewPlan">
 <option value="day">₹99 — 24 Hours</option>
 <option value="week">₹499 — 7 Days</option>
 <option value="month">₹1,499 — 30 Days</option>
 </select>
+
 <button id="requestRenewalBtn">Send Renewal Request</button>
 <div id="renewRequestMessage" class="small"></div>
 <button id="renewBtn" class="secondary">Contact Admin on WhatsApp</button>
@@ -240,7 +236,6 @@ Melody Magic Music Studio<br>
 import {auth,db} from "./firebase-host.js";
 
 import {
-signInWithEmailAndPassword,
 signOut,
 onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -255,6 +250,7 @@ const ADMIN_WHATSAPP="91XXXXXXXXXX";
 
 const AUDIENCE_PAGE="audience.html";
 const LIVE_PAGE="host-performance-control.html";
+const LOGIN_PAGE="host-login.html";
 
 let currentUser=null;
 let hostApplication=null;
@@ -349,15 +345,7 @@ function showExpiryReminder(d){
   box.classList.remove("hidden");
 }
 
-function showLogin(){
-  $("loginSection").classList.remove("hidden");
-  $("dashboardSection").classList.add("hidden");
-  $("posterSection").classList.add("hidden");
-  $("registrationsSection").classList.add("hidden");
-}
-
 function showDashboard(){
-  $("loginSection").classList.add("hidden");
   $("dashboardSection").classList.remove("hidden");
   $("hostEmail").textContent=currentUser?.email||"";
 }
@@ -422,13 +410,12 @@ function setFeeType(which,type){
 
   if(!isPaid){
     $(config.input).value="0";
-    $(config.note).textContent=
-      which==="audience"
-      ?"Audience entry is FREE."
-      ? "Audience entry is FREE."
-      : which==="solo"
-      ?"Solo performance is FREE."
-      :"Duet performance is FREE.";
+
+    $(config.note).textContent =
+      which==="audience" ? "Audience entry is FREE." :
+      which==="solo" ? "Solo performance is FREE." :
+      "Duet performance is FREE.";
+
   }else{
     $(config.note).textContent="Enter the amount in rupees.";
     if(Number($(config.input).value)<=0)$(config.input).value="";
@@ -477,6 +464,8 @@ function savedFeeType(show,typeField,amountField){
   return Number(show[amountField]||0)>0?"paid":"free";
 }
 
+/* ---------------- HOST ACCOUNT ---------------- */
+
 async function checkHostAccount(user){
   if(stopHostListener)stopHostListener();
 
@@ -497,6 +486,7 @@ async function checkHostAccount(user){
       if(String(hostApplication.status||"").toLowerCase()!=="approved"){
         $("hostTools").classList.add("hidden");
         $("renewBox").classList.add("hidden");
+
         message(
           "hostStatus",
           "Host account not approved. Status: "+(hostApplication.status||"Pending"),
@@ -510,6 +500,8 @@ async function checkHostAccount(user){
     e=>message("hostStatus","Could not read host account: "+e.message,true)
   );
 }
+
+/* ---------------- RENEWAL ---------------- */
 
 async function submitRenewalRequest(){
   if(!currentUser||!hostApplication||
@@ -690,7 +682,6 @@ $("createShowBtn").onclick=async()=>{
       showTime,
       time:showTime,
 
-      /* Independent fee types and amounts */
       soloSongFeeType:soloType,
       soloSongFee,
 
@@ -700,7 +691,6 @@ $("createShowBtn").onclick=async()=>{
       audienceFeeType:audienceType,
       audienceFee,
 
-      /* Compatibility with older audience page */
       entryType:audienceType,
       entryFee:audienceFee,
 
@@ -1147,34 +1137,14 @@ $("closePosterBtn").onclick=()=>{
   $("posterSection").classList.add("hidden");
 };
 
-/* ---------------- LOGIN / LOGOUT ---------------- */
-
-$("loginBtn").onclick=async()=>{
-  const email=$("email").value.trim();
-  const password=$("password").value;
-
-  if(!email||!password){
-    return message("loginMessage","Enter email and password.",true);
-  }
-
-  const b=$("loginBtn");
-  b.disabled=true;
-
-  try{
-    await signInWithEmailAndPassword(auth,email,password);
-    message("loginMessage","Login successful.");
-  }catch(e){
-    message("loginMessage","Login failed: "+e.message,true);
-  }finally{
-    b.disabled=false;
-  }
-};
+/* ---------------- LOGOUT ---------------- */
 
 $("logoutBtn").onclick=async()=>{
   try{
     await signOut(auth);
+    window.location.replace(LOGIN_PAGE);
   }catch(e){
-    alert(e.message);
+    alert("Logout failed: "+e.message);
   }
 };
 
@@ -1199,28 +1169,33 @@ $("renewBtn").onclick=()=>{
 /* ---------------- AUTH STATE ---------------- */
 
 onAuthStateChanged(auth,async user=>{
-  currentUser=user;
 
-  if(!user){
+  // No login OR anonymous performer login:
+  // Send the visitor to the single host login page.
+  if(!user||!user.email){
+    currentUser=null;
+
     if(stopShowsListener)stopShowsListener();
     if(stopHostListener)stopHostListener();
 
     stopShowsListener=null;
     stopHostListener=null;
-    hostApplication=null;
-    myShows={};
-    planActive=false;
 
-    showLogin();
+    window.location.replace(LOGIN_PAGE);
     return;
   }
 
+  currentUser=user;
+
   showDashboard();
+
   await checkHostAccount(user);
+
   startShowsListener();
 });
 
-/* Initial fee defaults */
+/* INITIAL FEE DEFAULTS */
+
 setFeeType("solo","free");
 setFeeType("duet","free");
 setFeeType("audience","free");
