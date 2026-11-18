@@ -19,11 +19,8 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
-
 /* =========================================
    MELODY MAGIC DIGITAL AUDITORIUM
-   LiveKit Connection, Roles, Permissions
-   Stage Assignment and Emoji Reactions
 ========================================= */
 
 const LIVEKIT_URL =
@@ -60,21 +57,268 @@ let localCameraEnabled = false;
 
 let stageSingerUids = [];
 let registrations = {};
+let participantPermissions = {};
 
 let permissionListener = null;
 let stageListener = null;
 let registrationListener = null;
+let controlsListener = null;
 
 let joining = false;
 let leaving = false;
 
 let lastReactionTimes = [];
 
+let audioEffects = null;
+let rawMicrophoneTrack = null;
+let processedMicrophoneTrack = null;
+let publishedMicrophoneTrack = null;
+
 const MIC_OFF_MESSAGE =
   "Your microphone is OFF until the host grants permission.";
 
 const CAMERA_OFF_MESSAGE =
   "Your camera is OFF until you enable it.";
+
+
+/* =========================================
+   VIRTUAL AUDIO EFFECTS
+========================================= */
+
+class VirtualAudioEffects {
+  constructor() {
+    this.context = null;
+    this.source = null;
+    this.destination = null;
+    this.processedTrack = null;
+
+    this.dryGain = null;
+    this.wetGain = null;
+    this.delay = null;
+    this.feedback = null;
+    this.echoGain = null;
+    this.convolver = null;
+    this.reverbGain = null;
+    this.outputGain = null;
+    this.monitorGain = null;
+
+    this.monitorEnabled = false;
+    this.muted = true;
+  }
+
+  async start(inputTrack) {
+    this.stop();
+
+    this.context = new AudioContext();
+
+    if (this.context.state === "suspended") {
+      await this.context.resume();
+    }
+
+    this.source = this.context.createMediaStreamSource(
+      new MediaStream([inputTrack])
+    );
+
+    this.destination =
+      this.context.createMediaStreamDestination();
+
+    this.dryGain = this.context.createGain();
+    this.dryGain.gain.value = 1;
+
+    this.delay = this.context.createDelay(2);
+    this.delay.delayTime.value = 0.28;
+
+    this.feedback = this.context.createGain();
+    this.feedback.gain.value = 0.20;
+
+    this.echoGain = this.context.createGain();
+    this.echoGain.gain.value = 0;
+
+    this.delay.connect(this.feedback);
+    this.feedback.connect(this.delay);
+    this.delay.connect(this.echoGain);
+
+    this.convolver = this.context.createConvolver();
+    this.convolver.buffer = this.createReverbImpulse(2.5, 2.5);
+
+    this.reverbGain = this.context.createGain();
+    this.reverbGain.gain.value = 0;
+
+    this.source.connect(this.convolver);
+    this.convolver.connect(this.reverbGain);
+
+    this.wetGain = this.context.createGain();
+    this.wetGain.gain.value = 0;
+
+    this.source.connect(this.dryGain);
+    this.source.connect(this.delay);
+
+    this.echoGain.connect(this.wetGain);
+    this.reverbGain.connect(this.wetGain);
+
+    this.outputGain = this.context.createGain();
+    this.outputGain.gain.value = 0.8;
+
+    this.dryGain.connect(this.outputGain);
+    this.wetGain.connect(this.outputGain);
+
+    this.outputGain.connect(this.destination);
+
+    this.monitorGain = this.context.createGain();
+    this.monitorGain.gain.value = 0;
+
+    this.outputGain.connect(this.monitorGain);
+    this.monitorGain.connect(this.context.destination);
+
+    this.processedTrack =
+      this.destination.stream.getAudioTracks()[0];
+
+    this.setMuted(true);
+
+    return this.processedTrack;
+  }
+
+  createReverbImpulse(duration, decay) {
+    const rate = this.context.sampleRate;
+    const length = Math.floor(rate * duration);
+
+    const impulse = this.context.createBuffer(
+      2,
+      length,
+      rate
+    );
+
+    for (let channel = 0; channel < 2; channel++) {
+      const data = impulse.getChannelData(channel);
+
+      for (let i = 0; i < length; i++) {
+        data[i] =
+          (Math.random() * 2 - 1) *
+          Math.pow(1 - i / length, decay);
+      }
+    }
+
+    return impulse;
+  }
+
+  setMuted(muted) {
+    this.muted = Boolean(muted);
+
+    if (this.processedTrack) {
+      this.processedTrack.enabled = !this.muted;
+    }
+  }
+
+  setEcho(value) {
+    if (!this.echoGain || !this.feedback) return;
+
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
+
+    this.echoGain.gain.setTargetAtTime(
+      amount * 0.6,
+      this.context.currentTime,
+      0.03
+    );
+
+    this.feedback.gain.setTargetAtTime(
+      0.10 + amount * 0.35,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  setReverb(value) {
+    if (!this.reverbGain) return;
+
+    const amount =
+      Math.max(0, Math.min(100, Number(value))) / 100;
+
+    this.reverbGain.gain.setTargetAtTime(
+      amount * 0.6,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  setMix(value) {
+    if (!this.dryGain || !this.wetGain) return;
+
+    const mix =
+      Math.max(0, Math.min(100, Number(value))) / 100;
+
+    this.dryGain.gain.setTargetAtTime(
+      1 - mix * 0.5,
+      this.context.currentTime,
+      0.03
+    );
+
+    this.wetGain.gain.setTargetAtTime(
+      mix,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  setVolume(value) {
+    if (!this.outputGain) return;
+
+    const volume =
+      Math.max(0, Math.min(100, Number(value))) / 100;
+
+    this.outputGain.gain.setTargetAtTime(
+      volume,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  async setMonitor(enabled) {
+    this.monitorEnabled = Boolean(enabled);
+
+    if (!this.monitorGain) return;
+
+    this.monitorGain.gain.setTargetAtTime(
+      this.monitorEnabled ? 0.35 : 0,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  setMonitorVolume(value) {
+    if (!this.monitorGain) return;
+
+    this.monitorGain.gain.setTargetAtTime(
+      Math.max(0, Math.min(100, Number(value))) / 100,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  stop() {
+    if (this.processedTrack) {
+      this.processedTrack.stop();
+    }
+
+    if (this.context) {
+      this.context.close().catch(() => {});
+    }
+
+    this.context = null;
+    this.source = null;
+    this.destination = null;
+    this.processedTrack = null;
+    this.dryGain = null;
+    this.wetGain = null;
+    this.delay = null;
+    this.feedback = null;
+    this.echoGain = null;
+    this.convolver = null;
+    this.reverbGain = null;
+    this.outputGain = null;
+    this.monitorGain = null;
+  }
+}
 
 
 /* =========================================
@@ -165,7 +409,7 @@ function createPanel() {
 
       #mmLiveKitPanel button,
       #mmLiveKitPanel select {
-        padding:11px 14px;
+        padding:10px 13px;
         margin:5px 4px 5px 0;
         border-radius:7px;
         border:1px solid #b58a35;
@@ -177,6 +421,11 @@ function createPanel() {
       #mmLiveKitPanel button:disabled {
         opacity:.45;
         cursor:not-allowed;
+      }
+
+      #mmLiveKitPanel input[type=range] {
+        width:100%;
+        accent-color:#d7ad4c;
       }
 
       #mmLiveKitPanel .mm-status {
@@ -204,7 +453,7 @@ function createPanel() {
 
       #mmLiveKitPanel .mm-video-box video {
         width:100%;
-        height:100%;
+        max-height:360px;
         min-height:150px;
         object-fit:contain;
         background:#000;
@@ -256,7 +505,7 @@ function createPanel() {
         padding:8px;
       }
 
-      .mm-reaction-item {
+      #mmLiveKitPanel .mm-reaction-item {
         display:inline-flex;
         align-items:center;
         gap:7px;
@@ -269,8 +518,29 @@ function createPanel() {
         font-size:14px;
       }
 
-      .mm-reaction-emoji {
+      #mmLiveKitPanel .mm-reaction-emoji {
         font-size:25px;
+      }
+
+      #mmLiveKitPanel .mm-singer-control {
+        background:#1c1c1c;
+        border:1px solid #51401e;
+        border-radius:9px;
+        padding:12px;
+        margin:9px 0;
+      }
+
+      #mmLiveKitPanel .mm-permission-status {
+        color:#e9bd57;
+        font-size:13px;
+        margin:5px 0;
+      }
+
+      #mmLiveKitPanel .mm-effect-control {
+        margin:12px 0;
+        padding:10px;
+        background:#1b1b1b;
+        border-radius:8px;
       }
 
       @media(max-width:600px) {
@@ -308,6 +578,49 @@ function createPanel() {
       </div>
     </div>
 
+    <div class="mm-section" id="mmAudioEffects">
+      <h3>🎚️ Microphone Audio Effects</h3>
+
+      <div class="mm-note">
+        These effects process your microphone before it is sent to the auditorium.
+        Use headphones if monitoring your own voice.
+      </div>
+
+      <div class="mm-effect-control">
+        <label>Echo: <strong id="mmEchoValue">0%</strong></label>
+        <input id="mmEcho" type="range" min="0" max="100" value="0">
+      </div>
+
+      <div class="mm-effect-control">
+        <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
+        <input id="mmReverb" type="range" min="0" max="100" value="0">
+      </div>
+
+      <div class="mm-effect-control">
+        <label>Wet / Dry Mix: <strong id="mmMixValue">0%</strong></label>
+        <input id="mmMix" type="range" min="0" max="100" value="0">
+      </div>
+
+      <div class="mm-effect-control">
+        <label>Microphone Output: <strong id="mmVolumeValue">80%</strong></label>
+        <input id="mmVolume" type="range" min="0" max="100" value="80">
+      </div>
+
+      <div class="mm-effect-control">
+        <label>
+          <input id="mmMonitor" type="checkbox">
+          Monitor my voice through this device
+        </label>
+        <div class="mm-note">
+          Headphones recommended. Speakers can cause feedback.
+        </div>
+      </div>
+
+      <div id="mmEffectsStatus" class="mm-note">
+        Effects will activate when you enable your microphone.
+      </div>
+    </div>
+
     <div class="mm-section" id="mmReactionSection">
       <h3>💛 Send Your Reactions</h3>
 
@@ -334,7 +647,7 @@ function createPanel() {
     </div>
 
     <div id="mmHostControls" class="mm-section" hidden>
-      <h3>Host Stage Controls</h3>
+      <h3>👑 Host Stage Controls</h3>
 
       <label for="mmStageMode">Stage format:</label>
       <select id="mmStageMode">
@@ -359,8 +672,15 @@ function createPanel() {
       <button id="mmSetStageBtn">Assign Main Stage</button>
 
       <div class="mm-note">
-        Only selected singers can publish audio and video.
-        Waiting singers and audience members can send reactions.
+        Assigning the stage does not automatically turn on the singer's microphone.
+        Grant microphone access separately below.
+      </div>
+
+      <div class="mm-section">
+        <h3>🎙️ Singer Microphone & Camera Permissions</h3>
+        <div id="mmSingerPermissions">
+          No approved singers found.
+        </div>
       </div>
     </div>
 
@@ -380,8 +700,35 @@ function createPanel() {
 
   byId("mmReactionButtons").addEventListener("click", event => {
     const button = event.target.closest("[data-reaction]");
-
     if (button) sendReaction(button.dataset.reaction);
+  });
+
+  byId("mmEcho").addEventListener("input", event => {
+    const value = Number(event.target.value);
+    byId("mmEchoValue").textContent = value + "%";
+    audioEffects?.setEcho(value);
+  });
+
+  byId("mmReverb").addEventListener("input", event => {
+    const value = Number(event.target.value);
+    byId("mmReverbValue").textContent = value + "%";
+    audioEffects?.setReverb(value);
+  });
+
+  byId("mmMix").addEventListener("input", event => {
+    const value = Number(event.target.value);
+    byId("mmMixValue").textContent = value + "%";
+    audioEffects?.setMix(value);
+  });
+
+  byId("mmVolume").addEventListener("input", event => {
+    const value = Number(event.target.value);
+    byId("mmVolumeValue").textContent = value + "%";
+    audioEffects?.setVolume(value);
+  });
+
+  byId("mmMonitor").addEventListener("change", event => {
+    audioEffects?.setMonitor(event.target.checked);
   });
 }
 
@@ -522,7 +869,6 @@ async function workerRequest(data) {
     );
   }
 
-  // Permission synchronization does not issue a new token.
   if (
     ["joinHost", "joinSinger", "joinAudience"].includes(data.action)
   ) {
@@ -592,11 +938,9 @@ function showReaction(emoji, senderName) {
   if (!ALLOWED_REACTIONS.includes(emoji)) return;
 
   const overlay = byId("mmReactionOverlay");
-
   if (!overlay) return;
 
   const empty = overlay.querySelector(".mm-note");
-
   if (empty) empty.remove();
 
   const item = document.createElement("span");
@@ -607,7 +951,8 @@ function showReaction(emoji, senderName) {
   emojiSpan.textContent = emoji;
 
   const nameSpan = document.createElement("span");
-  nameSpan.textContent = safeText(senderName || "Participant").slice(0, 60);
+  nameSpan.textContent =
+    safeText(senderName || "Participant").slice(0, 60);
 
   item.append(emojiSpan, nameSpan);
   overlay.appendChild(item);
@@ -649,7 +994,10 @@ function canSendReactionNow() {
 
 async function sendReaction(emoji) {
   if (!room || !isJoined) {
-    showMessage("Enter the auditorium before sending a reaction.", "warning");
+    showMessage(
+      "Enter the auditorium before sending a reaction.",
+      "warning"
+    );
     return;
   }
 
@@ -670,7 +1018,9 @@ async function sendReaction(emoji) {
       sentAt: Date.now()
     };
 
-    const bytes = new TextEncoder().encode(JSON.stringify(message));
+    const bytes = new TextEncoder().encode(
+      JSON.stringify(message)
+    );
 
     await room.localParticipant.publishData(bytes, {
       reliable: true,
@@ -748,14 +1098,19 @@ async function joinAuditorium() {
     }
 
     microphoneAllowed =
-      currentRole === "host" && tokenData.microphoneAllowed === true;
+      currentRole === "host" &&
+      tokenData.microphoneAllowed === true;
 
     cameraAllowed =
-      currentRole === "host" && tokenData.cameraAllowed === true;
+      currentRole === "host" &&
+      tokenData.cameraAllowed === true;
 
     if (currentRole === "singer") {
-      microphoneAllowed = tokenData.microphoneAllowed === true;
-      cameraAllowed = tokenData.cameraAllowed === true;
+      microphoneAllowed =
+        tokenData.microphoneAllowed === true;
+
+      cameraAllowed =
+        tokenData.cameraAllowed === true;
     }
 
     if (currentRole === "audience") {
@@ -788,15 +1143,19 @@ async function joinAuditorium() {
     updateControlButtons();
     updateReactionButtons();
 
+    // Create a local participant tile without requesting a camera.
     await createVideoTile(room.localParticipant, true);
 
-    // No microphone or camera is automatically enabled.
-    // The user must explicitly enable permitted devices.
+    // Also display participants who connected before the tile listener ran.
+    for (const participant of room.remoteParticipants.values()) {
+      await createVideoTile(participant, false);
+    }
 
     if (currentRole === "host") {
       byId("mmHostControls").hidden = false;
 
       await loadHostRegistrations();
+      listenToParticipantControls();
       listenToStage();
 
     } else {
@@ -855,7 +1214,7 @@ function registerRoomEvents() {
 
   room.on(
     RoomEvent.TrackUnsubscribed,
-    track => {
+    (track, publication, participant) => {
       track.detach().forEach(element => element.remove());
     }
   );
@@ -864,6 +1223,10 @@ function registerRoomEvents() {
     RoomEvent.ParticipantConnected,
     async participant => {
       await createVideoTile(participant, false);
+      showMessage(
+        (participant.name || "A participant") +
+        " joined the auditorium."
+      );
     }
   );
 
@@ -890,7 +1253,12 @@ function registerRoomEvents() {
       microphoneAllowed = false;
       cameraAllowed = false;
 
-      showMessage("Disconnected from the auditorium.", "warning");
+      stopMicrophoneEffects();
+
+      showMessage(
+        "Disconnected from the auditorium.",
+        "warning"
+      );
 
       resetButtons();
       updateReactionButtons();
@@ -989,7 +1357,6 @@ async function attachLocalTrack(track) {
 
 function attachTrackToTile(track, targetId) {
   const target = byId(targetId);
-
   if (!target || !track) return;
 
   const elements = track.attach();
@@ -1007,20 +1374,120 @@ function attachTrackToTile(track, targetId) {
       element.autoplay = true;
     }
 
-    target.appendChild(element);
+    if (!target.contains(element)) {
+      target.appendChild(element);
+    }
   });
 }
 
 function removeParticipantTile(identity) {
   const tile = byId(getTileId(identity));
-
   if (tile) tile.remove();
 }
 
 
 /* =========================================
-   MICROPHONE
+   MICROPHONE WITH AUDIO EFFECTS
 ========================================= */
+
+async function startMicrophoneEffects() {
+  if (!room || !isJoined) {
+    throw new Error("Join the auditorium first.");
+  }
+
+  if (!microphoneAllowed) {
+    throw new Error("The host has not granted microphone permission.");
+  }
+
+  if (publishedMicrophoneTrack) return;
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true
+    },
+    video: false
+  });
+
+  rawMicrophoneTrack = stream.getAudioTracks()[0];
+
+  if (!rawMicrophoneTrack) {
+    throw new Error("No microphone was found.");
+  }
+
+  audioEffects = new VirtualAudioEffects();
+
+  processedMicrophoneTrack =
+    await audioEffects.start(rawMicrophoneTrack);
+
+  // Apply the selected effects before publishing.
+  audioEffects.setEcho(Number(byId("mmEcho").value));
+  audioEffects.setReverb(Number(byId("mmReverb").value));
+  audioEffects.setMix(Number(byId("mmMix").value));
+  audioEffects.setVolume(Number(byId("mmVolume").value));
+
+  audioEffects.setMuted(false);
+
+  await room.localParticipant.publishTrack(
+    processedMicrophoneTrack,
+    {
+      name: "Melody Magic Processed Microphone",
+      source: Track.Source.Microphone
+    }
+  );
+
+  publishedMicrophoneTrack = processedMicrophoneTrack;
+  localMicEnabled = true;
+
+  const effectsStatus = byId("mmEffectsStatus");
+
+  if (effectsStatus) {
+    effectsStatus.textContent =
+      "Microphone active. Echo and reverb controls are available.";
+  }
+
+  updateControlButtons();
+}
+
+async function stopMicrophoneEffects() {
+  if (room && publishedMicrophoneTrack) {
+    try {
+      await room.localParticipant.unpublishTrack(
+        publishedMicrophoneTrack,
+        true
+      );
+    } catch (error) {
+      console.warn("Microphone unpublish:", error);
+    }
+  }
+
+  publishedMicrophoneTrack = null;
+  processedMicrophoneTrack = null;
+
+  if (audioEffects) {
+    audioEffects.stop();
+    audioEffects = null;
+  }
+
+  if (rawMicrophoneTrack) {
+    try {
+      rawMicrophoneTrack.stop();
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+
+  rawMicrophoneTrack = null;
+  localMicEnabled = false;
+
+  if (byId("mmEffectsStatus")) {
+    byId("mmEffectsStatus").textContent =
+      "Microphone is OFF.";
+  }
+
+  updateControlButtons();
+}
 
 async function toggleMicrophone() {
   if (!room || !isJoined) return;
@@ -1034,18 +1501,22 @@ async function toggleMicrophone() {
   }
 
   try {
-    const nextState = !localMicEnabled;
-
-    await room.localParticipant.setMicrophoneEnabled(nextState);
-
-    localMicEnabled = nextState;
-    updateControlButtons();
-
+    if (localMicEnabled) {
+      await stopMicrophoneEffects();
+      showMessage("Microphone OFF.");
+    } else {
+      await startMicrophoneEffects();
+      showMessage("Microphone ON. Your processed voice is live.", "success");
+    }
   } catch (error) {
-    localMicEnabled = false;
-    updateControlButtons();
+    console.error("Microphone error:", error);
 
-    showMessage("Microphone error: " + error.message, "error");
+    await stopMicrophoneEffects();
+
+    showMessage(
+      "Microphone error: " + error.message,
+      "error"
+    );
   }
 }
 
@@ -1068,6 +1539,19 @@ async function toggleCamera() {
   try {
     const nextState = !localCameraEnabled;
 
+    if (nextState) {
+      // Check device availability before enabling the camera.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera access is not supported by this browser.");
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+
+      if (!devices.some(device => device.kind === "videoinput")) {
+        throw new Error("No camera device was found on this device.");
+      }
+    }
+
     await room.localParticipant.setCameraEnabled(nextState);
 
     localCameraEnabled = nextState;
@@ -1077,7 +1561,10 @@ async function toggleCamera() {
     localCameraEnabled = false;
     updateControlButtons();
 
-    showMessage("Camera error: " + error.message, "error");
+    showMessage(
+      "Camera error: " + error.message,
+      "error"
+    );
   }
 }
 
@@ -1120,7 +1607,7 @@ function updateControlButtons() {
 
 
 /* =========================================
-   PERMISSION LISTENER
+   MY PERMISSION LISTENER
 ========================================= */
 
 function listenToMyPermissions() {
@@ -1141,12 +1628,12 @@ function listenToMyPermissions() {
     if (currentRole !== "singer") {
       microphoneAllowed = false;
       cameraAllowed = false;
-
       updateControlButtons();
       return;
     }
 
-    const selected = stageSingerUids.includes(currentUser.uid);
+    const selected =
+      stageSingerUids.includes(currentUser.uid);
 
     microphoneAllowed =
       selected && controls.microphoneAllowed === true;
@@ -1161,17 +1648,16 @@ function listenToMyPermissions() {
   onValue(permissionRef, permissionListener);
 }
 
+
+/* =========================================
+   ENFORCE CURRENT PERMISSIONS
+========================================= */
+
 async function enforceCurrentPermissions() {
   if (!room) return;
 
   if (!microphoneAllowed && localMicEnabled) {
-    try {
-      await room.localParticipant.setMicrophoneEnabled(false);
-    } catch (error) {
-      console.warn(error);
-    }
-
-    localMicEnabled = false;
+    await stopMicrophoneEffects();
   }
 
   if (!cameraAllowed && localCameraEnabled) {
@@ -1210,7 +1696,6 @@ function listenToStage() {
       if (!stageSingerUids.includes(currentUser.uid)) {
         microphoneAllowed = false;
         cameraAllowed = false;
-
         enforceCurrentPermissions();
       }
     }
@@ -1240,7 +1725,9 @@ async function loadHostRegistrations() {
 
   registrationListener = snapshot => {
     registrations = snapshot.val() || {};
+
     populateSingerSelectors();
+    renderSingerPermissionControls();
   };
 
   onValue(registrationsRef, registrationListener);
@@ -1295,6 +1782,155 @@ function populateSingerSelectors() {
 
   buildOptions(first, "Select approved singer");
   buildOptions(second, "Select second singer");
+}
+
+
+/* =========================================
+   HOST: LISTEN TO PERMISSIONS
+========================================= */
+
+function listenToParticipantControls() {
+  if (!isHost || !showId) return;
+
+  const controlsRef = ref(
+    db,
+    "participantControls/" + showId
+  );
+
+  if (controlsListener) {
+    off(controlsRef, "value", controlsListener);
+  }
+
+  controlsListener = snapshot => {
+    participantPermissions = snapshot.val() || {};
+    renderSingerPermissionControls();
+  };
+
+  onValue(controlsRef, controlsListener);
+}
+
+
+/* =========================================
+   HOST: RENDER SINGER PERMISSION BUTTONS
+========================================= */
+
+function renderSingerPermissionControls() {
+  const container = byId("mmSingerPermissions");
+
+  if (!container) return;
+
+  const approved = getApprovedRegistrations();
+
+  if (!approved.length) {
+    container.textContent =
+      "No approved singers with linked accounts were found.";
+    return;
+  }
+
+  container.innerHTML = "";
+
+  approved.forEach(item => {
+    const controls =
+      participantPermissions[item.singerUid] || {};
+
+    const micOn = controls.microphoneAllowed === true;
+    const cameraOn = controls.cameraAllowed === true;
+
+    const selected = stageSingerUids.includes(item.singerUid);
+
+    const card = document.createElement("div");
+    card.className = "mm-singer-control";
+
+    const name = document.createElement("strong");
+    name.textContent =
+      item.singerName || item.name || "Singer";
+
+    const status = document.createElement("div");
+    status.className = "mm-permission-status";
+
+    status.textContent =
+      (selected ? "On main stage" : "Waiting") +
+      " | Microphone: " + (micOn ? "Allowed" : "OFF") +
+      " | Camera: " + (cameraOn ? "Allowed" : "OFF");
+
+    const micButton = document.createElement("button");
+    micButton.textContent = micOn
+      ? "Revoke Microphone"
+      : "Grant Microphone";
+
+    micButton.addEventListener("click", () => {
+      changeSingerPermission(
+        item.singerUid,
+        !micOn,
+        cameraOn
+      );
+    });
+
+    const cameraButton = document.createElement("button");
+    cameraButton.textContent = cameraOn
+      ? "Revoke Camera"
+      : "Grant Camera";
+
+    cameraButton.addEventListener("click", () => {
+      changeSingerPermission(
+        item.singerUid,
+        micOn,
+        !cameraOn
+      );
+    });
+
+    card.append(name, status, micButton, cameraButton);
+    container.appendChild(card);
+  });
+}
+
+
+/* =========================================
+   HOST: GRANT / REVOKE PERMISSIONS
+========================================= */
+
+async function changeSingerPermission(
+  singerUid,
+  microphone,
+  camera
+) {
+  if (!isHost || !isJoined) {
+    showMessage(
+      "Only the connected approved host can change permissions.",
+      "error"
+    );
+    return;
+  }
+
+  if (!stageSingerUids.includes(singerUid)) {
+    showMessage(
+      "Assign this singer to the main stage before granting microphone or camera access.",
+      "warning"
+    );
+    return;
+  }
+
+  try {
+    await workerRequest({
+      action: "syncPermissions",
+      uid: singerUid,
+      microphoneAllowed: microphone === true,
+      cameraAllowed: camera === true
+    });
+
+    showMessage(
+      "Singer permissions updated successfully.",
+      "success"
+    );
+
+  } catch (error) {
+    console.error("Permission update error:", error);
+
+    showMessage(
+      "Could not update singer permissions: " + error.message,
+      "error"
+    );
+  }
 }
 
 
@@ -1360,6 +1996,7 @@ async function selectMainSingers() {
   );
 
   const stageButton = byId("mmSetStageBtn");
+
   stageButton.disabled = true;
   stageButton.textContent = "Assigning...";
 
@@ -1380,22 +2017,19 @@ async function selectMainSingers() {
       stageData
     );
 
+    // Stage assignment does not automatically grant microphone or camera.
     for (const item of approved) {
-      const selectedForStage =
-        selectedUids.includes(item.singerUid);
-
-      // This request updates server-side participant permissions.
-      // It does not require a new LiveKit token.
       await workerRequest({
         action: "syncPermissions",
         uid: item.singerUid,
-        microphoneAllowed: selectedForStage,
-        cameraAllowed: selectedForStage
+        microphoneAllowed: false,
+        cameraAllowed: false
       });
     }
 
     showMessage(
-      mode.toUpperCase() + " stage assigned successfully.",
+      mode.toUpperCase() +
+      " stage assigned. Grant microphone access separately.",
       "success"
     );
 
@@ -1443,9 +2077,18 @@ function stopFirebaseListeners() {
     );
   }
 
+  if (controlsListener && showId) {
+    off(
+      ref(db, "participantControls/" + showId),
+      "value",
+      controlsListener
+    );
+  }
+
   permissionListener = null;
   stageListener = null;
   registrationListener = null;
+  controlsListener = null;
 }
 
 
@@ -1459,11 +2102,9 @@ async function leaveAuditorium() {
   leaving = true;
 
   try {
-    if (room) {
-      try {
-        await room.localParticipant.setMicrophoneEnabled(false);
-      } catch (e) {}
+    await stopMicrophoneEffects();
 
+    if (room) {
       try {
         await room.localParticipant.setCameraEnabled(false);
       } catch (e) {}
@@ -1478,7 +2119,6 @@ async function leaveAuditorium() {
     stopFirebaseListeners();
 
     room = null;
-
     isJoined = false;
 
     localMicEnabled = false;
@@ -1491,7 +2131,6 @@ async function leaveAuditorium() {
     updateReactionButtons();
 
     const grid = byId("mmVideoGrid");
-
     if (grid) grid.innerHTML = "";
 
     showMessage("You have left the auditorium.");
@@ -1499,6 +2138,11 @@ async function leaveAuditorium() {
     leaving = false;
   }
 }
+
+
+/* =========================================
+   RESET BUTTONS
+========================================= */
 
 function resetButtons() {
   setButtonState(
@@ -1566,19 +2210,25 @@ async function initializeShow() {
 
       byId("mmHostControls").hidden = false;
 
-      showMessage("Host verified. Enter the auditorium when ready.");
+      showMessage(
+        "Host verified. Enter the auditorium when ready."
+      );
 
     } else if (requestedMode === "singer") {
       byId("mmRoleInfo").textContent =
         "Singer entry requested. Your registration will be checked by the server.";
 
-      showMessage("Singer entry ready. Click Enter Live Auditorium.");
+      showMessage(
+        "Singer entry ready. Click Enter Live Auditorium."
+      );
 
     } else {
       byId("mmRoleInfo").textContent =
         "Audience entry. Microphone and camera are disabled.";
 
-      showMessage("Audience entry ready. Click Enter Live Auditorium.");
+      showMessage(
+        "Audience entry ready. Click Enter Live Auditorium."
+      );
     }
 
     listenToStage();
@@ -1607,5 +2257,9 @@ window.addEventListener("beforeunload", () => {
 
   if (room) {
     room.disconnect();
+  }
+
+  if (audioEffects) {
+    audioEffects.stop();
   }
 });
