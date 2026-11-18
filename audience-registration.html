@@ -8,43 +8,94 @@
 
 <style>
 *{box-sizing:border-box}
+
 body{
-  margin:0;padding:20px;background:#090807;color:white;
+  margin:0;
+  padding:20px;
+  background:#090807;
+  color:white;
   font-family:Arial,sans-serif
 }
+
 .container{max-width:650px;margin:25px auto}
+
 h1,h2{color:#e7bd68}
+
 .card{
-  background:#191510;border:1px solid #705322;
-  border-radius:12px;padding:22px;margin:18px 0
+  background:#191510;
+  border:1px solid #705322;
+  border-radius:12px;
+  padding:22px;
+  margin:18px 0
 }
+
 .muted{color:#c2b7a6;line-height:1.6}
 .fee{color:#e7bd68;font-weight:bold;font-size:19px}
+
 .action,button{
-  display:block;width:100%;padding:15px;margin-top:15px;
-  border-radius:7px;text-align:center;text-decoration:none;
-  font-size:16px;font-weight:bold;border:0;cursor:pointer
+  display:block;
+  width:100%;
+  padding:15px;
+  margin-top:15px;
+  border-radius:7px;
+  text-align:center;
+  text-decoration:none;
+  font-size:16px;
+  font-weight:bold;
+  border:0;
+  cursor:pointer
 }
+
 .join{background:#e7bd68;color:#171009}
 .whatsapp{background:#25D366;color:#071b0c}
 .submit{background:#e7bd68;color:#171009}
+.check{background:#393027;color:#fff;border:1px solid #9b7628}
+
 .error{color:#ff9999;line-height:1.6}
 .success{color:#8ee29a;line-height:1.6}
 .hidden{display:none!important}
+
 label{
-  display:block;margin:14px 0 6px;color:#e7bd68;font-weight:bold
+  display:block;
+  margin:14px 0 6px;
+  color:#e7bd68;
+  font-weight:bold
 }
+
 input,select{
-  width:100%;padding:13px;border-radius:6px;
-  border:1px solid #705322;background:#090807;
-  color:white;font-size:16px
+  width:100%;
+  padding:13px;
+  border-radius:6px;
+  border:1px solid #705322;
+  background:#090807;
+  color:white;
+  font-size:16px
 }
+
 input[type=checkbox]{width:auto}
-.checkline{display:flex;align-items:center;gap:10px;margin-top:16px}
-.checkline label{margin:0;color:#ddd;font-weight:normal}
+
+.checkline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:16px
+}
+
+.checkline label{
+  margin:0;
+  color:#ddd;
+  font-weight:normal
+}
+
 button:disabled{opacity:.5;cursor:not-allowed}
+
 .small{font-size:13px;color:#b9ad9a}
-hr{border:0;border-top:1px solid #705322;margin:20px 0}
+
+hr{
+  border:0;
+  border-top:1px solid #705322;
+  margin:20px 0
+}
 </style>
 </head>
 
@@ -56,27 +107,44 @@ hr{border:0;border-top:1px solid #705322;margin:20px 0}
 
   <div class="card">
     <h2>Selected Show</h2>
-    <div id="showDetails" class="muted">Loading show details...</div>
+    <div id="showDetails" class="muted">
+      Loading show details...
+    </div>
   </div>
 
   <!-- PERFORMER ENTRY -->
+
   <div class="card">
     <h2>🎤 Performer Entry</h2>
+
     <p class="muted">
-      Register your song performance. Your request will be sent to the host
-      for approval before you are added to the performance queue.
+      Register your song performance. Your request will be sent
+      to the host for approval before you are added to the queue.
     </p>
+
+    <div id="authMessage" class="muted">
+      Checking your account...
+    </div>
 
     <form id="performerForm" class="hidden">
 
       <label for="performerName">Singer Name</label>
-      <input id="performerName" required maxlength="80"
-             placeholder="Enter singer name">
+      <input
+        id="performerName"
+        required
+        maxlength="80"
+        placeholder="Enter singer name"
+      >
 
       <label for="performerMobile">Mobile Number</label>
-      <input id="performerMobile" required type="tel"
-             inputmode="numeric" maxlength="15"
-             placeholder="Enter mobile number">
+      <input
+        id="performerMobile"
+        required
+        type="tel"
+        inputmode="numeric"
+        maxlength="15"
+        placeholder="Enter mobile number"
+      >
 
       <label for="performanceType">Performance Type</label>
       <select id="performanceType" required>
@@ -85,23 +153,39 @@ hr{border:0;border-top:1px solid #705322;margin:20px 0}
       </select>
 
       <div id="duetFields" class="hidden">
+
         <label for="coSingerName">Co-singer Name</label>
-        <input id="coSingerName" maxlength="80"
-               placeholder="Enter co-singer name">
+        <input
+          id="coSingerName"
+          maxlength="80"
+          placeholder="Enter co-singer name"
+        >
 
         <label for="coSingerMobile">Co-singer Mobile (Optional)</label>
-        <input id="coSingerMobile" type="tel"
-               inputmode="numeric" maxlength="15"
-               placeholder="Co-singer mobile number">
+        <input
+          id="coSingerMobile"
+          type="tel"
+          inputmode="numeric"
+          maxlength="15"
+          placeholder="Co-singer mobile number"
+        >
+
       </div>
 
       <label for="songName">Song Name</label>
-      <input id="songName" required maxlength="150"
-             placeholder="Enter song name">
+      <input
+        id="songName"
+        required
+        maxlength="150"
+        placeholder="Enter song name"
+      >
 
       <label for="movieName">Movie / Album Name</label>
-      <input id="movieName" maxlength="150"
-             placeholder="Enter movie or album name">
+      <input
+        id="movieName"
+        maxlength="150"
+        placeholder="Enter movie or album name"
+      >
 
       <label for="language">Song Language</label>
       <select id="language" required>
@@ -114,26 +198,37 @@ hr{border:0;border-top:1px solid #705322;margin:20px 0}
         <option>Other</option>
       </select>
 
-      <div id="performerFee" class="fee">Checking song fee...</div>
+      <div id="performerFee" class="fee">
+        Checking song fee...
+      </div>
 
       <div id="performerPaymentArea" class="hidden">
+
         <label for="performerPaymentReference">
           Payment Reference / UTR Number
         </label>
-        <input id="performerPaymentReference"
-               maxlength="100"
-               placeholder="Enter payment reference after payment">
 
-        <a id="performerWhatsapp"
-           class="action whatsapp hidden"
-           target="_blank" rel="noopener">
+        <input
+          id="performerPaymentReference"
+          maxlength="100"
+          placeholder="Enter payment reference after payment"
+        >
+
+        <a
+          id="performerWhatsapp"
+          class="action whatsapp hidden"
+          target="_blank"
+          rel="noopener"
+        >
           CONTACT HOST ON WHATSAPP
         </a>
 
         <p class="small">
-          After making payment, enter your payment reference above.
-          The host will verify your payment before approving your request.
+          After making payment, enter your payment reference.
+          The host will verify your payment before approving
+          your request.
         </p>
+
       </div>
 
       <div class="checkline">
@@ -143,17 +238,50 @@ hr{border:0;border-top:1px solid #705322;margin:20px 0}
         </label>
       </div>
 
-      <button type="submit" id="performerSubmit" class="submit">
+      <button
+        type="submit"
+        id="performerSubmit"
+        class="submit"
+      >
         SUBMIT PERFORMER REQUEST
       </button>
 
     </form>
 
     <div id="performerMessage" class="muted"></div>
+
+    <div id="registrationStatusArea" class="hidden">
+
+      <hr>
+
+      <h3>Registration Status</h3>
+
+      <div id="registrationStatus" class="muted"></div>
+
+      <button
+        type="button"
+        id="checkStatusButton"
+        class="check"
+      >
+        CHECK APPROVAL STATUS
+      </button>
+
+      <a
+        id="singerJoinButton"
+        class="action join hidden"
+      >
+        🎤 ENTER AS SINGER
+      </a>
+
+    </div>
+
   </div>
 
+
   <!-- AUDIENCE ENTRY -->
+
   <div class="card">
+
     <h2>Audience Entry</h2>
 
     <div id="entryDetails" class="muted">
@@ -164,13 +292,17 @@ hr{border:0;border-top:1px solid #705322;margin:20px 0}
       JOIN SHOW
     </a>
 
-    <a id="whatsappButton"
-       class="action whatsapp hidden"
-       target="_blank" rel="noopener">
+    <a
+      id="whatsappButton"
+      class="action whatsapp hidden"
+      target="_blank"
+      rel="noopener"
+    >
       CONTACT HOST ON WHATSAPP
     </a>
 
     <div id="message" class="muted"></div>
+
   </div>
 
   <p class="small" style="text-align:center">
@@ -179,9 +311,14 @@ hr{border:0;border-top:1px solid #705322;margin:20px 0}
 
 </div>
 
+
 <script type="module">
 
-import { db } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
   ref,
@@ -190,29 +327,72 @@ import {
   set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
+
+/* =====================================
+   PAGE DATA
+===================================== */
+
 const showId =
   new URLSearchParams(window.location.search).get("showId");
 
 const showDetails = document.getElementById("showDetails");
 const entryDetails = document.getElementById("entryDetails");
+
 const joinButton = document.getElementById("joinButton");
 const whatsappButton = document.getElementById("whatsappButton");
+
 const messageBox = document.getElementById("message");
 
 const performerForm = document.getElementById("performerForm");
 const performerMessage = document.getElementById("performerMessage");
-const performerFee = document.getElementById("performerFee");
-const performerPaymentArea = document.getElementById("performerPaymentArea");
-const performerPaymentReference = document.getElementById("performerPaymentReference");
-const performerWhatsapp = document.getElementById("performerWhatsapp");
-const performerSubmit = document.getElementById("performerSubmit");
 
-const performanceType = document.getElementById("performanceType");
-const duetFields = document.getElementById("duetFields");
+const performerFee = document.getElementById("performerFee");
+const performerPaymentArea =
+  document.getElementById("performerPaymentArea");
+
+const performerPaymentReference =
+  document.getElementById("performerPaymentReference");
+
+const performerWhatsapp =
+  document.getElementById("performerWhatsapp");
+
+const performerSubmit =
+  document.getElementById("performerSubmit");
+
+const performanceType =
+  document.getElementById("performanceType");
+
+const duetFields =
+  document.getElementById("duetFields");
+
+const authMessage =
+  document.getElementById("authMessage");
+
+const registrationStatusArea =
+  document.getElementById("registrationStatusArea");
+
+const registrationStatus =
+  document.getElementById("registrationStatus");
+
+const checkStatusButton =
+  document.getElementById("checkStatusButton");
+
+const singerJoinButton =
+  document.getElementById("singerJoinButton");
+
 
 let currentShow = null;
+let currentUser = null;
+
 let currentPerformerFee = 0;
 let currentPerformerFeeType = "Free";
+
+let submittedRegistrationId = null;
+
+
+/* =====================================
+   HELPERS
+===================================== */
 
 function cleanPhone(value){
   return String(value || "").replace(/\D/g, "");
@@ -225,6 +405,7 @@ function addDetail(label,value){
 }
 
 function getAudienceFee(show){
+
   const value = show.audienceFee;
 
   if(value === null || value === undefined || value === ""){
@@ -234,11 +415,18 @@ function getAudienceFee(show){
   const fee = Number(value);
 
   if(!Number.isFinite(fee) || fee < 0){
-    throw new Error("Invalid audience entry fee. Please contact the organiser.");
+    throw new Error(
+      "Invalid audience entry fee. Please contact the organiser."
+    );
   }
 
   return fee;
 }
+
+
+/* =====================================
+   PERFORMER FEE
+===================================== */
 
 function getSongFee(show,type){
 
@@ -247,7 +435,6 @@ function getSongFee(show,type){
   const feeTypeValue = show[prefix + "SongFeeType"];
   const feeValue = show[prefix + "SongFee"];
 
-  // Also support older fee field names.
   const legacyType = show[prefix + "EntryType"];
   const legacyFee = show[prefix + "EntryFee"];
 
@@ -258,27 +445,41 @@ function getSongFee(show,type){
   }
 
   const rawFee =
-    feeValue !== undefined && feeValue !== null && feeValue !== ""
+    feeValue !== undefined &&
+    feeValue !== null &&
+    feeValue !== ""
       ? feeValue
       : legacyFee;
 
   const fee = Number(rawFee || 0);
 
   if(!Number.isFinite(fee) || fee < 0){
-    throw new Error("Invalid " + type + " song fee. Please contact the host.");
+    throw new Error(
+      "Invalid " + type + " song fee. Please contact the host."
+    );
   }
 
   if(String(selectedType).toLowerCase() === "paid" || fee > 0){
+
     if(fee <= 0){
-      throw new Error(type + " fee is not configured correctly. Please contact the host.");
+      throw new Error(
+        type + " fee is not configured correctly. Please contact the host."
+      );
     }
+
     return {type:"Paid",fee};
   }
 
   return {type:"Free",fee:0};
 }
 
+
+/* =====================================
+   WHATSAPP
+===================================== */
+
 function getHostPhone(){
+
   if(!currentShow) return "";
 
   return cleanPhone(
@@ -298,11 +499,17 @@ function getWhatsAppLink(text){
 
   if(!phone) return "";
 
-  const number = phone.length === 10 ? "91" + phone : phone;
+  const number =
+    phone.length === 10 ? "91" + phone : phone;
 
-  return "https://wa.me/" + number + "?text=" +
-    encodeURIComponent(text);
+  return "https://wa.me/" + number +
+    "?text=" + encodeURIComponent(text);
 }
+
+
+/* =====================================
+   UPDATE FEE DISPLAY
+===================================== */
 
 function updatePerformerFee(){
 
@@ -321,17 +528,31 @@ function updatePerformerFee(){
         ? type + " Song Entry: FREE"
         : type + " Song Fee: ₹" + details.fee;
 
-    duetFields.classList.toggle("hidden",type !== "Duet");
+    duetFields.classList.toggle(
+      "hidden",
+      type !== "Duet"
+    );
+
+    document.getElementById("coSingerName").required =
+      type === "Duet";
 
     const isPaid = details.type === "Paid";
 
-    performerPaymentArea.classList.toggle("hidden",!isPaid);
+    performerPaymentArea.classList.toggle(
+      "hidden",
+      !isPaid
+    );
+
     performerPaymentReference.required = isPaid;
 
     if(isPaid){
 
       const hostName = currentShow.hostName || "Show Host";
-      const title = currentShow.name || currentShow.title || "Singing Show";
+
+      const title =
+        currentShow.name ||
+        currentShow.title ||
+        "Singing Show";
 
       const link = getWhatsAppLink(
         "Hello " + hostName +
@@ -349,15 +570,21 @@ function updatePerformerFee(){
       }
 
     }else{
+
       performerPaymentReference.value = "";
       performerWhatsapp.classList.add("hidden");
+
     }
+
+    performerSubmit.disabled = !currentUser;
 
   }catch(error){
 
     performerFee.textContent = error.message;
+
     currentPerformerFee = 0;
     currentPerformerFeeType = "Invalid";
+
     performerSubmit.disabled = true;
 
   }
@@ -365,19 +592,66 @@ function updatePerformerFee(){
 }
 
 performanceType.addEventListener("change",()=>{
-  performerSubmit.disabled = false;
   updatePerformerFee();
 });
+
+
+/* =====================================
+   FIREBASE AUTH STATE
+===================================== */
+
+onAuthStateChanged(auth,user=>{
+
+  currentUser = user;
+
+  if(user){
+
+    authMessage.className = "success";
+
+    authMessage.textContent =
+      "Signed in. You can submit a performer request.";
+
+    performerForm.classList.remove("hidden");
+
+    performerSubmit.disabled = false;
+
+    if(submittedRegistrationId){
+      checkRegistrationStatus();
+    }
+
+  }else{
+
+    authMessage.className = "error";
+
+    authMessage.textContent =
+      "Please sign in to your Firebase account before registering as a performer. Audience entry for free shows does not require performer registration.";
+
+    performerSubmit.disabled = true;
+
+  }
+
+});
+
+
+/* =====================================
+   LOAD SHOW
+===================================== */
 
 async function loadShow(){
 
   try{
 
     if(!showId){
-      throw new Error("No show selected. Please select a show from the homepage.");
+
+      throw new Error(
+        "No show selected. Please select a show from the homepage."
+      );
+
     }
 
-    const snapshot = await get(ref(db,"shows/" + showId));
+    const snapshot = await get(
+      ref(db,"shows/" + showId)
+    );
 
     if(!snapshot.exists()){
       throw new Error("This show does not exist.");
@@ -385,55 +659,81 @@ async function loadShow(){
 
     const show = snapshot.val();
 
-    if(show.status !== "Published"){
-      throw new Error("This show is not currently available.");
+    if(
+      String(show.status || "").toLowerCase() !== "published" &&
+      String(show.status || "").toLowerCase() !== "live"
+    ){
+
+      throw new Error(
+        "This show is not currently available."
+      );
+
     }
 
     currentShow = show;
 
-    const title = show.name || show.title || "Singing Show";
-    const hostName = show.hostName || "Show Host";
+    const title =
+      show.name || show.title || "Singing Show";
+
+    const hostName =
+      show.hostName || "Show Host";
+
     const fee = getAudienceFee(show);
 
     showDetails.replaceChildren();
 
     const heading = document.createElement("h3");
     heading.textContent = title;
+
     showDetails.appendChild(heading);
 
-    showDetails.appendChild(addDetail("Date",show.date || "To be announced"));
-    showDetails.appendChild(addDetail("Time",show.time || "To be announced"));
-    showDetails.appendChild(addDetail("Host",hostName));
+    showDetails.appendChild(
+      addDetail("Date",show.date || "To be announced")
+    );
 
-    // Performer section
-    performerForm.classList.remove("hidden");
+    showDetails.appendChild(
+      addDetail("Time",show.time || "To be announced")
+    );
+
+    showDetails.appendChild(
+      addDetail("Host",hostName)
+    );
+
     updatePerformerFee();
 
-    // Audience section
+
+    /* AUDIENCE ENTRY */
+
     entryDetails.replaceChildren();
 
     const feeText = document.createElement("p");
+
     feeText.className = "fee";
+
     feeText.textContent =
-      fee === 0 ? "Audience Entry: FREE" : "Audience Entry Fee: ₹" + fee;
+      fee === 0
+        ? "Audience Entry: FREE"
+        : "Audience Entry Fee: ₹" + fee;
 
     entryDetails.appendChild(feeText);
 
     if(fee === 0){
 
-      // Free audience enters directly.
+      // Free audience enters without performer registration.
       joinButton.href =
-        "live-stage.html?showId=" + encodeURIComponent(showId);
+        "live-stage.html?showId=" +
+        encodeURIComponent(showId);
 
       joinButton.classList.remove("hidden");
 
       messageBox.className = "success";
+
       messageBox.textContent =
         "This is a free show. Click JOIN SHOW to enter directly.";
 
     }else{
 
-      // Paid audience contacts host for payment and joining instructions.
+      // Paid audience entry remains host-approved.
       const link = getWhatsAppLink(
         "Hello " + hostName +
         ", I want to join your paid audience show: " +
@@ -444,6 +744,7 @@ async function loadShow(){
       if(!link){
 
         messageBox.className = "error";
+
         messageBox.textContent =
           "The host has not added a WhatsApp number. Please contact the organiser through another available channel.";
 
@@ -453,10 +754,12 @@ async function loadShow(){
         whatsappButton.classList.remove("hidden");
 
         messageBox.className = "muted";
+
         messageBox.textContent =
           "This is a paid show. Contact the host on WhatsApp for payment and joining instructions.";
 
       }
+
     }
 
   }catch(error){
@@ -467,26 +770,51 @@ async function loadShow(){
     showDetails.textContent = error.message;
 
     entryDetails.textContent = "";
+
     performerForm.classList.add("hidden");
+
     messageBox.textContent = "";
 
   }
+
 }
 
-// Submit performer request for host approval.
+
+/* =====================================
+   SUBMIT PERFORMER REQUEST
+===================================== */
+
 performerForm.addEventListener("submit",async(event)=>{
 
   event.preventDefault();
 
-  if(!currentShow || !showId){
+  if(!currentUser){
+
     performerMessage.className = "error";
-    performerMessage.textContent = "Show details are not available.";
+
+    performerMessage.textContent =
+      "Please sign in before submitting your performer request.";
+
+    return;
+  }
+
+  if(!currentShow || !showId){
+
+    performerMessage.className = "error";
+
+    performerMessage.textContent =
+      "Show details are not available.";
+
     return;
   }
 
   if(currentPerformerFeeType === "Invalid"){
+
     performerMessage.className = "error";
-    performerMessage.textContent = "The song fee is invalid. Please contact the host.";
+
+    performerMessage.textContent =
+      "The song fee is invalid. Please contact the host.";
+
     return;
   }
 
@@ -519,54 +847,87 @@ performerForm.addEventListener("submit",async(event)=>{
   const rulesAccepted =
     document.getElementById("performerRules").checked;
 
+
   if(type === "Duet" && !coSingerName){
+
     performerMessage.className = "error";
-    performerMessage.textContent = "Please enter the co-singer name for a duet.";
+
+    performerMessage.textContent =
+      "Please enter the co-singer name for a duet.";
+
     return;
   }
 
   if(currentPerformerFeeType === "Paid" && !paymentReference){
+
     performerMessage.className = "error";
+
     performerMessage.textContent =
       "Please enter your payment reference before submitting.";
+
     return;
   }
 
   if(!rulesAccepted){
+
     performerMessage.className = "error";
-    performerMessage.textContent = "Please accept the show rules.";
+
+    performerMessage.textContent =
+      "Please accept the show rules.";
+
     return;
   }
 
+
   performerSubmit.disabled = true;
+
   performerSubmit.textContent = "SUBMITTING...";
 
   performerMessage.className = "muted";
-  performerMessage.textContent = "Submitting your performer request...";
+
+  performerMessage.textContent =
+    "Submitting your performer request...";
+
 
   try{
 
-    const registrationRef = push(ref(db,"showRegistrations/" + showId));
-    const registrationId = registrationRef.key;
+    // Refresh the authentication token.
+    await currentUser.getIdToken(true);
+
+    // Create a new registration.
+    const registrationRef = push(
+      ref(db,"showRegistrations/" + showId)
+    );
+
+    const newRegistrationId = registrationRef.key;
 
     const combinedName =
       type === "Duet" && coSingerName
         ? singerName + " & " + coSingerName
         : singerName;
 
+
     const requestData = {
 
-      registrationId: registrationId,
+      registrationId: newRegistrationId,
       showId: showId,
+
+      // Important: Worker uses this UID to identify the singer.
+      singerUid: currentUser.uid,
 
       singerName: combinedName,
       name: combinedName,
       primarySingerName: singerName,
+
       mobile: mobile,
 
       performanceType: type,
-      coSingerName: type === "Duet" ? coSingerName : "",
-      coSingerMobile: type === "Duet" ? coSingerMobile : "",
+
+      coSingerName:
+        type === "Duet" ? coSingerName : "",
+
+      coSingerMobile:
+        type === "Duet" ? coSingerMobile : "",
 
       songName: song,
       movieName: movie,
@@ -579,46 +940,186 @@ performerForm.addEventListener("submit",async(event)=>{
       performanceFee: currentPerformerFee,
 
       paymentReference:
-        currentPerformerFeeType === "Paid" ? paymentReference : "",
+        currentPerformerFeeType === "Paid"
+          ? paymentReference
+          : "",
 
       paymentStatus:
-        currentPerformerFeeType === "Paid" ? "Submitted" : "NotRequired",
+        currentPerformerFeeType === "Paid"
+          ? "Submitted"
+          : "NotRequired",
 
       rulesAccepted: true,
+
       status: "Pending",
+
       createdAt: Date.now()
+
     };
+
 
     await set(registrationRef,requestData);
 
+    submittedRegistrationId = newRegistrationId;
+
     performerForm.reset();
+
     performanceType.value = "Solo";
+
     duetFields.classList.add("hidden");
 
     updatePerformerFee();
 
+    registrationStatusArea.classList.remove("hidden");
+
+    singerJoinButton.classList.add("hidden");
+
+    registrationStatus.className = "success";
+
+    registrationStatus.textContent =
+      "Registration submitted. Waiting for host approval.";
+
     performerMessage.className = "success";
+
     performerMessage.textContent =
-      "Your performer request has been submitted successfully! " +
-      "Your request is PENDING host approval. " +
-      "You will be added to the performance queue only after the host approves it.";
+      "Your performer request has been submitted successfully! Your request is PENDING host approval. Save this page or check your approval status later.";
+
+    await checkRegistrationStatus();
 
   }catch(error){
 
     console.error("Performer submission error:",error);
 
     performerMessage.className = "error";
+
     performerMessage.textContent =
       "Could not submit your request: " + error.message;
 
   }finally{
 
-    performerSubmit.disabled = false;
-    performerSubmit.textContent = "SUBMIT PERFORMER REQUEST";
+    performerSubmit.disabled = !currentUser;
+
+    performerSubmit.textContent =
+      "SUBMIT PERFORMER REQUEST";
 
   }
 
 });
+
+
+/* =====================================
+   CHECK REGISTRATION STATUS
+===================================== */
+
+async function checkRegistrationStatus(){
+
+  if(!submittedRegistrationId || !currentUser || !showId){
+    return;
+  }
+
+  checkStatusButton.disabled = true;
+
+  checkStatusButton.textContent = "CHECKING...";
+
+  singerJoinButton.classList.add("hidden");
+
+  try{
+
+    const snapshot = await get(
+      ref(
+        db,
+        "showRegistrations/" +
+        showId +
+        "/" +
+        submittedRegistrationId
+      )
+    );
+
+    if(!snapshot.exists()){
+
+      throw new Error(
+        "Registration could not be found."
+      );
+
+    }
+
+    const registration = snapshot.val();
+
+    // Ensure this registration belongs to the signed-in user.
+    if(registration.singerUid !== currentUser.uid){
+
+      throw new Error(
+        "This registration does not belong to your signed-in account."
+      );
+
+    }
+
+    const status =
+      String(registration.status || "Pending").toLowerCase();
+
+
+    if(status === "approved" ||
+       status === "queued" ||
+       status === "playing"){
+
+      registrationStatus.className = "success";
+
+      registrationStatus.textContent =
+        "Your performance is APPROVED. You can now enter the auditorium as a singer.";
+
+      singerJoinButton.href =
+        "live-stage.html?showId=" +
+        encodeURIComponent(showId) +
+        "&mode=singer&registrationId=" +
+        encodeURIComponent(submittedRegistrationId);
+
+      singerJoinButton.classList.remove("hidden");
+
+    }else if(status === "rejected"){
+
+      registrationStatus.className = "error";
+
+      registrationStatus.textContent =
+        "Your registration was not approved. Please contact the host.";
+
+    }else{
+
+      registrationStatus.className = "muted";
+
+      registrationStatus.textContent =
+        "Your registration is still pending host approval. Please check again later.";
+
+    }
+
+  }catch(error){
+
+    console.error("Status check error:",error);
+
+    registrationStatus.className = "error";
+
+    registrationStatus.textContent =
+      error.message;
+
+  }finally{
+
+    checkStatusButton.disabled = false;
+
+    checkStatusButton.textContent =
+      "CHECK APPROVAL STATUS";
+
+  }
+
+}
+
+checkStatusButton.addEventListener(
+  "click",
+  checkRegistrationStatus
+);
+
+
+/* =====================================
+   START PAGE
+===================================== */
 
 loadShow();
 
