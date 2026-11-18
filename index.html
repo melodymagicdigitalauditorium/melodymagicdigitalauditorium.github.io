@@ -299,6 +299,53 @@ return url;
 return "";
 }
 
+// Converts 24-hour time such as 18:30 into 6:30 PM
+function formatShowTime(value){
+if(!value)return "Not specified";
+
+const time=String(value).trim();
+const match=time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+
+if(!match)return time;
+
+let hours=Number(match[1]);
+const minutes=match[2];
+const suffix=hours>=12?"PM":"AM";
+
+hours=hours%12||12;
+
+return hours+":"+minutes+" "+suffix;
+}
+
+// Reads both current Host Dashboard fee fields and older records
+function formatFee(type,value,legacyValue){
+const feeType=String(type||"").toLowerCase().trim();
+
+if(feeType==="free")return "FREE";
+
+if(feeType==="paid"){
+const amount=Number(value);
+return Number.isFinite(amount)&&amount>0
+?"₹"+amount
+:"Contact Host";
+}
+
+const fallback=value??legacyValue;
+
+if(fallback===null||fallback===undefined||
+String(fallback).trim()===""){
+return "Not announced";
+}
+
+const amount=Number(fallback);
+
+if(!Number.isFinite(amount)||amount<0){
+return "Not announced";
+}
+
+return amount===0?"FREE":"₹"+amount;
+}
+
 function makeShowCard(show,showId){
 
 const card=document.createElement("article");
@@ -306,8 +353,9 @@ card.className="show-card";
 
 const poster=approvedPosters[showId];
 const image=document.createElement("img");
+
 image.className="show-image";
-image.alt=(show.name||"Singing show")+" poster";
+image.alt=(show.showName||show.name||"Singing show")+" poster";
 image.loading="lazy";
 
 const approvedImage=safePosterUrl(poster&&poster.imageUrl);
@@ -323,38 +371,41 @@ image.src="https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=for
 const info=document.createElement("div");
 info.className="show-info";
 
-function formatFee(value){
-if(value===null||value===undefined||String(value).trim()===""){
-return "Not announced";
-}
-const amount=Number(value);
-if(!Number.isFinite(amount)||amount<0){
-return "Not announced";
-}
-return amount===0?"FREE":"₹"+amount;
-}
-
-const soloFee=formatFee(show.soloEntryFee);
-const duetFee=formatFee(show.duetEntryFee);
-const audienceFee=formatFee(
-show.audienceFee??show.audienceEntryFee??show.entryFee
+const soloFee=formatFee(
+show.soloSongFeeType,
+show.soloSongFee,
+show.soloEntryFee??show.soloFee
 );
 
-const audiencePaid=audienceFee!=="FREE"&&audienceFee!=="Not announced";
+const duetFee=formatFee(
+show.duetSongFeeType,
+show.duetSongFee,
+show.duetEntryFee??show.duetFee
+);
+
+const audienceFee=formatFee(
+show.audienceFeeType,
+show.audienceFee,
+show.audienceEntryFee??show.entryFee
+);
+
+const audiencePaid=
+audienceFee!=="FREE"&&audienceFee!=="Not announced";
 
 const label=document.createElement("span");
 label.className="show-label";
 label.textContent=audiencePaid?"PAID ENTRY SHOW":"FREE ENTRY SHOW";
 
 const title=document.createElement("h3");
-title.textContent=show.name||show.title||"Untitled Show";
+title.textContent=show.showName||show.name||show.title||"Untitled Show";
 
 const host=document.createElement("p");
 host.textContent="Host: "+(show.hostName||"Approved Host");
 
 const dateTime=document.createElement("p");
-dateTime.textContent="Date: "+(show.date||"Not specified")+
-" | Time: "+(show.time||"Not specified");
+dateTime.textContent=
+"Date: "+(show.showDate||show.date||"Not specified")+
+" | Time: "+formatShowTime(show.showTime||show.time);
 
 const description=document.createElement("p");
 description.textContent=show.description||"Join this live musical experience.";
@@ -396,12 +447,21 @@ function renderShows(){
 showsContainer.replaceChildren();
 
 const shows=Object.entries(publishedShows)
-.filter(([id,show])=>show&&show.status==="Published")
+.filter(([id,show])=>show&&
+(show.status==="Published"||show.status==="Live"))
 .map(([id,show])=>({id,...show}));
 
 shows.sort((a,b)=>{
-const dateA=new Date((a.date||"")+"T"+(a.time||"00:00"));
-const dateB=new Date((b.date||"")+"T"+(b.time||"00:00"));
+const dateA=new Date(
+(a.showDate||a.date||"")+"T"+
+(a.showTime||a.time||"00:00")
+);
+
+const dateB=new Date(
+(b.showDate||b.date||"")+"T"+
+(b.showTime||b.time||"00:00")
+);
+
 return dateA-dateB;
 });
 
