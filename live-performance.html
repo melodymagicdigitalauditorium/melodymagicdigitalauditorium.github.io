@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Singer Live Stage | Melody Magic Digital Auditorium</title>
+<title>Singer Live Performance | Melody Magic Digital Auditorium</title>
 
 <style>
 * {
@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  padding: 15px;
+  padding: 12px;
   min-height: 100vh;
   background: #080808;
   color: #fff;
@@ -28,38 +28,107 @@ body {
 
 header {
   text-align: center;
-  padding: 25px 10px;
+  padding: 22px 10px;
   border-bottom: 1px solid #9b7628;
 }
 
 header h1 {
   color: #e9bd57;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 27px;
 }
 
 header p {
-  color: #ccc;
+  color: #bbb;
   margin: 5px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.stage-heading {
-  text-align: center;
-  color: #e9bd57;
-  margin: 25px 0 10px;
-}
-
-.instruction {
-  max-width: 700px;
-  margin: 15px auto;
+.section {
+  background: #151515;
+  border: 1px solid #49391b;
+  border-radius: 12px;
   padding: 15px;
-  background: #171717;
+  margin: 16px 0;
+}
+
+.section h2 {
+  color: #e9bd57;
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.status {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #ccc;
+  font-size: 13px;
+}
+
+.status span {
+  background: #242424;
+  border-radius: 20px;
+  padding: 8px 12px;
+}
+
+.gold {
+  color: #e9bd57;
+}
+
+.video-screen {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #050505;
   border: 1px solid #51401e;
-  border-radius: 10px;
+  border-radius: 9px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #aaa;
+  padding: 15px;
+}
+
+.video-screen p {
   line-height: 1.6;
-  color: #ddd;
-  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.camera-screen {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #050505;
+  border: 1px solid #51401e;
+  border-radius: 9px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #aaa;
+  padding: 10px;
+}
+
+.info {
+  color: #bbb;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.placeholder {
+  background: #090909;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  color: #aaa;
+  font-size: 13px;
+  min-height: 55px;
 }
 
 #livekitArea {
@@ -71,17 +140,25 @@ footer {
   color: #999;
   font-size: 12px;
   padding: 25px 10px;
-  margin-top: 30px;
+  margin-top: 25px;
   border-top: 1px solid #333;
 }
 
 @media(max-width:600px) {
   body {
-    padding: 8px;
+    padding: 7px;
   }
 
   header h1 {
-    font-size: 22px;
+    font-size: 21px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 12px;
   }
 }
 </style>
@@ -91,40 +168,104 @@ footer {
 
 <div class="container">
 
-  <header>
-    <h1>🎤 Melody Magic Digital Auditorium</h1>
-    <p>SINGER LIVE PERFORMANCE STAGE</p>
-    <p>Welcome to your live singing performance!</p>
-  </header>
+<header>
+  <h1>🎤 Melody Magic Digital Auditorium</h1>
+  <p>SINGER / PERFORMER LIVE ROOM</p>
+  <p>Your performance. Your audience. One live auditorium.</p>
+</header>
 
-  <h2 class="stage-heading">Your Live Stage</h2>
-
-  <div class="instruction">
-    <strong>How to perform:</strong>
-    <br><br>
-    1. Enter the live auditorium using the button below.
-    <br>
-    2. Wait for the host to assign you to the Solo or Duet stage.
-    <br>
-    3. The host will grant your microphone and camera permissions.
-    <br>
-    4. Switch on your microphone when you are ready to sing.
-    <br>
-    5. Switch on your camera if you want to appear on stage.
+<section class="section">
+  <div class="status">
+    <span>🎤 Singer Room</span>
+    <span id="singerConnectionStatus">Connecting...</span>
+    <span>👥 Audience: <b id="singerAudienceCount">--</b></span>
   </div>
+  <p class="info">
+    Wait for the host to assign your stage and grant your microphone access.
+  </p>
+</section>
 
-  <!-- LiveKit creates the Singer controls inside this area -->
+<section class="section">
+  <h2>🎵 Common YouTube Karaoke Screen</h2>
+  <div id="mmSingerKaraokeScreen" class="video-screen">
+    <p>
+      <span class="gold">Waiting for host</span><br>
+      The host-selected karaoke video will appear here.
+    </p>
+  </div>
+  <p class="info">
+    The host controls the karaoke video for everyone in the auditorium.
+  </p>
+</section>
+
+<section class="section">
+  <h2>🎥 Your Performance Camera</h2>
+  <div id="mmSingerCamera" class="camera-screen">
+    Camera preview will appear here after camera permission is granted.
+  </div>
+  <p class="info">
+    Camera starts when browser permission allows. You can switch it off at any time.
+  </p>
+</section>
+
+<section class="section">
+  <h2>🎙️ Your Microphone</h2>
+  <div id="mmSingerMicrophoneStatus" class="placeholder">
+    🔒 Microphone is waiting for host permission.
+  </div>
+  <p class="info">
+    Your microphone remains disabled until the host grants access.
+  </p>
+</section>
+
+<section class="section">
+  <h2>🎼 Singing Queue</h2>
+  <p class="info">
+    See which approved performers are waiting for their turn.
+  </p>
+  <div id="mmSingerQueue" class="placeholder">
+    Waiting for queue information...
+  </div>
+</section>
+
+<section class="section">
+  <h2>💬 Live Auditorium Comments</h2>
+  <div id="mmSingerComments" class="placeholder">
+    Live comments will appear here.
+  </div>
+  <p class="info">
+    You will be able to send comments and see messages from the audience.
+  </p>
+</section>
+
+<section class="section">
+  <h2>💛 Live Reactions</h2>
+  <div id="mmSingerReactions" class="placeholder">
+    👏 ❤️ 😂 🔥 🎤 😍 🎉
+    <p class="info">
+      Live reactions from the auditorium will appear here.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <h2>🎤 Enter Your Live Auditorium</h2>
+  <p class="info">
+    Connect to your approved show. Your host will manage your stage and permissions.
+  </p>
+
+  <!-- Existing LiveKit controls are generated here -->
   <main id="livekitArea"></main>
+</section>
 
-  <footer>
-    Melody Magic Music Studio
-    <br>
-    Melody Magic Digital Auditorium
-  </footer>
+<footer>
+  Melody Magic Music Studio
+  <br>
+  Melody Magic Digital Auditorium
+</footer>
 
 </div>
 
-<!-- Existing LiveKit connection and role-management module -->
 <script type="module" src="./livekit.js"></script>
 
 </body>
