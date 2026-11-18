@@ -8,62 +8,219 @@
 
 <style>
 *{box-sizing:border-box}
+
 body{
-  margin:0;background:#080808;color:#fff;
-  font-family:Arial,sans-serif;padding:12px
+  margin:0;
+  background:#080808;
+  color:#fff;
+  font-family:Arial,sans-serif;
+  padding:12px
 }
+
 .container{max-width:1000px;margin:auto}
+
 header{text-align:center;padding:12px}
+
 h2,h3{color:#e5bd62}
+
 .card{
-  background:#171717;border:1px solid #51401e;
-  border-radius:12px;padding:14px;margin:14px 0
+  background:#171717;
+  border:1px solid #51401e;
+  border-radius:12px;
+  padding:14px;
+  margin:14px 0
 }
+
 #status{
-  color:#e5bd62;text-align:center;
-  font-size:13px;padding:10px
+  color:#e5bd62;
+  text-align:center;
+  font-size:13px;
+  padding:10px
 }
+
 #karaokePlayer{
-  width:100%;aspect-ratio:16/9;
-  background:#000;border-radius:8px;overflow:hidden
+  width:100%;
+  aspect-ratio:16/9;
+  background:#000;
+  border-radius:8px;
+  overflow:hidden
 }
+
 #karaokePlayer iframe{
-  width:100%;height:100%;border:0
+  width:100%;
+  height:100%;
+  border:0
 }
+
 #karaokeMessage{
-  padding:45px 10px;text-align:center;
-  color:#bbb;background:#050505;border-radius:8px
+  padding:45px 10px;
+  text-align:center;
+  color:#bbb;
+  background:#050505;
+  border-radius:8px
 }
+
 #soundButton{
-  display:none;background:#d4a52f;color:#111;
-  border:0;border-radius:8px;padding:12px 18px;
-  margin:12px auto;font-weight:bold;cursor:pointer
+  display:none;
+  background:#d4a52f;
+  color:#111;
+  border:0;
+  border-radius:8px;
+  padding:12px 18px;
+  margin:12px auto;
+  font-weight:bold;
+  cursor:pointer
 }
+
 #singerVideo{
-  display:none;width:100%;max-height:650px;
-  aspect-ratio:16/9;object-fit:contain;
-  background:#000;border-radius:8px
+  display:none;
+  width:100%;
+  max-height:650px;
+  aspect-ratio:16/9;
+  object-fit:contain;
+  background:#000;
+  border-radius:8px
 }
+
 #singerMessage{
-  padding:45px 10px;text-align:center;
-  color:#bbb;background:#050505;border-radius:8px
+  padding:45px 10px;
+  text-align:center;
+  color:#bbb;
+  background:#050505;
+  border-radius:8px
 }
-#performerName{text-align:center;font-size:22px}
+
+#performerName{
+  text-align:center;
+  font-size:22px
+}
+
 #performanceDetails{
-  text-align:center;color:#ccc;
-  font-size:14px;margin:8px 0 14px
+  text-align:center;
+  color:#ccc;
+  font-size:14px;
+  margin:8px 0 14px
 }
+
 .queue-number{
-  font-size:48px;font-weight:bold;
-  color:#e5bd62;text-align:center;padding:12px
+  font-size:48px;
+  font-weight:bold;
+  color:#e5bd62;
+  text-align:center;
+  padding:12px
 }
-.queue-label{text-align:center;color:#ccc;font-size:14px}
-footer{text-align:center;color:#888;padding:18px;font-size:12px}
+
+.queue-label{
+  text-align:center;
+  color:#ccc;
+  font-size:14px
+}
+
+footer{
+  text-align:center;
+  color:#888;
+  padding:18px;
+  font-size:12px
+}
+
 a{color:#e5bd62}
+
+/* LIVE REACTIONS */
+
+#reactionButtons{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:9px;
+  margin:18px 0
+}
+
+.reaction-button{
+  min-width:55px;
+  min-height:52px;
+  padding:8px;
+  font-size:27px;
+  color:#fff;
+  background:#242019;
+  border:1px solid #92702c;
+  border-radius:12px;
+  cursor:pointer;
+  transition:transform .15s,background .15s
+}
+
+.reaction-button:hover:not(:disabled){
+  transform:scale(1.12);
+  background:#44351b
+}
+
+.reaction-button:disabled{
+  opacity:.35;
+  cursor:not-allowed
+}
+
+#reactionStatus{
+  color:#aaa;
+  text-align:center;
+  font-size:12px;
+  margin:10px 0
+}
+
+#reactionFeed{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  min-height:65px;
+  padding:12px;
+  background:#080808;
+  border:1px solid #51401e;
+  border-radius:10px;
+  overflow:hidden
+}
+
+.reaction-item{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  background:#292319;
+  border:1px solid #806126;
+  border-radius:22px;
+  padding:7px 12px;
+  font-size:13px;
+  color:#fff;
+  animation:reactionAppear .25s ease-out;
+  overflow-wrap:anywhere
+}
+
+.reaction-emoji{
+  font-size:25px
+}
+
+@keyframes reactionAppear{
+  from{
+    opacity:0;
+    transform:scale(.7) translateY(8px)
+  }
+  to{
+    opacity:1;
+    transform:scale(1) translateY(0)
+  }
+}
+
+@media(max-width:600px){
+  body{padding:8px}
+  .card{padding:12px}
+  .reaction-button{
+    min-width:47px;
+    min-height:47px;
+    font-size:24px
+  }
+}
 </style>
 </head>
 
 <body>
+
 <div class="container">
 
 <header>
@@ -106,12 +263,41 @@ a{color:#e5bd62}
 </section>
 
 <section class="card">
+  <h3>💛 Send Your Reactions</h3>
+
+  <p style="text-align:center;color:#ccc;font-size:13px">
+    Appreciate the performer and share your feelings with everyone!
+  </p>
+
+  <div id="reactionButtons">
+    <button class="reaction-button" data-reaction="👏" disabled aria-label="Clap">👏</button>
+    <button class="reaction-button" data-reaction="❤️" disabled aria-label="Love">❤️</button>
+    <button class="reaction-button" data-reaction="😂" disabled aria-label="Laugh">😂</button>
+    <button class="reaction-button" data-reaction="🔥" disabled aria-label="Fire">🔥</button>
+    <button class="reaction-button" data-reaction="🎤" disabled aria-label="Microphone">🎤</button>
+    <button class="reaction-button" data-reaction="😍" disabled aria-label="Admire">😍</button>
+    <button class="reaction-button" data-reaction="🎉" disabled aria-label="Celebrate">🎉</button>
+  </div>
+
+  <div id="reactionStatus">
+    Connecting to live reactions...
+  </div>
+
+  <div id="reactionFeed" aria-live="polite">
+    <span style="color:#888;font-size:12px">
+      Live reactions will appear here.
+    </span>
+  </div>
+</section>
+
+<section class="card">
   <h3>🎼 Singer Queue Status</h3>
   <div id="queueCount" class="queue-number">--</div>
   <div class="queue-label">Singers waiting for their turn</div>
 </section>
 
 <footer>Powered by Melody Magic Music Studio</footer>
+
 </div>
 
 <!-- YouTube IFrame API -->
@@ -135,6 +321,7 @@ document.head.appendChild(ytScript);
 </script>
 
 <script type="module">
+
 import {
   auth,
   db,
@@ -142,7 +329,10 @@ import {
 } from "./firebase.js";
 
 import {
-  ref,get,onValue,set
+  ref,
+  get,
+  onValue,
+  set
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 import {
@@ -150,16 +340,24 @@ import {
   RoomEvent
 } from "https://esm.sh/livekit-client@2";
 
+
 const LIVEKIT_URL =
   "wss://melody-magic-auditorium-wrgjlqio.livekit.cloud";
 
 const TOKEN_SERVER =
   "https://lucky-night-b9bfmelody-magic-token-server.akbusinessenterprisess.workers.dev/";
 
+const REACTION_TOPIC = "mm-reactions";
+
+const ALLOWED_REACTIONS = [
+  "👏","❤️","😂","🔥","🎤","😍","🎉"
+];
+
 const showId =
   new URLSearchParams(location.search).get("showId");
 
 const $ = id => document.getElementById(id);
+
 
 let currentUser=null;
 let currentShow=null;
@@ -174,7 +372,12 @@ let stopFunctions=[];
 
 let activeVideoTrack=null;
 
+let lastReactionTimes=[];
+let reactionsConnected=false;
+
+
 /* YOUTUBE PLAYBACK STATE */
+
 let playbackData=null;
 let currentVideoId="";
 let playbackTimer=null;
@@ -184,21 +387,204 @@ let playerReady=false;
 let lastPlaybackSignature="";
 let applyingPlayback=false;
 
+
 /* GENERAL HELPERS */
+
 function setStatus(message,error=false){
   $("status").textContent=message;
   $("status").style.color=error?"#ff7777":"#e5bd62";
+}
+
+function getAudienceFee(show){
+  if(show.audienceFeeType==="free")return 0;
+
+  if(show.audienceFeeType==="paid"){
+    return Math.max(0,Number(show.audienceFee)||0);
+  }
+
+  return Math.max(
+    0,
+    Number(
+      show.audienceFee ??
+      show.audienceEntryFee ??
+      show.entryFee ??
+      0
+    )||0
+  );
 }
 
 function stopAllListeners(){
   stopFunctions.forEach(stop=>{
     try{stop()}catch(e){}
   });
+
   stopFunctions=[];
 }
 
+
+/* =========================================
+   LIVE EMOJI REACTIONS
+========================================= */
+
+function updateReactionButtons(){
+  document.querySelectorAll(".reaction-button").forEach(button=>{
+    button.disabled=!reactionsConnected || !room;
+  });
+
+  $("reactionStatus").textContent=reactionsConnected
+    ? "You are connected! Your reactions are visible to everyone in this show."
+    : "Please wait for the live auditorium connection.";
+}
+
+function showReaction(emoji,senderName){
+  if(!ALLOWED_REACTIONS.includes(emoji))return;
+
+  const feed=$("reactionFeed");
+
+  const empty=feed.querySelector("span");
+
+  if(empty && feed.children.length===1){
+    empty.remove();
+  }
+
+  const item=document.createElement("div");
+  item.className="reaction-item";
+
+  const emojiElement=document.createElement("span");
+  emojiElement.className="reaction-emoji";
+  emojiElement.textContent=emoji;
+
+  const nameElement=document.createElement("span");
+  nameElement.textContent=String(senderName||"Participant").slice(0,60);
+
+  item.appendChild(emojiElement);
+  item.appendChild(nameElement);
+
+  feed.appendChild(item);
+
+  while(feed.children.length>20){
+    feed.removeChild(feed.firstElementChild);
+  }
+
+  setTimeout(()=>{
+    if(item.isConnected)item.remove();
+
+    if(feed.children.length===0){
+      const message=document.createElement("span");
+      message.style.color="#888";
+      message.style.fontSize="12px";
+      message.textContent="Live reactions will appear here.";
+      feed.appendChild(message);
+    }
+  },12000);
+}
+
+function canSendReaction(){
+  const now=Date.now();
+
+  lastReactionTimes=lastReactionTimes.filter(
+    time=>now-time<3000
+  );
+
+  if(lastReactionTimes.length>=5){
+    $("reactionStatus").textContent=
+      "Please wait a moment before sending more reactions.";
+    return false;
+  }
+
+  lastReactionTimes.push(now);
+  return true;
+}
+
+async function sendReaction(emoji){
+  if(!room || !reactionsConnected){
+    $("reactionStatus").textContent=
+      "Please wait until you are connected to the live auditorium.";
+    return;
+  }
+
+  if(!ALLOWED_REACTIONS.includes(emoji))return;
+
+  if(!canSendReaction())return;
+
+  try{
+    const message={
+      version:1,
+      type:"reaction",
+      emoji,
+      senderName:String(
+        currentUser?.displayName||"Audience"
+      ).slice(0,60),
+      sentAt:Date.now()
+    };
+
+    const payload=new TextEncoder().encode(
+      JSON.stringify(message)
+    );
+
+    await room.localParticipant.publishData(payload,{
+      reliable:true,
+      topic:REACTION_TOPIC
+    });
+
+    showReaction(emoji,"You");
+
+  }catch(error){
+    console.error("Reaction sending error:",error);
+
+    $("reactionStatus").textContent=
+      "Could not send reaction. Please try again.";
+  }
+}
+
+function receiveReaction(payload,participant,kind,topic){
+  try{
+    if(!payload || payload.byteLength>1024)return;
+
+    if(topic && topic!==REACTION_TOPIC)return;
+
+    const decoded=new TextDecoder().decode(payload);
+    const message=JSON.parse(decoded);
+
+    if(
+      !message ||
+      message.version!==1 ||
+      message.type!=="reaction" ||
+      !ALLOWED_REACTIONS.includes(message.emoji)
+    ){
+      return;
+    }
+
+    const senderName=String(
+      participant?.name ||
+      message.senderName ||
+      participant?.identity ||
+      "Participant"
+    ).slice(0,60);
+
+    showReaction(message.emoji,senderName);
+
+  }catch(error){
+    console.warn("Invalid reaction received:",error);
+  }
+}
+
+$("reactionButtons").addEventListener("click",event=>{
+  const button=event.target.closest("[data-reaction]");
+
+  if(!button)return;
+
+  sendReaction(button.dataset.reaction);
+});
+
+
+/* =========================================
+   YOUTUBE PLAYER
+========================================= */
+
 function getYouTubeVideoId(value){
   const input=String(value||"").trim();
+
   if(!input)return "";
 
   if(/^[a-zA-Z0-9_-]{11}$/.test(input))return input;
@@ -212,9 +598,11 @@ function getYouTubeVideoId(value){
 
     if(url.hostname.includes("youtube.com")){
       const videoId=url.searchParams.get("v");
+
       if(videoId)return videoId;
 
       const parts=url.pathname.split("/").filter(Boolean);
+
       const index=parts.findIndex(part=>
         ["embed","shorts","live"].includes(part)
       );
@@ -226,7 +614,6 @@ function getYouTubeVideoId(value){
   return "";
 }
 
-/* CREATE VIEW-ONLY YOUTUBE PLAYER */
 async function createAudiencePlayer(){
   if(youtubePlayer)return youtubePlayer;
 
@@ -262,6 +649,7 @@ async function createAudiencePlayer(){
           },
           onError:event=>{
             console.error("YouTube player error:",event.data);
+
             $("videoStatus").textContent=
               "YouTube could not play this video. The host may need to choose another video.";
           },
@@ -270,13 +658,13 @@ async function createAudiencePlayer(){
           }
         }
       });
+
     }catch(error){
       reject(error);
     }
   });
 }
 
-/* LOAD VIDEO FROM HOST PLAYBACK DATA */
 async function loadAudienceVideo(videoId){
   if(!videoId)return;
 
@@ -293,14 +681,15 @@ async function loadAudienceVideo(videoId){
     if(youtubePlayer){
       youtubePlayer.cueVideoById(videoId);
     }
+
   }catch(error){
     console.error("Audience video loading:",error);
+
     $("videoStatus").textContent=
       "Unable to load karaoke video: "+error.message;
   }
 }
 
-/* CURRENT PLAYBACK POSITION */
 function getExpectedPosition(data){
   const base=Math.max(0,Number(data.basePosition)||0);
 
@@ -313,37 +702,36 @@ function getExpectedPosition(data){
   return base+Math.max(0,(Date.now()-startedAt)/1000);
 }
 
-/* BROWSER AUTOPLAY FALLBACK */
 function handleAutoplayBlocked(){
   if(!youtubePlayer)return;
 
-  // Continue the video muted if the browser blocks sound autoplay.
   try{
     youtubePlayer.mute();
     youtubePlayer.playVideo();
 
     $("soundButton").style.display="block";
+
     $("videoStatus").textContent=
       "Video is playing muted. Tap Enable Sound to hear the karaoke.";
+
   }catch(error){
     $("soundButton").style.display="block";
+
     $("videoStatus").textContent=
       "Your browser requires one tap to start playback.";
   }
 }
 
-/* VIEWER ENABLES SOUND */
 $("soundButton").addEventListener("click",()=>{
   if(!youtubePlayer || !playbackData)return;
 
   try{
     soundEnabled=true;
+
     youtubePlayer.unMute();
     youtubePlayer.setVolume(100);
 
-    const state=playbackData.state;
-
-    if(state==="playing"){
+    if(playbackData.state==="playing"){
       youtubePlayer.seekTo(getExpectedPosition(playbackData),true);
       youtubePlayer.playVideo();
     }else{
@@ -352,14 +740,15 @@ $("soundButton").addEventListener("click",()=>{
     }
 
     $("soundButton").style.display="none";
+
   }catch(error){
     console.error("Enable sound:",error);
+
     $("videoStatus").textContent=
       "Please tap Enable Sound again.";
   }
 });
 
-/* APPLY HOST PLAYBACK COMMAND */
 async function applyPlayback(data){
   if(!data || !data.videoId)return;
 
@@ -371,6 +760,7 @@ async function applyPlayback(data){
   }
 
   if(applyingPlayback)return;
+
   applyingPlayback=true;
 
   try{
@@ -391,13 +781,7 @@ async function applyPlayback(data){
       const wait=Math.max(0,(Number(data.startedAt)||0)-Date.now());
 
       youtubePlayer.seekTo(expected,true);
-
-      if(soundEnabled){
-        youtubePlayer.unMute();
-      }else{
-        // Try sound first. If the browser blocks it, fall back to muted autoplay.
-        youtubePlayer.unMute();
-      }
+      youtubePlayer.unMute();
 
       playbackTimer=setTimeout(()=>{
         if(!youtubePlayer)return;
@@ -409,7 +793,6 @@ async function applyPlayback(data){
           $("videoStatus").textContent=
             "Playing the host's karaoke selection.";
 
-          // The YouTube API's autoplay-blocked event handles the fallback.
         }catch(error){
           handleAutoplayBlocked();
         }
@@ -420,29 +803,35 @@ async function applyPlayback(data){
       youtubePlayer.pauseVideo();
 
       $("soundButton").style.display="none";
-      $("videoStatus").textContent="The host has paused the video.";
+
+      $("videoStatus").textContent=
+        "The host has paused the video.";
 
     }else if(state==="stopped"){
       youtubePlayer.stopVideo();
       youtubePlayer.cueVideoById(data.videoId);
 
       $("soundButton").style.display="none";
-      $("videoStatus").textContent="The host has stopped the video.";
+
+      $("videoStatus").textContent=
+        "The host has stopped the video.";
 
     }else{
-      $("videoStatus").textContent="Waiting for the host to play the video.";
+      $("videoStatus").textContent=
+        "Waiting for the host to play the video.";
     }
 
   }catch(error){
     console.error("Playback command:",error);
+
     $("videoStatus").textContent=
       "Playback issue: "+error.message;
+
   }finally{
     applyingPlayback=false;
   }
 }
 
-/* LISTEN TO HOST PLAY, PAUSE, RESUME AND STOP */
 function listenToPlayback(){
   const stop=onValue(
     ref(db,"karaokePlayback/"+showId),
@@ -452,8 +841,10 @@ function listenToPlayback(){
       if(!data || !data.videoId){
         $("karaokeMessage").style.display="block";
         $("karaokePlayer").style.display="none";
+
         $("karaokeMessage").textContent=
           "Waiting for the host to select a karaoke video.";
+
         return;
       }
 
@@ -474,6 +865,7 @@ function listenToPlayback(){
     },
     error=>{
       console.error("Playback listener:",error);
+
       $("videoStatus").textContent=
         "Unable to receive host playback commands: "+error.message;
     }
@@ -482,7 +874,6 @@ function listenToPlayback(){
   stopFunctions.push(stop);
 }
 
-/* PERIODIC DRIFT CORRECTION */
 function startDriftCorrection(){
   if(driftTimer)clearInterval(driftTimer);
 
@@ -498,13 +889,18 @@ function startDriftCorrection(){
       if(drift>2.5){
         youtubePlayer.seekTo(expected,true);
       }
+
     }catch(error){
       console.warn("Video sync correction:",error);
     }
   },4000);
 }
 
-/* PERFORMER INFORMATION */
+
+/* =========================================
+   PERFORMER INFORMATION
+========================================= */
+
 function renderPerformer(data){
   const name=
     data?.currentPerformerName||
@@ -526,7 +922,6 @@ function renderPerformer(data){
   $("performanceDetails").textContent=details.join(" • ");
 }
 
-/* STAGE SINGER IDENTITIES */
 function getStageUids(data){
   if(Array.isArray(data?.singerUids)&&data.singerUids.filter(Boolean).length){
     return data.singerUids.filter(Boolean);
@@ -545,7 +940,6 @@ function getStageUids(data){
   return [];
 }
 
-/* DISPLAY SELECTED SINGER OR HOST CAMERA */
 function renderSingerVideo(){
   const video=$("singerVideo");
   const message=$("singerMessage");
@@ -579,6 +973,7 @@ function renderSingerVideo(){
     video.srcObject=null;
     video.style.display="none";
     message.style.display="block";
+
     return;
   }
 
@@ -592,17 +987,19 @@ function renderSingerVideo(){
 
   try{
     selectedTrack.attach(video);
+
     video.autoplay=true;
     video.playsInline=true;
     video.muted=true;
     video.style.display="block";
+
     message.style.display="none";
+
   }catch(error){
     console.error("Camera display error:",error);
   }
 }
 
-/* RECEIVE HOST AND SELECTED SINGER AUDIO */
 function updateAudienceAudio(){
   const allowedUids=new Set(stageSingerUids);
 
@@ -628,6 +1025,7 @@ function updateAudienceAudio(){
           console.warn("Browser audio autoplay restriction:",error);
         });
       }
+
     }else{
       const audio=audioElements.get(uid);
 
@@ -642,16 +1040,17 @@ function updateAudienceAudio(){
 
 function updateStage(data){
   stageSingerUids=getStageUids(data);
+
   renderSingerVideo();
   updateAudienceAudio();
 }
 
-/* FIREBASE PERFORMANCE LISTENER */
 function listenToShow(){
   const stop=onValue(
     ref(db,"livePerformance/"+showId),
     snapshot=>{
       currentPerformance=snapshot.val()||{};
+
       renderPerformer(currentPerformance);
 
       if(!stageSingerUids.length){
@@ -663,6 +1062,7 @@ function listenToShow(){
     },
     error=>{
       console.error(error);
+
       setStatus("Could not load live performance data.",true);
     }
   );
@@ -670,7 +1070,6 @@ function listenToShow(){
   stopFunctions.push(stop);
 }
 
-/* FIREBASE STAGE LISTENER */
 function listenToStage(){
   const stop=onValue(
     ref(db,"liveStage/"+showId),
@@ -685,12 +1084,12 @@ function listenToStage(){
   stopFunctions.push(stop);
 }
 
-/* AUDIENCE QUEUE COUNT */
 function listenToSingerQueue(){
   const stop=onValue(
     ref(db,"performanceQueue/"+showId),
     snapshot=>{
       const queue=snapshot.val()||{};
+
       let waitingCount=0;
 
       Object.values(queue).forEach(singer=>{
@@ -707,6 +1106,7 @@ function listenToSingerQueue(){
     },
     error=>{
       console.error("Singer queue listener:",error);
+
       $("queueCount").textContent="--";
     }
   );
@@ -714,9 +1114,13 @@ function listenToSingerQueue(){
   stopFunctions.push(stop);
 }
 
-/* LIVEKIT TOKEN */
+
+/* =========================================
+   AUDIENCE LIVEKIT TOKEN
+========================================= */
+
 async function getAudienceToken(){
-  const idToken=await currentUser.getIdToken();
+  const idToken=await currentUser.getIdToken(true);
 
   const response=await fetch(TOKEN_SERVER,{
     method:"POST",
@@ -725,17 +1129,18 @@ async function getAudienceToken(){
       "Authorization":"Bearer "+idToken
     },
     body:JSON.stringify({
-      action:"join",
+      action:"joinAudience",
       showId,
-      name:"Audience"
+      name:currentUser.displayName||"Audience"
     })
   });
 
   const result=await response.json().catch(()=>({}));
 
-  if(!response.ok || result.success===false){
+  if(!response.ok || result.success===false || result.error){
     throw new Error(
-      result.error||result.message||
+      result.error||
+      result.message||
       "Could not get audience access token."
     );
   }
@@ -747,7 +1152,11 @@ async function getAudienceToken(){
   return result;
 }
 
-/* CONNECT AS AUDIENCE - NO PUBLISHING */
+
+/* =========================================
+   CONNECT AUDIENCE LIVEKIT
+========================================= */
+
 async function connectAudienceLiveKit(){
   const tokenData=await getAudienceToken();
 
@@ -761,6 +1170,7 @@ async function connectAudienceLiveKit(){
     RoomEvent.TrackSubscribed,
     (track,publication,participant)=>{
       const uid=participant.identity;
+
       remoteTracks.set(uid,track);
 
       if(track.kind==="audio")updateAudienceAudio();
@@ -789,6 +1199,7 @@ async function connectAudienceLiveKit(){
       }
 
       remoteTracks.delete(uid);
+
       renderSingerVideo();
     }
   );
@@ -797,6 +1208,7 @@ async function connectAudienceLiveKit(){
     RoomEvent.ParticipantDisconnected,
     participant=>{
       const uid=participant.identity;
+
       remoteTracks.delete(uid);
 
       const audio=audioElements.get(uid);
@@ -810,9 +1222,20 @@ async function connectAudienceLiveKit(){
     }
   );
 
+  // Receive emoji reactions from host and every connected performer.
+  room.on(
+    RoomEvent.DataReceived,
+    (payload,participant,kind,topic)=>{
+      receiveReaction(payload,participant,kind,topic);
+    }
+  );
+
   room.on(
     RoomEvent.Disconnected,
     ()=>{
+      reactionsConnected=false;
+      updateReactionButtons();
+
       setStatus(
         "Live connection ended. Refresh the page to reconnect.",
         true
@@ -838,9 +1261,16 @@ async function connectAudienceLiveKit(){
 
   renderSingerVideo();
   updateAudienceAudio();
+
+  reactionsConnected=true;
+  updateReactionButtons();
 }
 
-/* AUDIENCE ENTRY */
+
+/* =========================================
+   AUDIENCE ENTRY
+========================================= */
+
 async function initializeAudience(){
   if(!showId){
     setStatus("Show ID is missing from the page link.",true);
@@ -852,6 +1282,10 @@ async function initializeAudience(){
 
     currentUser=auth.currentUser||await connectAuditorium();
 
+    if(!currentUser){
+      throw new Error("Please sign in before entering the auditorium.");
+    }
+
     const showSnapshot=await get(ref(db,"shows/"+showId));
 
     if(!showSnapshot.exists()){
@@ -860,7 +1294,9 @@ async function initializeAudience(){
 
     currentShow=showSnapshot.val();
 
-    if(!["Published","Live"].includes(currentShow.status)){
+    const showStatus=String(currentShow.status||"").toLowerCase();
+
+    if(!["published","live"].includes(showStatus)){
       throw new Error("This show is not currently available.");
     }
 
@@ -869,10 +1305,12 @@ async function initializeAudience(){
     );
 
     if(blockSnapshot.exists() && blockSnapshot.val()===true){
-      throw new Error("Your access to this show has been blocked by the host.");
+      throw new Error(
+        "Your access to this show has been blocked by the host."
+      );
     }
 
-    const fee=Number(currentShow.audienceFee||0);
+    const fee=getAudienceFee(currentShow);
 
     if(fee<=0){
       const accessRef=ref(
@@ -883,9 +1321,13 @@ async function initializeAudience(){
 
       if(!accessSnapshot.exists()){
         await set(accessRef,true);
+
       }else if(accessSnapshot.val()!==true){
-        throw new Error("Your free-show access is not active. Please contact the host.");
+        throw new Error(
+          "Your free-show access is not active. Please contact the host."
+        );
       }
+
     }else{
       const accessSnapshot=await get(
         ref(db,`audienceAccess/${showId}/${currentUser.uid}`)
@@ -894,27 +1336,43 @@ async function initializeAudience(){
       if(!accessSnapshot.exists() || accessSnapshot.val()!==true){
         document.body.innerHTML=`
           <div style="
-            max-width:600px;margin:50px auto;padding:20px;
-            background:#171717;color:white;border:1px solid #9b7939;
-            border-radius:12px;font-family:Arial;text-align:center">
-            <h2 style="color:#e5bd62">Audience Approval Required</h2>
-            <p>This is a paid show. Your registration must be approved by the host before you can watch.</p>
-            <p>Please complete your registration and payment confirmation.</p>
+            max-width:600px;
+            margin:50px auto;
+            padding:20px;
+            background:#171717;
+            color:white;
+            border:1px solid #9b7939;
+            border-radius:12px;
+            font-family:Arial;
+            text-align:center">
+
+            <h2 style="color:#e5bd62">
+              Audience Approval Required
+            </h2>
+
+            <p>
+              This is a paid show. Your registration must be approved
+              by the host before you can watch.
+            </p>
+
+            <p>
+              Please complete your registration and payment confirmation.
+            </p>
+
             <a style="color:#e5bd62"
               href="audience-entry.html?showId=${encodeURIComponent(showId)}">
               Go to audience registration
             </a>
           </div>
         `;
+
         return;
       }
     }
 
     setStatus("Connected • "+(currentShow.name||"Live Show"));
 
-    // Playback listener reads only the host's playback commands.
     listenToPlayback();
-
     listenToShow();
     listenToStage();
     listenToSingerQueue();
@@ -927,11 +1385,22 @@ async function initializeAudience(){
 
   }catch(error){
     console.error("Audience initialization:",error);
-    setStatus(error.message||"Unable to enter the auditorium.",true);
+
+    reactionsConnected=false;
+    updateReactionButtons();
+
+    setStatus(
+      error.message||"Unable to enter the auditorium.",
+      true
+    );
   }
 }
 
-/* CLEANUP */
+
+/* =========================================
+   CLEANUP
+========================================= */
+
 window.addEventListener("beforeunload",()=>{
   stopAllListeners();
 
@@ -941,7 +1410,10 @@ window.addEventListener("beforeunload",()=>{
   if(room)room.disconnect();
 });
 
+
+updateReactionButtons();
 initializeAudience();
+
 </script>
 
 </body>
