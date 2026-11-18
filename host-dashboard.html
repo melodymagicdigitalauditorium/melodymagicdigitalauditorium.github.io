@@ -105,6 +105,7 @@ footer{text-align:center;color:#999;padding:22px;font-size:13px}
 <div>
 <label class="small">Show time</label>
 <input id="showTime" type="time">
+<div id="showTimePreview" class="small">Selected time: --</div>
 </div>
 </div>
 
@@ -312,6 +313,21 @@ function hostPhone(){
   );
 }
 
+
+function formatShowTime(value){
+  const raw=String(value||"").trim();
+  const match=raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if(!match)return raw||"Not set";
+
+  let hours=Number(match[1]);
+  const minutes=match[2];
+  if(hours<0||hours>23)return raw;
+
+  const suffix=hours>=12?"PM":"AM";
+  hours=hours%12||12;
+  return hours+":"+minutes+" "+suffix;
+}
+
 function audienceUrl(id){
   const u=new URL(AUDIENCE_PAGE,location.href);
   u.searchParams.set("showId",id);
@@ -449,6 +465,11 @@ $("duetFreeBtn").onclick=()=>setFeeType("duet","free");
 $("duetPaidBtn").onclick=()=>setFeeType("duet","paid");
 $("audienceFreeBtn").onclick=()=>setFeeType("audience","free");
 $("audiencePaidBtn").onclick=()=>setFeeType("audience","paid");
+
+$("showTime").addEventListener("input",()=>{
+  $("showTimePreview").textContent=
+    "Selected time: "+formatShowTime($("showTime").value);
+});
 
 ["soloSongFee","duetSongFee","audienceFee"].forEach(id=>{
   $(id).addEventListener("input",updateFeeSummary);
@@ -599,7 +620,7 @@ function renderShows(){
       <h3>${esc(s.showName||s.name)}</h3>
       <p class="small">
       Date: ${esc(s.showDate||s.date||"Not set")}<br>
-      Time: ${esc(s.showTime||s.time||"Not set")}<br>
+      Time: ${esc(formatShowTime(s.showTime||s.time))}<br>
       Audience entry: ${esc(feeLabel(audienceTypeSaved,s.audienceFee??s.entryFee,"entry"))}<br>
       Solo per song: ${esc(feeLabel(soloTypeSaved,s.soloSongFee,"per song"))}<br>
       Duet per song: ${esc(feeLabel(duetTypeSaved,s.duetSongFee,"per song"))}<br>
@@ -712,6 +733,7 @@ $("createShowBtn").onclick=async()=>{
     $("showName").value="";
     $("showDate").value="";
     $("showTime").value="";
+    $("showTimePreview").textContent="Selected time: --";
 
     $("soloSongFee").value="";
     $("duetSongFee").value="";
@@ -866,7 +888,7 @@ function generatePoster(id){
 
   $("posterName").textContent=s.showName||s.name||"Singing Show";
   $("posterDate").textContent="Date: "+(s.showDate||s.date||"");
-  $("posterTime").textContent="Time: "+(s.showTime||s.time||"");
+  $("posterTime").textContent="Time: "+formatShowTime(s.showTime||s.time);
 
   const audienceTypeSaved=savedFeeType(s,"audienceFeeType","audienceFee");
   const soloTypeSaved=savedFeeType(s,"soloSongFeeType","soloSongFee");
