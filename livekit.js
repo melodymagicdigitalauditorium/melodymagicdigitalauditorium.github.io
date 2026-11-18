@@ -22,7 +22,8 @@ import {
 
 /* =========================================
    MELODY MAGIC DIGITAL AUDITORIUM
-   LiveKit Connection and Role Management
+   LiveKit Connection, Role Management
+   and Live Emoji Reactions
 ========================================= */
 
 const LIVEKIT_URL =
@@ -36,6 +37,18 @@ const params = new URLSearchParams(location.search);
 const showId = params.get("showId");
 const registrationId = params.get("registrationId");
 const requestedMode = (params.get("mode") || "audience").toLowerCase();
+
+const REACTION_TOPIC = "mm-reactions";
+
+const ALLOWED_REACTIONS = [
+  "👏",
+  "❤️",
+  "😂",
+  "🔥",
+  "🎤",
+  "😍",
+  "🎉"
+];
 
 let currentUser = null;
 let currentShow = null;
@@ -60,6 +73,8 @@ let registrationListener = null;
 
 let joining = false;
 let leaving = false;
+
+let lastReactionTimes = [];
 
 
 /* =========================================
@@ -95,15 +110,6 @@ function setButtonState(id, disabled, text) {
   if (text) {
     button.textContent = text;
   }
-}
-
-function escapeHTML(value) {
-  return safeText(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 function isApproved(value) {
@@ -215,6 +221,94 @@ function createPanel() {
         color:#bbb;
         line-height:1.5;
       }
+
+      /* REACTION CONTROLS */
+
+      #mmReactionButtons {
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin:12px 0;
+      }
+
+      #mmLiveKitPanel .mm-reaction-button {
+        min-width:52px;
+        min-height:48px;
+        font-size:25px;
+        padding:7px 12px;
+        background:#24201a;
+        border:1px solid #9b7628;
+        border-radius:12px;
+        transition:transform .15s,background .15s;
+      }
+
+      #mmLiveKitPanel .mm-reaction-button:hover:not(:disabled) {
+        transform:scale(1.12);
+        background:#44351b;
+      }
+
+      #mmLiveKitPanel .mm-reaction-button:disabled {
+        opacity:.35;
+      }
+
+      #mmReactionOverlay {
+        position:relative;
+        min-height:75px;
+        overflow:hidden;
+        border:1px solid #51401e;
+        border-radius:10px;
+        background:#080808;
+        margin-top:10px;
+        padding:8px;
+      }
+
+      .mm-reaction-item {
+        display:inline-flex;
+        align-items:center;
+        gap:7px;
+        margin:5px;
+        padding:7px 11px;
+        border-radius:20px;
+        background:#292319;
+        border:1px solid #806126;
+        color:#fff;
+        font-size:14px;
+        animation:mmReactionAppear .25s ease-out;
+        overflow-wrap:anywhere;
+      }
+
+      .mm-reaction-emoji {
+        font-size:25px;
+      }
+
+      @keyframes mmReactionAppear {
+        from {
+          opacity:0;
+          transform:scale(.7) translateY(8px);
+        }
+        to {
+          opacity:1;
+          transform:scale(1) translateY(0);
+        }
+      }
+
+      #mmReactionHint {
+        color:#aaa;
+        font-size:12px;
+        margin-top:7px;
+      }
+
+      @media(max-width:600px) {
+        #mmLiveKitPanel {
+          padding:12px;
+        }
+
+        #mmLiveKitPanel .mm-reaction-button {
+          min-width:45px;
+          min-height:44px;
+          font-size:23px;
+        }
+      }
     </style>
 
     <h2>Melody Magic Live Auditorium</h2>
@@ -236,6 +330,34 @@ function createPanel() {
       <button id="mmCameraBtn" disabled>Camera OFF</button>
       <div id="mmPermissionInfo" class="mm-note">
         Microphone and camera are OFF until permission is granted.
+      </div>
+    </div>
+
+    <div class="mm-section" id="mmReactionSection">
+      <h3>💛 Send Your Reactions</h3>
+
+      <div id="mmReactionButtons">
+        ${ALLOWED_REACTIONS.map(emoji =>
+          `<button
+            type="button"
+            class="mm-reaction-button"
+            data-reaction="${emoji}"
+            disabled
+            aria-label="Send ${emoji} reaction"
+          >${emoji}</button>`
+        ).join("")}
+      </div>
+
+      <div class="mm-note">
+        Share your appreciation with everyone in the live auditorium.
+      </div>
+
+      <div id="mmReactionOverlay" aria-live="polite">
+        <span class="mm-note">Live reactions will appear here.</span>
+      </div>
+
+      <div id="mmReactionHint">
+        Enter the auditorium to send and receive reactions.
       </div>
     </div>
 
@@ -263,9 +385,11 @@ function createPanel() {
       </div>
 
       <button id="mmSetStageBtn">Assign Main Stage</button>
+
       <div class="mm-note">
         Only singers selected for the main stage can receive microphone
-        and camera permissions. Audience members remain viewers.
+        and camera permissions. Waiting singers and audience members
+        can still send emoji reactions.
       </div>
     </div>
 
@@ -284,6 +408,178 @@ function createPanel() {
   byId("mmCameraBtn").addEventListener("click", toggleCamera);
 
   byId("mmSetStageBtn").addEventListener("click", selectMainSingers);
+
+  byId("mmReactionButtons").addEventListener("click", event => {
+    const button = event.target.closest("[data-reaction]");
+
+    if (!button) return;
+
+    sendReaction(button.dataset.reaction);
+  });
+}
+
+
+/* =========================================
+   REACTION SYSTEM
+========================================= */
+
+function updateReactionButtons() {
+  const buttons = document.querySelectorAll(
+    "#mmReactionButtons [data-reaction]"
+  );
+
+  buttons.forEach(button => {
+    button.disabled = !isJoined || !room;
+  });
+
+  const hint = byId("mmReactionHint");
+
+  if (hint) {
+    hint.textContent = isJoined
+      ? "You are connected. Your reactions are visible to everyone in this show."
+      : "Enter the auditorium to send and receive reactions.";
+  }
+}
+
+function showReaction(emoji, senderName) {
+  if (!ALLOWED_REACTIONS.includes(emoji)) return;
+
+  const overlay = byId("mmReactionOverlay");
+
+  if (!overlay) return;
+
+  const emptyMessage = overlay.querySelector(".mm-note");
+
+  if (emptyMessage) {
+    emptyMessage.remove();
+  }
+
+  const item = document.createElement("span");
+  item.className = "mm-reaction-item";
+
+  const emojiSpan = document.createElement("span");
+  emojiSpan.className = "mm-reaction-emoji";
+  emojiSpan.textContent = emoji;
+
+  const nameSpan = document.createElement("span");
+  nameSpan.textContent = String(senderName || "Participant").slice(0, 60);
+
+  item.appendChild(emojiSpan);
+  item.appendChild(nameSpan);
+
+  overlay.appendChild(item);
+
+  while (overlay.children.length > 18) {
+    overlay.removeChild(overlay.firstElementChild);
+  }
+
+  setTimeout(() => {
+    if (item.isConnected) {
+      item.remove();
+    }
+
+    if (!overlay.children.length) {
+      const message = document.createElement("span");
+      message.className = "mm-note";
+      message.textContent = "Live reactions will appear here.";
+      overlay.appendChild(message);
+    }
+  }, 12000);
+}
+
+function canSendReactionNow() {
+  const now = Date.now();
+
+  lastReactionTimes = lastReactionTimes.filter(
+    time => now - time < 3000
+  );
+
+  // Limit accidental rapid taps to 5 reactions per 3 seconds.
+  if (lastReactionTimes.length >= 5) {
+    showMessage("Please wait a moment before sending more reactions.", "warning");
+    return false;
+  }
+
+  lastReactionTimes.push(now);
+  return true;
+}
+
+async function sendReaction(emoji) {
+  if (!room || !isJoined) {
+    showMessage("Enter the auditorium before sending a reaction.", "warning");
+    return;
+  }
+
+  if (!ALLOWED_REACTIONS.includes(emoji)) return;
+
+  if (!canSendReactionNow()) return;
+
+  try {
+    const message = {
+      version: 1,
+      type: "reaction",
+      emoji,
+      senderName: String(
+        room.localParticipant.name ||
+        currentUser?.displayName ||
+        currentRole ||
+        "Participant"
+      ).slice(0, 60),
+      sentAt: Date.now()
+    };
+
+    const bytes = new TextEncoder().encode(
+      JSON.stringify(message)
+    );
+
+    await room.localParticipant.publishData(bytes, {
+      reliable: true,
+      topic: REACTION_TOPIC
+    });
+
+    // Show the sender's own reaction immediately.
+    showReaction(emoji, "You");
+
+  } catch (error) {
+    console.error("Reaction send error:", error);
+
+    showMessage(
+      "Could not send reaction. Please try again.",
+      "error"
+    );
+  }
+}
+
+function receiveReaction(payload, participant, kind, topic) {
+  try {
+    if (!payload || payload.byteLength > 1024) return;
+
+    if (topic && topic !== REACTION_TOPIC) return;
+
+    const decoded = new TextDecoder().decode(payload);
+    const message = JSON.parse(decoded);
+
+    if (
+      !message ||
+      message.version !== 1 ||
+      message.type !== "reaction" ||
+      !ALLOWED_REACTIONS.includes(message.emoji)
+    ) {
+      return;
+    }
+
+    const senderName = String(
+      participant?.name ||
+      message.senderName ||
+      participant?.identity ||
+      "Participant"
+    ).slice(0, 60);
+
+    showReaction(message.emoji, senderName);
+
+  } catch (error) {
+    console.warn("Invalid reaction message ignored:", error);
+  }
 }
 
 
@@ -292,20 +588,31 @@ function createPanel() {
 ========================================= */
 
 function waitForAuth() {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (auth.currentUser) {
       currentUser = auth.currentUser;
       resolve(currentUser);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    let unsubscribe = null;
+
+    unsubscribe = onAuthStateChanged(auth, user => {
       if (user) {
         currentUser = user;
-        unsubscribe();
+
+        if (unsubscribe) unsubscribe();
+
         resolve(user);
       }
     });
+
+    setTimeout(() => {
+      if (!currentUser) {
+        if (unsubscribe) unsubscribe();
+        reject(new Error("Please sign in before entering the auditorium."));
+      }
+    }, 20000);
   });
 }
 
@@ -388,12 +695,10 @@ async function workerRequest(data) {
 
   const response = await fetch(TOKEN_SERVER, {
     method: "POST",
-
     headers: {
       "Content-Type": "application/json",
       "Authorization": "Bearer " + idToken
     },
-
     body: JSON.stringify({
       ...data,
       showId
@@ -497,7 +802,6 @@ async function joinAuditorium() {
       cameraAllowed = tokenData.cameraAllowed === true;
     }
 
-    // Audience must never publish.
     if (currentRole === "audience") {
       microphoneAllowed = false;
       cameraAllowed = false;
@@ -523,14 +827,10 @@ async function joinAuditorium() {
     showMessage("Connected to the live auditorium.", "success");
 
     updateControlButtons();
+    updateReactionButtons();
 
-    await createVideoTile(
-      room.localParticipant,
-      true
-    );
+    await createVideoTile(room.localParticipant, true);
 
-    // Do not automatically turn on a singer's microphone or camera.
-    // Host also starts with both OFF.
     if (currentRole === "host") {
       byId("mmHostControls").hidden = false;
       await loadHostRegistrations();
@@ -557,6 +857,7 @@ async function joinAuditorium() {
     }
 
     isJoined = false;
+    updateReactionButtons();
 
   } finally {
     joining = false;
@@ -572,35 +873,58 @@ async function joinAuditorium() {
 function registerRoomEvents() {
   if (!room) return;
 
-  room.on(RoomEvent.TrackSubscribed, async (track, publication, participant) => {
-    await attachRemoteTrack(track, participant);
-  });
+  room.on(
+    RoomEvent.TrackSubscribed,
+    async (track, publication, participant) => {
+      await attachRemoteTrack(track, participant);
+    }
+  );
 
-  room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-    track.detach().forEach((element) => element.remove());
-  });
+  room.on(
+    RoomEvent.TrackUnsubscribed,
+    (track, publication, participant) => {
+      track.detach().forEach(element => element.remove());
+    }
+  );
 
-  room.on(RoomEvent.ParticipantConnected, async (participant) => {
-    await createVideoTile(participant, false);
-  });
+  room.on(
+    RoomEvent.ParticipantConnected,
+    async participant => {
+      await createVideoTile(participant, false);
+    }
+  );
 
-  room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-    removeParticipantTile(participant.identity);
-  });
+  room.on(
+    RoomEvent.ParticipantDisconnected,
+    participant => {
+      removeParticipantTile(participant.identity);
+    }
+  );
+
+  room.on(
+    RoomEvent.DataReceived,
+    (payload, participant, kind, topic) => {
+      receiveReaction(payload, participant, kind, topic);
+    }
+  );
 
   room.on(RoomEvent.Disconnected, () => {
     if (!leaving) {
       isJoined = false;
       showMessage("Disconnected from the auditorium.", "warning");
       resetButtons();
+      updateReactionButtons();
     }
   });
 
-  room.on(RoomEvent.LocalTrackPublished, async (publication) => {
-    if (publication.track) {
-      await attachLocalTrack(publication.track);
+  room.on(
+    RoomEvent.LocalTrackPublished,
+    async publication => {
+      if (publication.track) {
+        await attachLocalTrack(publication.track);
+      }
     }
-  });
+  );
 }
 
 
@@ -615,7 +939,8 @@ async function createVideoTile(participant, isLocal) {
 
   const identity = safeText(participant.identity || "participant");
 
-  const tileId = "mmTile_" + identity.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const tileId =
+    "mmTile_" + identity.replace(/[^a-zA-Z0-9_-]/g, "_");
 
   let tile = byId(tileId);
 
@@ -628,7 +953,7 @@ async function createVideoTile(participant, isLocal) {
     name.className = "mm-video-name";
     name.textContent = isLocal
       ? "You (" + currentRole + ")"
-      : identity;
+      : (participant.name || identity);
 
     tile.appendChild(name);
 
@@ -636,12 +961,11 @@ async function createVideoTile(participant, isLocal) {
     media.id = tileId + "_media";
 
     tile.appendChild(media);
-
     grid.appendChild(tile);
   }
 
   if (participant.trackPublications) {
-    participant.trackPublications.forEach((publication) => {
+    participant.trackPublications.forEach(publication => {
       if (publication.track) {
         attachTrackToTile(publication.track, tileId + "_media");
       }
@@ -654,7 +978,8 @@ async function attachRemoteTrack(track, participant) {
 
   const identity = safeText(participant.identity || "participant");
 
-  const tileId = "mmTile_" + identity.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const tileId =
+    "mmTile_" + identity.replace(/[^a-zA-Z0-9_-]/g, "_");
 
   attachTrackToTile(track, tileId + "_media");
 }
@@ -677,7 +1002,7 @@ function attachTrackToTile(track, targetId) {
 
   const elements = track.attach();
 
-  elements.forEach((element) => {
+  elements.forEach(element => {
     element.style.width = "100%";
     element.style.maxHeight = "360px";
 
@@ -733,10 +1058,7 @@ async function toggleMicrophone() {
     localMicEnabled = false;
     updateControlButtons();
 
-    showMessage(
-      "Microphone error: " + error.message,
-      "error"
-    );
+    showMessage("Microphone error: " + error.message, "error");
   }
 }
 
@@ -769,10 +1091,7 @@ async function toggleCamera() {
     localCameraEnabled = false;
     updateControlButtons();
 
-    showMessage(
-      "Camera error: " + error.message,
-      "error"
-    );
+    showMessage("Camera error: " + error.message, "error");
   }
 }
 
@@ -803,11 +1122,14 @@ function updateControlButtons() {
 
   if (info) {
     if (currentRole === "audience") {
-      info.textContent = "Audience mode: microphone and camera are disabled.";
+      info.textContent =
+        "Audience mode: microphone and camera are disabled.";
     } else {
       info.textContent =
-        "Microphone permission: " + (microphoneAllowed ? "Allowed" : "Not allowed") +
-        " | Camera permission: " + (cameraAllowed ? "Allowed" : "Not allowed");
+        "Microphone permission: " +
+        (microphoneAllowed ? "Allowed" : "Not allowed") +
+        " | Camera permission: " +
+        (cameraAllowed ? "Allowed" : "Not allowed");
     }
   }
 }
@@ -829,7 +1151,7 @@ function listenToMyPermissions() {
     off(permissionRef, "value", permissionListener);
   }
 
-  permissionListener = (snapshot) => {
+  permissionListener = snapshot => {
     const controls = snapshot.val() || {};
 
     if (currentRole !== "singer") {
@@ -851,7 +1173,9 @@ function listenToMyPermissions() {
       localMicEnabled = false;
 
       if (room) {
-        room.localParticipant.setMicrophoneEnabled(false).catch(console.warn);
+        room.localParticipant
+          .setMicrophoneEnabled(false)
+          .catch(console.warn);
       }
     }
 
@@ -859,7 +1183,9 @@ function listenToMyPermissions() {
       localCameraEnabled = false;
 
       if (room) {
-        room.localParticipant.setCameraEnabled(false).catch(console.warn);
+        room.localParticipant
+          .setCameraEnabled(false)
+          .catch(console.warn);
       }
     }
 
@@ -883,12 +1209,12 @@ function listenToStage() {
     off(stageRef, "value", stageListener);
   }
 
-  stageListener = (snapshot) => {
+  stageListener = snapshot => {
     const stage = snapshot.val() || {};
 
     stageSingerUids = Array.isArray(stage.singerUids)
       ? stage.singerUids
-      : [];
+      : Object.values(stage.singerUids || {});
 
     if (currentRole === "singer" && currentUser) {
       if (!stageSingerUids.includes(currentUser.uid)) {
@@ -897,12 +1223,16 @@ function listenToStage() {
 
         if (localMicEnabled && room) {
           localMicEnabled = false;
-          room.localParticipant.setMicrophoneEnabled(false).catch(console.warn);
+          room.localParticipant
+            .setMicrophoneEnabled(false)
+            .catch(console.warn);
         }
 
         if (localCameraEnabled && room) {
           localCameraEnabled = false;
-          room.localParticipant.setCameraEnabled(false).catch(console.warn);
+          room.localParticipant
+            .setCameraEnabled(false)
+            .catch(console.warn);
         }
       }
     }
@@ -930,9 +1260,8 @@ async function loadHostRegistrations() {
     off(registrationsRef, "value", registrationListener);
   }
 
-  registrationListener = (snapshot) => {
+  registrationListener = snapshot => {
     registrations = snapshot.val() || {};
-
     populateSingerSelectors();
   };
 
@@ -945,7 +1274,7 @@ function getApprovedRegistrations() {
       id,
       ...item
     }))
-    .filter((item) =>
+    .filter(item =>
       item.singerUid &&
       isApproved(item.status)
     );
@@ -959,32 +1288,33 @@ function populateSingerSelectors() {
 
   const approved = getApprovedRegistrations();
 
-  const options = approved.map((item) => {
-    return {
-      uid: item.singerUid,
-      name: item.singerName || item.name || "Singer",
-      id: item.id
-    };
-  });
+  const options = approved.map(item => ({
+    uid: item.singerUid,
+    name: item.singerName || item.name || "Singer",
+    id: item.id
+  }));
 
   const buildOptions = (select, label) => {
     const previous = select.value;
 
-    select.innerHTML =
-      `<option value="">${label}</option>`;
+    select.innerHTML = "";
 
-    options.forEach((item) => {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = label;
+    select.appendChild(placeholder);
+
+    options.forEach(item => {
       const option = document.createElement("option");
 
       option.value = item.uid;
       option.textContent = item.name;
-
       option.dataset.registrationId = item.id;
 
       select.appendChild(option);
     });
 
-    if (options.some((item) => item.uid === previous)) {
+    if (options.some(item => item.uid === previous)) {
       select.value = previous;
     }
   };
@@ -1000,12 +1330,14 @@ function populateSingerSelectors() {
 
 async function selectMainSingers() {
   if (!isHost || !currentUser) {
-    showMessage("Only the approved host can assign the main stage.", "error");
+    showMessage(
+      "Only the approved host can assign the main stage.",
+      "error"
+    );
     return;
   }
 
   const mode = byId("mmStageMode").value;
-
   const singerOne = byId("mmSingerOne").value;
   const singerTwo = byId("mmSingerTwo").value;
 
@@ -1035,18 +1367,18 @@ async function selectMainSingers() {
 
   const approved = getApprovedRegistrations();
 
-  const selected = selectedUids.map((uid) =>
-    approved.find((item) => item.singerUid === uid)
+  const selected = selectedUids.map(uid =>
+    approved.find(item => item.singerUid === uid)
   );
 
-  if (selected.some((item) => !item)) {
+  if (selected.some(item => !item)) {
     showMessage("One or more selected singers are not approved.", "error");
     return;
   }
 
-  const registrationIds = selected.map((item) => item.id);
+  const registrationIds = selected.map(item => item.id);
 
-  const singerNames = selected.map((item) =>
+  const singerNames = selected.map(item =>
     item.singerName || item.name || "Singer"
   );
 
@@ -1067,9 +1399,11 @@ async function selectMainSingers() {
       stageData
     );
 
-    // Set explicit permissions for every approved singer.
+    // Selected singers receive audio/video permissions.
+    // Waiting singers retain data publishing for reactions.
     for (const item of approved) {
-      const selectedForStage = selectedUids.includes(item.singerUid);
+      const selectedForStage =
+        selectedUids.includes(item.singerUid);
 
       await workerRequest({
         action: "syncPermissions",
@@ -1092,6 +1426,41 @@ async function selectMainSingers() {
       "error"
     );
   }
+}
+
+
+/* =========================================
+   CLEANUP LISTENERS
+========================================= */
+
+function stopFirebaseListeners() {
+  if (permissionListener && currentUser && showId) {
+    off(
+      ref(db, "participantControls/" + showId + "/" + currentUser.uid),
+      "value",
+      permissionListener
+    );
+  }
+
+  if (stageListener && showId) {
+    off(
+      ref(db, "liveStage/" + showId),
+      "value",
+      stageListener
+    );
+  }
+
+  if (registrationListener && showId) {
+    off(
+      ref(db, "showRegistrations/" + showId),
+      "value",
+      registrationListener
+    );
+  }
+
+  permissionListener = null;
+  stageListener = null;
+  registrationListener = null;
 }
 
 
@@ -1121,6 +1490,8 @@ async function leaveAuditorium() {
     console.warn("Leave error:", error);
 
   } finally {
+    stopFirebaseListeners();
+
     room = null;
 
     isJoined = false;
@@ -1131,6 +1502,7 @@ async function leaveAuditorium() {
     cameraAllowed = false;
 
     resetButtons();
+    updateReactionButtons();
 
     const grid = byId("mmVideoGrid");
 
@@ -1161,15 +1533,22 @@ function resetButtons() {
 
 async function initializeShow() {
   createPanel();
+  updateReactionButtons();
 
   if (!showId) {
-    showMessage("Show ID is missing. Please open the correct show link.", "error");
+    showMessage(
+      "Show ID is missing. Please open the correct show link.",
+      "error"
+    );
     setButtonState("mmJoinBtn", true);
     return;
   }
 
   if (requestedMode === "singer" && !registrationId) {
-    showMessage("Singer registration ID is missing from the entry link.", "error");
+    showMessage(
+      "Singer registration ID is missing from the entry link.",
+      "error"
+    );
     setButtonState("mmJoinBtn", true);
     return;
   }
@@ -1183,14 +1562,17 @@ async function initializeShow() {
     if (isHost) {
       byId("mmRoleInfo").textContent =
         "Host access detected. You can manage the live stage.";
+
       byId("mmHostControls").hidden = false;
 
       showMessage("Host verified. Enter the auditorium when ready.");
+
     } else if (requestedMode === "singer") {
       byId("mmRoleInfo").textContent =
         "Singer entry requested. Your registration will be checked by the server.";
 
       showMessage("Singer entry ready. Click Enter Live Auditorium.");
+
     } else {
       byId("mmRoleInfo").textContent =
         "Audience entry. Microphone and camera are disabled.";
@@ -1203,7 +1585,11 @@ async function initializeShow() {
   } catch (error) {
     console.error(error);
 
-    showMessage(error.message || "Unable to initialize auditorium.", "error");
+    showMessage(
+      error.message || "Unable to initialize auditorium.",
+      "error"
+    );
+
     setButtonState("mmJoinBtn", true);
   }
 }
@@ -1214,3 +1600,11 @@ async function initializeShow() {
 ========================================= */
 
 initializeShow();
+
+window.addEventListener("beforeunload", () => {
+  stopFirebaseListeners();
+
+  if (room) {
+    room.disconnect();
+  }
+});
