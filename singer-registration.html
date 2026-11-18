@@ -67,13 +67,14 @@ footer{text-align:center;color:#888;font-size:12px;margin:22px 0 5px}
       </div>
 
       <hr>
+
       <div id="soloBox">
         <h2>Solo Songs</h2>
         <label for="soloSongs">Solo Song Names</label>
         <textarea id="soloSongs" placeholder="Enter one solo song per line"></textarea>
         <label for="soloMovies">Movie Names for Solo Songs</label>
         <textarea id="soloMovies" placeholder="Enter movie names in the same order, one per line"></textarea>
-        <small>Example: Song 1 on line 1, Song 2 on line 2. Enter the matching movie names in the same order.</small>
+        <small>Enter matching movie names in the same order as your songs.</small>
       </div>
 
       <div id="duetBox" class="hidden">
@@ -112,253 +113,306 @@ footer{text-align:center;color:#888;font-size:12px;margin:22px 0 5px}
 </div>
 
 <script type="module">
-import { db, connectAuditorium } from "./firebase.js";
+import {db,connectAuditorium} from "./firebase.js";
 import {
-  ref, get, set, push, onValue, query, orderByChild, equalTo
+  ref,get,set,push,onValue,query,orderByChild,equalTo
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-const $ = id => document.getElementById(id);
-const params = new URLSearchParams(location.search);
-const showId = params.get("showId");
+const $=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);
+const showId=params.get("showId");
 
-let currentUser = null;
-let currentShow = null;
-let currentRegistration = null;
-let stopRegistrationListener = null;
-let soloRate = 0;
-let duetRate = 0;
-let hostWhatsApp = "919920360237";
-let submitting = false;
+let currentUser=null;
+let currentShow=null;
+let currentRegistration=null;
+let stopRegistrationListener=null;
+let soloRate=0;
+let duetRate=0;
+let hostWhatsApp="919920360237";
+let submitting=false;
 
 function money(value){
-  return "₹" + Number(value || 0).toLocaleString("en-IN");
+  return "₹"+Number(value||0).toLocaleString("en-IN");
 }
+
 function cleanLines(value){
-  return value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  return value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
 }
+
 function escapeHTML(value){
-  return String(value ?? "").replace(/[&<>"']/g, c => ({
+  return String(value??"").replace(/[&<>"']/g,c=>({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   })[c]);
 }
+
 function showError(message){
-  $("message").textContent = message;
+  $("message").textContent=message;
 }
-function getFee(show, keys){
+
+function getFee(show,keys){
   for(const key of keys){
-    if(show[key] !== undefined && show[key] !== null && show[key] !== ""){
-      const n = Number(show[key]);
-      if(Number.isFinite(n) && n >= 0) return n;
+    if(show[key]!==undefined&&show[key]!==null&&show[key]!==""){
+      const n=Number(show[key]);
+      if(Number.isFinite(n)&&n>=0)return n;
     }
   }
   return 0;
 }
+
 function getHostNumber(show){
-  const fields = [
+  const fields=[
     "hostWhatsApp","hostWhatsapp","contactWhatsApp",
     "whatsappNumber","hostPhone","hostMobile","mobile"
   ];
+
   for(const field of fields){
     if(show[field]){
-      const number = String(show[field]).replace(/\D/g,"");
-      if(number.length >= 10) return number;
+      const number=String(show[field]).replace(/\D/g,"");
+      if(number.length>=10)return number;
     }
   }
   return hostWhatsApp;
 }
+
 function getCounts(){
-  const type = $("performanceType").value;
-  const solo = type.includes("Solo") ? cleanLines($("soloSongs").value) : [];
-  const duet = type.includes("Duet") ? cleanLines($("duetSongs").value) : [];
+  const type=$("performanceType").value;
+  const solo=type.includes("Solo")?cleanLines($("soloSongs").value):[];
+  const duet=type.includes("Duet")?cleanLines($("duetSongs").value):[];
   return {solo,duet};
 }
-function updateFees(){
-  const {solo,duet} = getCounts();
-  const total = solo.length * soloRate + duet.length * duetRate;
-  $("soloCount").textContent = solo.length;
-  $("duetCount").textContent = duet.length;
-  $("totalAmount").textContent = money(total);
 
-  const type = $("performanceType").value;
+function updateFees(){
+  const {solo,duet}=getCounts();
+  const total=solo.length*soloRate+duet.length*duetRate;
+
+  $("soloCount").textContent=solo.length;
+  $("duetCount").textContent=duet.length;
+  $("totalAmount").textContent=money(total);
+
+  const type=$("performanceType").value;
   $("soloBox").classList.toggle("hidden",!type.includes("Solo"));
   $("duetBox").classList.toggle("hidden",!type.includes("Duet"));
   $("partnerBox").classList.toggle("hidden",!type.includes("Duet"));
 }
+
 function updateShowDetails(){
-  const name = currentShow.name || currentShow.title || "Show";
-  $("showDetails").innerHTML =
+  const name=currentShow.name||currentShow.title||"Show";
+  $("showDetails").innerHTML=
     "<strong>Show:</strong> "+escapeHTML(name)+"<br>"+
-    "<strong>Date:</strong> "+escapeHTML(currentShow.date || "-")+"<br>"+
-    "<strong>Time:</strong> "+escapeHTML(currentShow.time || "-");
-  $("soloRate").textContent = money(soloRate);
-  $("duetRate").textContent = money(duetRate);
+    "<strong>Date:</strong> "+escapeHTML(currentShow.date||"-")+"<br>"+
+    "<strong>Time:</strong> "+escapeHTML(currentShow.time||"-");
+
+  $("soloRate").textContent=money(soloRate);
+  $("duetRate").textContent=money(duetRate);
 }
+
 function setSection(section){
-  ["registrationSection","statusSection"].forEach(id => $(id).classList.add("hidden"));
-  if(section) $(section).classList.remove("hidden");
+  ["registrationSection","statusSection"].forEach(id=>
+    $(id).classList.add("hidden")
+  );
+  if(section)$(section).classList.remove("hidden");
 }
+
 function getPaymentLink(registration){
-  const text =
-    "Hello, I have registered for "+(currentShow.name || currentShow.title || "the show")+
+  const text=
+    "Hello, I have registered for "+
+    (currentShow.name||currentShow.title||"the show")+
     ".\nPerformer: "+registration.singerName+
     "\nMobile: "+registration.mobile+
     "\nRegistration ID: "+registration.registrationId+
     "\nAmount: "+money(registration.totalAmount)+
     "\nI am sending my payment proof. Please verify and approve my registration.";
+
   return "https://wa.me/"+hostWhatsApp+"?text="+encodeURIComponent(text);
 }
+
 function displayRegistration(registration){
-  currentRegistration = registration;
+  currentRegistration=registration;
   setSection("statusSection");
 
-  const status = String(registration.status || "Pending").toLowerCase();
-  const paymentStatus = String(registration.paymentStatus || "Unpaid");
-  const isApproved = status === "approved";
-  const isRejected = status === "rejected";
-  const isFree = Number(registration.totalAmount || 0) === 0;
+  const status=String(registration.status||"Pending").toLowerCase();
+  const paymentStatus=String(registration.paymentStatus||"Unpaid");
+  const isApproved=status==="approved";
+  const isRejected=status==="rejected";
+  const isFree=Number(registration.totalAmount||0)===0;
 
-  $("performerStatus").className = "status "+(isApproved ? "approved" : isRejected ? "rejected" : "waiting");
+  $("performerStatus").className=
+    "status "+(isApproved?"approved":isRejected?"rejected":"waiting");
 
   if(isApproved){
-    $("performerStatus").innerHTML = isFree
-      ? "🎉 <strong>Your registration is APPROVED!</strong><br>You can now enter the show."
-      : "🎉 <strong>Your registration is APPROVED!</strong><br>Your payment has been verified. You can now enter the show.";
+    $("performerStatus").innerHTML=isFree
+      ?"🎉 <strong>Your registration is APPROVED!</strong><br>You can now enter the show."
+      :"🎉 <strong>Your registration is APPROVED!</strong><br>Your payment has been verified. You can now enter the show.";
   }else if(isRejected){
-    $("performerStatus").innerHTML = "Your registration has been rejected by the host. Please contact the host if you need help.";
+    $("performerStatus").innerHTML=
+      "Your registration has been rejected by the host. Please contact the host if you need help.";
   }else{
-    $("performerStatus").innerHTML = "⏳ <strong>Registration submitted successfully.</strong><br>Waiting for host approval and payment verification.";
+    $("performerStatus").innerHTML=
+      "⏳ <strong>Registration submitted successfully.</strong><br>Waiting for host approval and payment verification.";
   }
 
-  $("registrationSummary").innerHTML =
-    "<strong>Performer:</strong> "+escapeHTML(registration.singerName || "-")+"<br>"+
-    "<strong>Mobile:</strong> "+escapeHTML(registration.mobile || "-")+"<br>"+
-    "<strong>Performance:</strong> "+escapeHTML(registration.performanceType || "-")+"<br>"+
-    "<strong>Solo songs:</strong> "+escapeHTML((registration.soloSongs || []).map(x=>x.songName).join(", ") || "-")+"<br>"+
-    "<strong>Duet songs:</strong> "+escapeHTML((registration.duetSongs || []).map(x=>x.songName).join(", ") || "-")+"<br>"+
+  $("registrationSummary").innerHTML=
+    "<strong>Performer:</strong> "+escapeHTML(registration.singerName||"-")+"<br>"+
+    "<strong>Mobile:</strong> "+escapeHTML(registration.mobile||"-")+"<br>"+
+    "<strong>Performance:</strong> "+escapeHTML(registration.performanceType||"-")+"<br>"+
+    "<strong>Solo songs:</strong> "+escapeHTML((registration.soloSongs||[]).map(x=>x.songName).join(", ")||"-")+"<br>"+
+    "<strong>Duet songs:</strong> "+escapeHTML((registration.duetSongs||[]).map(x=>x.songName).join(", ")||"-")+"<br>"+
     "<strong>Total:</strong> "+money(registration.totalAmount)+"<br>"+
     "<strong>Payment:</strong> "+escapeHTML(paymentStatus)+"<br>"+
-    "<strong>Registration status:</strong> "+escapeHTML(registration.status || "Pending");
+    "<strong>Registration status:</strong> "+escapeHTML(registration.status||"Pending");
 
-  $("paymentButton").classList.toggle("hidden",isApproved || isRejected || isFree);
-  $("paymentButton").href = getPaymentLink(registration);
+  $("paymentButton").classList.toggle("hidden",isApproved||isRejected||isFree);
+  $("paymentButton").href=getPaymentLink(registration);
 
   $("enterShowButton").classList.toggle("hidden",!isApproved);
-  $("enterShowButton").href =
+
+  // IMPORTANT: This link identifies the person as a SINGER, not an audience member.
+  $("enterShowButton").href=
     "live-performance.html?showId="+encodeURIComponent(showId)+
-    "&registrationId="+encodeURIComponent(registration.registrationId);
+    "&registrationId="+encodeURIComponent(registration.registrationId)+
+    "&mode=singer";
 
   $("newRegistrationButton").classList.toggle("hidden",!isRejected);
 }
-function listenForMyRegistration(){
-  if(stopRegistrationListener) stopRegistrationListener();
 
-  // This query is required by the singerUid security rule in your database.
-  const myRegistrationsQuery = query(
+function listenForMyRegistration(){
+  if(stopRegistrationListener)stopRegistrationListener();
+
+  const myRegistrationsQuery=query(
     ref(db,"showRegistrations/"+showId),
     orderByChild("singerUid"),
     equalTo(currentUser.uid)
   );
 
-  stopRegistrationListener = onValue(myRegistrationsQuery, snapshot => {
-    const records = [];
-    snapshot.forEach(child => {
+  stopRegistrationListener=onValue(myRegistrationsQuery,snapshot=>{
+    const records=[];
+
+    snapshot.forEach(child=>{
       records.push({...child.val(),registrationId:child.key});
     });
 
     if(records.length){
-      records.sort((a,b) => Number(b.createdAt || b.submittedAt || 0) -
-                            Number(a.createdAt || a.submittedAt || 0));
-      const latest = records[0];
+      records.sort((a,b)=>
+        Number(b.createdAt||b.submittedAt||0)-
+        Number(a.createdAt||a.submittedAt||0)
+      );
+
       $("loading").classList.add("hidden");
-      displayRegistration(latest);
+      displayRegistration(records[0]);
     }else{
-      currentRegistration = null;
+      currentRegistration=null;
       $("loading").classList.add("hidden");
       setSection("registrationSection");
     }
-  }, error => {
+  },error=>{
     $("loading").classList.add("hidden");
-    showError("Could not check your registration: "+error.message+
-      "\nPlease check your Firebase Database rules and internet connection.");
+    showError(
+      "Could not check your registration: "+error.message+
+      "\nPlease check your Firebase Database rules and internet connection."
+    );
   });
 }
+
 async function loadPage(){
   try{
-    if(!showId) throw new Error("Show ID is missing. Please open registration from the show listing.");
+    if(!showId){
+      throw new Error("Show ID is missing. Please open registration from the show listing.");
+    }
 
-    currentUser = await connectAuditorium();
-    if(!currentUser || !currentUser.uid) throw new Error("Could not connect your performer login.");
+    currentUser=await connectAuditorium();
 
-    const showSnapshot = await get(ref(db,"shows/"+showId));
-    if(!showSnapshot.exists()) throw new Error("This show could not be found.");
+    if(!currentUser||!currentUser.uid){
+      throw new Error("Could not connect your performer login.");
+    }
 
-    currentShow = showSnapshot.val();
-    if(currentShow.status !== "Published" && currentShow.status !== "Live"){
+    const showSnapshot=await get(ref(db,"shows/"+showId));
+
+    if(!showSnapshot.exists()){
+      throw new Error("This show could not be found.");
+    }
+
+    currentShow=showSnapshot.val();
+
+    if(currentShow.status!=="Published"&&currentShow.status!=="Live"){
       throw new Error("This show is not currently accepting registrations.");
     }
 
-    soloRate = getFee(currentShow,["soloEntryFee","soloFee"]);
-    duetRate = getFee(currentShow,["duetEntryFee","duetFee"]);
-    hostWhatsApp = getHostNumber(currentShow);
+    soloRate=getFee(currentShow,["soloEntryFee","soloFee"]);
+    duetRate=getFee(currentShow,["duetEntryFee","duetFee"]);
+    hostWhatsApp=getHostNumber(currentShow);
 
     updateShowDetails();
     $("loading").classList.add("hidden");
     listenForMyRegistration();
+
   }catch(error){
     $("loading").classList.add("hidden");
-    showError(error.message || "Unable to load registration page.");
+    showError(error.message||"Unable to load registration page.");
   }
 }
 
-["soloSongs","duetSongs","performanceType"].forEach(id => {
+["soloSongs","duetSongs","performanceType"].forEach(id=>{
   $(id).addEventListener("input",updateFees);
   $(id).addEventListener("change",updateFees);
 });
 
 $("registrationForm").addEventListener("submit",async event=>{
   event.preventDefault();
-  if(submitting) return;
+  if(submitting)return;
 
   try{
-    const singerName = $("singerName").value.trim();
-    const mobile = $("mobile").value.replace(/\D/g,"");
-    const performanceType = $("performanceType").value;
-    const duetPartnerName = $("duetPartnerName").value.trim();
+    const singerName=$("singerName").value.trim();
+    const mobile=$("mobile").value.replace(/\D/g,"");
+    const performanceType=$("performanceType").value;
+    const duetPartnerName=$("duetPartnerName").value.trim();
 
-    if(!singerName) throw new Error("Please enter performer name.");
-    if(!/^[6-9]\d{9}$/.test(mobile)) throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    if(!singerName)throw new Error("Please enter performer name.");
 
-    const {solo,duet} = getCounts();
-    if(performanceType.includes("Solo") && !solo.length) throw new Error("Please enter at least one solo song.");
-    if(performanceType.includes("Duet") && !duet.length) throw new Error("Please enter at least one duet song.");
-    if(performanceType.includes("Duet") && !duetPartnerName) throw new Error("Please enter your duet partner's name.");
+    if(!/^[6-9]\d{9}$/.test(mobile)){
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
 
-    const soloMovies = cleanLines($("soloMovies").value);
-    const duetMovies = cleanLines($("duetMovies").value);
+    const {solo,duet}=getCounts();
 
-    const soloEntries = solo.map((songName,i)=>({
+    if(performanceType.includes("Solo")&&!solo.length){
+      throw new Error("Please enter at least one solo song.");
+    }
+
+    if(performanceType.includes("Duet")&&!duet.length){
+      throw new Error("Please enter at least one duet song.");
+    }
+
+    if(performanceType.includes("Duet")&&!duetPartnerName){
+      throw new Error("Please enter your duet partner's name.");
+    }
+
+    const soloMovies=cleanLines($("soloMovies").value);
+    const duetMovies=cleanLines($("duetMovies").value);
+
+    const soloEntries=solo.map((songName,i)=>({
       songName,
-      movieName:soloMovies[i] || ""
+      movieName:soloMovies[i]||""
     }));
-    const duetEntries = duet.map((songName,i)=>({
+
+    const duetEntries=duet.map((songName,i)=>({
       songName,
-      movieName:duetMovies[i] || ""
+      movieName:duetMovies[i]||""
     }));
 
-    const soloAmount = solo.length * soloRate;
-    const duetAmount = duet.length * duetRate;
-    const totalAmount = soloAmount + duetAmount;
-    const songs = [...soloEntries,...duetEntries];
+    const soloAmount=solo.length*soloRate;
+    const duetAmount=duet.length*duetRate;
+    const totalAmount=soloAmount+duetAmount;
+    const songs=[...soloEntries,...duetEntries];
 
-    const registrationRef = push(ref(db,"showRegistrations/"+showId));
-    const registrationId = registrationRef.key;
-    const now = Date.now();
+    const registrationRef=push(ref(db,"showRegistrations/"+showId));
+    const registrationId=registrationRef.key;
+    const now=Date.now();
 
-    const registration = {
+    const registration={
       singerUid:currentUser.uid,
       registrationId,
       showId,
-      showName:currentShow.name || currentShow.title || "",
+      showName:currentShow.name||currentShow.title||"",
       singerName,
       name:singerName,
       mobile,
@@ -369,18 +423,18 @@ $("registrationForm").addEventListener("submit",async event=>{
       soloSongs:soloEntries,
       duetSongs:duetEntries,
       songs,
-      songName:songs[0]?.songName || "",
-      movieName:songs[0]?.movieName || "",
-      song:songs[0]?.songName || "",
-      movie:songs[0]?.movieName || "",
+      songName:songs[0]?.songName||"",
+      movieName:songs[0]?.movieName||"",
+      song:songs[0]?.songName||"",
+      movie:songs[0]?.movieName||"",
       soloRate,
       duetRate,
       soloAmount,
       duetAmount,
       totalAmount,
       currency:"INR",
-      paymentStatus:totalAmount > 0 ? "Unpaid" : "Free",
-      paymentMethod:totalAmount > 0 ? "WhatsApp payment proof" : "Free entry",
+      paymentStatus:totalAmount>0?"Unpaid":"Free",
+      paymentMethod:totalAmount>0?"WhatsApp payment proof":"Free entry",
       status:"Pending",
       source:"Online Registration",
       registrationSource:"Online",
@@ -388,32 +442,31 @@ $("registrationForm").addEventListener("submit",async event=>{
       submittedAt:now
     };
 
-    submitting = true;
-    $("submitButton").disabled = true;
-    $("submitButton").textContent = "SUBMITTING...";
+    submitting=true;
+    $("submitButton").disabled=true;
+    $("submitButton").textContent="SUBMITTING...";
 
     await set(registrationRef,registration);
-
     displayRegistration(registration);
+
   }catch(error){
-    showError(error.message || "Registration failed. Please try again.");
+    showError(error.message||"Registration failed. Please try again.");
   }finally{
-    submitting = false;
-    $("submitButton").disabled = false;
-    $("submitButton").textContent = "SUBMIT REGISTRATION";
+    submitting=false;
+    $("submitButton").disabled=false;
+    $("submitButton").textContent="SUBMIT REGISTRATION";
   }
 });
 
 $("refreshStatus").addEventListener("click",()=>{
-  if(currentRegistration) {
-    $("performerStatus").textContent = "Checking the latest approval status...";
+  if(currentRegistration){
+    $("performerStatus").textContent="Checking the latest approval status...";
   }
-  // The Firebase realtime listener updates this page automatically.
   listenForMyRegistration();
 });
 
 $("newRegistrationButton").addEventListener("click",()=>{
-  currentRegistration = null;
+  currentRegistration=null;
   $("registrationForm").reset();
   updateFees();
   setSection("registrationSection");
