@@ -410,7 +410,21 @@ function normalizeArray(value) {
 ========================================= */
 
 function createPanel() {
-  if (byId("mmLiveKitPanel")) return;
+
+  // Remove any existing host-only controls from non-host pages.
+  if (!IS_HOST_CONTROL_PAGE) {
+    document.getElementById("mmAudioEffects")?.remove();
+    document.getElementById("mmHostControls")?.remove();
+  }
+
+  // If an older panel already exists, reuse it.
+  if (byId("mmLiveKitPanel")) {
+    if (!IS_HOST_CONTROL_PAGE) {
+      byId("mmAudioEffects")?.remove();
+      byId("mmHostControls")?.remove();
+    }
+    return;
+  }
 
   const target =
     byId("livekitArea") ||
@@ -1185,10 +1199,8 @@ async function joinAuditorium() {
       currentRole === "host" ||
       currentRole === "singer";
 
-    // Performer controls are only mic/camera controls.
     byId("mmMyControls").hidden = !isPerformer;
 
-    // Audio effects are strictly host-only.
     const hostCanUseEffects =
       currentRole === "host" &&
       isHost &&
@@ -1672,7 +1684,6 @@ async function toggleMicrophone() {
       await startMicrophoneEffects();
 
     } else if (currentRole === "singer") {
-      // Singers use an ordinary microphone without audio-effects controls.
       await room.localParticipant.setMicrophoneEnabled(true);
       localMicEnabled = true;
     }
