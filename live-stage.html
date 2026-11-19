@@ -160,6 +160,9 @@ let currentVideoId="";
 let playbackData=null;
 let playbackTimer=null;
 let applyingPlayback=false;
+let lastAppliedPlaybackAt=0;
+let syncInterval=null;
+let lastHeartbeatAt=0;
 
 let initializationUid=null;
 
@@ -239,7 +242,8 @@ async function createYouTubePlayer(){
         videoId:"",
         playerVars:{
           autoplay:0,
-          controls:1,
+          controls:isHost?1:0,
+          disablekb:isHost?0:1,
           playsinline:1,
           rel:0,
           modestbranding:1,
@@ -301,10 +305,25 @@ function setKaraokeVolume(){
   }
 }
 
-$("karaokeVolume").addEventListener(
-  "input",
-  setKaraokeVolume
-);
+async function publishKaraokeVolume(){
+  setKaraokeVolume();
+
+  if(!isHost||!currentUser||!showId)return;
+
+  try{
+    const volume=Number($("karaokeVolume").value);
+    await update(ref(db,"karaokePlayback/"+showId),{
+      volume,
+      volumeUpdatedAt:Date.now(),
+      volumeUpdatedBy:currentUser.uid
+    });
+  }catch(error){
+    console.error("Shared volume update error:",error);
+    videoMessage("Could not update common volume: "+error.message);
+  }
+}
+
+$("karaokeVolume").addEventListener("input",publishKaraokeVolume);
 
 function expectedPosition(data){
   if(!data)return 0;
@@ -312,20 +331,60 @@ function expectedPosition(data){
   let position=Number(data.basePosition||0);
 
   if(data.state==="playing"){
-    const startedAt=Number(data.startedAt||0);
+    const anchorAt=Number(data.syncAt||data.startedAt||0);
+    const anchorPosition=data.syncPosition===undefined
+      ? position
+      : Number(data.syncPosition||0);
 
-    if(startedAt>0){
-      position+=Math.max(0,Date.now()-startedAt)/1000;
+    if(anchorAt>0){
+      position=anchorPosition+Math.max(0,Date.now()-anchorAt)/1000;
     }
   }
 
   return Math.max(0,position);
 }
 
+function startDriftCorrection(){
+  if(syncInterval)return;
+
+  syncInterval=setInterval(async()=>{
+    if(!playbackData||playbackData.state!=="playing"||!playerReady||!youtubePlayer)return;
+
+    try{
+      const now=Date.now();
+
+      if(isHost&&currentUser&&now-lastHeartbeatAt>=4000){
+        lastHeartbeatAt=now;
+        const hostPosition=youtubePlayer.getCurrentTime()||0;
+        const syncUpdate={syncPosition:hostPosition,syncAt:now};
+
+        await update(ref(db,"karaokePlayback/"+showId),syncUpdate);
+        playbackData={...playbackData,...syncUpdate};
+      }
+
+      const target=expectedPosition(playbackData);
+      const current=youtubePlayer.getCurrentTime()||0;
+
+      if(Math.abs(target-current)>2.5){
+        youtubePlayer.seekTo(target,true);
+      }
+    }catch(error){
+      console.warn("Karaoke drift correction:",error);
+    }
+  },4000);
+}
 async function applyPlayback(data){
   if(!data||!data.videoId)return;
 
   playbackData=data;
+
+  const sharedVolume=Math.max(0,Math.min(100,Number(data.volume===undefined?100:data.volume)));
+  $("karaokeVolume").value=String(sharedVolume);
+  setKaraokeVolume();
+
+  const commandAt=Number(data.updatedAt||0);
+  if(commandAt&&commandAt===lastAppliedPlaybackAt)return;
+  if(commandAt)lastAppliedPlaybackAt=commandAt;
 
   if(applyingPlayback)return;
 
@@ -459,6 +518,9 @@ async function loadSelectedVideo(){
       state:"stopped",
       basePosition:0,
       startedAt:0,
+      syncPosition:0,
+      syncAt:0,
+      volume:Number($("karaokeVolume").value),
       updatedAt:Date.now(),
       updatedBy:currentUser.uid
     };
@@ -517,6 +579,9 @@ async function playForEveryone(){
       state:"playing",
       basePosition:0,
       startedAt:Date.now()+2000,
+      syncPosition:0,
+      syncAt:Date.now()+2000,
+      volume:Number($("karaokeVolume").value),
       updatedAt:Date.now(),
       updatedBy:currentUser.uid
     };
@@ -563,6 +628,9 @@ async function pauseForEveryone(){
       state:"paused",
       basePosition:position,
       startedAt:0,
+      syncPosition:position,
+      syncAt:0,
+      volume:Number($("karaokeVolume").value),
       updatedAt:Date.now(),
       updatedBy:currentUser.uid
     };
@@ -601,6 +669,9 @@ async function resumeForEveryone(){
       state:"playing",
       basePosition:position,
       startedAt:Date.now()+2000,
+      syncPosition:position,
+      syncAt:Date.now()+2000,
+      volume:Number($("karaokeVolume").value),
       updatedAt:Date.now(),
       updatedBy:currentUser.uid
     };
@@ -1099,6 +1170,7 @@ async function initializeForUser(user){
 
     startPerformanceListener();
     startPlaybackListener();
+    startDriftCorrection();
 
   }catch(error){
     console.error("Initialization error:",error);
@@ -1184,10 +1256,10 @@ async function bootAuditorium(){
 
 bootAuditorium();
 
-window.addEventListener(
-  "beforeunload",
-  stopListeners
-);
+window.addEventListener("beforeunload",()=>{
+  stopListeners();
+  if(syncInterval)clearInterval(syncInterval);
+});
 </script>
 
 </body>
