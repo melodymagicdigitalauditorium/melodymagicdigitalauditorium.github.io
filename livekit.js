@@ -1138,13 +1138,8 @@ async function workerRequest(data) {
 ========================================= */
 
 async function getAccessToken() {
-  if (isHost) {
-    return workerRequest({
-      action: "joinHost",
-      name: currentUser.displayName || "Host"
-    });
-  }
-
+  // A singer link must always request singer access first.
+  // Host-account detection must not override an explicit singer entry.
   if (requestedMode === "singer") {
     if (!registrationId) {
       throw new Error("Singer registration ID is missing.");
@@ -1154,6 +1149,13 @@ async function getAccessToken() {
       action: "joinSinger",
       registrationId,
       name: currentUser.displayName || "Singer"
+    });
+  }
+
+  if (isHost) {
+    return workerRequest({
+      action: "joinHost",
+      name: currentUser.displayName || "Host"
     });
   }
 
