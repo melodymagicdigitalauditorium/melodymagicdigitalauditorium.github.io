@@ -89,6 +89,7 @@ let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
 
 let youtubePlayer = null;
+let youtubePlayerReadyPromise = null;
 let youtubeApiPromise = null;
 let lastYoutubeVideoId = "";
 let lastPlaybackSignature = "";
@@ -1644,43 +1645,68 @@ function loadYouTubeAPI() {
 
 async function createYouTubePlayer() {
   const container = byId("mmYoutubePlayer");
-  if (!container) return;
+  if (!container) return null;
 
-  if (youtubePlayer) return;
+  if (youtubePlayerReadyPromise) return youtubePlayerReadyPromise;
 
-  try {
+  youtubePlayerReadyPromise = (async () => {
     await loadYouTubeAPI();
 
     container.innerHTML = '<div id="mmYoutubeFrame"></div>';
 
-    youtubePlayer = new window.YT.Player("mmYoutubeFrame", {
-      width: "100%",
-      height: "390",
-      videoId: "",
-      playerVars: {
-        playsinline: 1,
-        rel: 0,
-        modestbranding: 1
-      },
-      events: {
-        onReady: () => {
-          byId("mmPlaybackStatus").textContent =
-            "Karaoke player ready. Waiting for host playback.";
-        },
-        onError: event => {
-          console.warn("YouTube player error:", event.data);
-          byId("mmPlaybackStatus").textContent =
-            "This YouTube video cannot be played here.";
-        }
+    return await new Promise((resolve, reject) => {
+      let settled = false;
+
+      try {
+        youtubePlayer = new window.YT.Player("mmYoutubeFrame", {
+          width: "100%",
+          height: "100%",
+          videoId: "",
+          playerVars: {
+            autoplay: 0,
+            controls: 1,
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1,
+            enablejsapi: 1,
+            origin: location.origin
+          },
+          events: {
+            onReady: event => {
+              if (settled) return;
+              settled = true;
+              const status = byId("mmPlaybackStatus");
+              if (status) status.textContent =
+                "Karaoke player ready. Syncing the host's video...";
+              resolve(event.target);
+            },
+            onError: event => {
+              console.warn("YouTube player error:", event.data);
+              const status = byId("mmPlaybackStatus");
+              if (status) status.textContent =
+                "YouTube player error (" + event.data + "). Check that this video allows embedding.";
+              if (!settled) {
+                settled = true;
+                reject(new Error("YouTube player error: " + event.data));
+              }
+            }
+          }
+        });
+      } catch (error) {
+        settled = true;
+        reject(error);
       }
     });
-
-  } catch (error) {
+  })().catch(error => {
+    youtubePlayerReadyPromise = null;
+    youtubePlayer = null;
     console.error("YouTube setup error:", error);
+    container.innerHTML =
+      '<p style="padding:16px;color:#ddd">Unable to load the YouTube player. Refresh the page and try again.</p>';
+    throw error;
+  });
 
-    container.textContent =
-      "Unable to load the YouTube player. Please refresh the page.";
-  }
+  return youtubePlayerReadyPromise;
 }
 
 function playbackPosition(data) {
@@ -1712,52 +1738,56 @@ async function applyPlayback(data) {
     return;
   }
 
-  await createYouTubePlayer();
-
-  if (!youtubePlayer || !window.YT?.PlayerState) return;
-
-  const signature = [
-    videoId,
-    state,
-    data.basePosition || 0,
-    data.startedAt || 0,
-    data.updatedAt || 0
-  ].join("|");
-
-  if (signature === lastPlaybackSignature) return;
-
-  lastPlaybackSignature = signature;
-
-  const position = playbackPosition(data);
-
   try {
-    if (videoId !== lastYoutubeVideoId) {
-      lastYoutubeVideoId = videoId;
+    // Wait until the YouTube iframe reports onReady before sending commands.
+    const player = await createYouTubePlayer();
+    if (!player) return;
 
-      youtubePlayer.loadVideoById({
-        videoId,
-        startSeconds: position
-      });
+    const signature = [
+      videoId,
+      state,
+      data.basePosition || 0,
+      data.startedAt || 0,
+      data.updatedAt || 0
+    ].join("|");
 
+    if (signature === lastPlaybackSignature) return;
+
+    const position = playbackPosition(data);
+    const isNewVideo = videoId !== lastYoutubeVideoId;
+
+    if (isNewVideo) lastYoutubeVideoId = videoId;
+
+    // A selected/stopped video must be cued, not loaded (loadVideoById
+    // starts playback and can race the player's onReady event).
+    if (isNewVideo || state === "stopped" || state === "selected") {
+      if (state === "playing") {
+        player.loadVideoById({
+          videoId,
+          startSeconds: position
+        });
+      } else {
+        player.cueVideoById({
+          videoId,
+          startSeconds: position
+        });
+      }
     } else if (state === "playing") {
       const currentTime =
-        typeof youtubePlayer.getCurrentTime === "function"
-          ? youtubePlayer.getCurrentTime()
+        typeof player.getCurrentTime === "function"
+          ? player.getCurrentTime()
           : 0;
 
       if (Math.abs(currentTime - position) > 3) {
-        youtubePlayer.seekTo(position, true);
+        player.seekTo(position, true);
       }
-
-      youtubePlayer.playVideo();
-
+      player.playVideo();
     } else if (state === "paused") {
-      youtubePlayer.seekTo(position, true);
-      youtubePlayer.pauseVideo();
-
-    } else if (state === "stopped") {
-      youtubePlayer.stopVideo();
+      player.seekTo(position, true);
+      player.pauseVideo();
     }
+
+    lastPlaybackSignature = signature;
 
     if (statusElement) {
       statusElement.textContent =
@@ -1766,12 +1796,15 @@ async function applyPlayback(data) {
           : state === "paused"
             ? "Karaoke video paused by host."
             : state === "stopped"
-              ? "Karaoke video stopped by host."
+              ? "Video selected. Waiting for the host to press PLAY."
               : "Karaoke video selected.";
     }
-
   } catch (error) {
     console.warn("Playback sync error:", error);
+    if (statusElement) {
+      statusElement.textContent =
+        "Karaoke player could not start: " + error.message;
+    }
   }
 }
 
