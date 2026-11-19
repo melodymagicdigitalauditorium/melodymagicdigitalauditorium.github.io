@@ -921,8 +921,14 @@ function createPanel() {
     </div>
 
     <div class="mm-section">
-      <h3>Live Stage Camera & Audio</h3>
+      <h3>🎥 Host Camera</h3>
+      <div id="mmHostVideoGrid" class="mm-video-grid"></div>
+    </div>
+
+    <div class="mm-section">
+      <h2 id="mmPerformersHeading">🎤 SHOW NAME — PERFORMERS</h2>
       <div id="mmVideoGrid" class="mm-video-grid"></div>
+      <div class="mm-note">All connected singers' cameras appear together in this performers gallery.</div>
     </div>
   `;
 
@@ -1057,6 +1063,17 @@ async function loadShow() {
   }
 
   currentShow = snapshot.val();
+
+  const showTitle =
+    currentShow.showName ||
+    currentShow.title ||
+    currentShow.name ||
+    "SHOW NAME";
+
+  const performersHeading = byId("mmPerformersHeading");
+  if (performersHeading) {
+    performersHeading.textContent = "🎤 " + showTitle + " — PERFORMERS";
+  }
 
   const status = safeText(currentShow.status).toLowerCase();
 
@@ -2040,12 +2057,16 @@ function getTileId(identity) {
 }
 
 async function createVideoTile(participant, isLocal) {
-  const grid = byId("mmVideoGrid");
-  if (!grid) return;
-
   const identity = safeText(
     participant.identity || "participant"
   );
+
+  const isHostParticipant =
+    (isLocal && currentRole === "host") ||
+    (!!currentShow?.hostUid && identity === safeText(currentShow.hostUid));
+
+  const grid = byId(isHostParticipant ? "mmHostVideoGrid" : "mmVideoGrid");
+  if (!grid) return;
 
   const tileId = getTileId(identity);
 
@@ -2059,9 +2080,9 @@ async function createVideoTile(participant, isLocal) {
     const name = document.createElement("div");
     name.className = "mm-video-name";
 
-    name.textContent = isLocal
-      ? "You (" + currentRole + ")"
-      : (participant.name || identity);
+    name.textContent = isHostParticipant
+      ? "HOST — " + (participant.name || "Host")
+      : (isLocal ? "You (" + currentRole + ")" : (participant.name || identity));
 
     const media = document.createElement("div");
     media.id = tileId + "_media";
