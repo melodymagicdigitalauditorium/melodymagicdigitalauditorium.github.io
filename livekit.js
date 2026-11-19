@@ -2428,12 +2428,8 @@ function listenToStage() {
 
       if (!selected) {
         microphoneAllowed = false;
-      } else {
-        const controls = participantPermissions[currentUser.uid] || {};
-        microphoneAllowed = controls.microphoneAllowed === true;
       }
-
-      // Keep the camera available to the approved singer while waiting.
+      // When selected, microphone permission comes from the singer's own controls listener.
       cameraAllowed = true;
 
       enforceCurrentPermissions();
