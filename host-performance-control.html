@@ -961,9 +961,9 @@ async function startNextPerformer(){
 
     const [id,person]=next;
 
-    await markQueueStatus(id,"Playing");
-    await publishPerformer(id,person);
     await clearLiveStage();
+await markQueueStatus(id,"Playing");
+await publishPerformer(id,person);
 
     message(
       "Performer started. Select the singer in Live Auditorium stage controls."
