@@ -1627,7 +1627,7 @@ function loadYouTubeAPI() {
 
     setTimeout(() => {
       if (!(window.YT && window.YT.Player)) {
-                reject(new Error("YouTube player could not be loaded."));
+                        reject(new Error("YouTube player could not be loaded."));
       }
     }, 20000);
   });
@@ -1635,106 +1635,151 @@ function loadYouTubeAPI() {
   return youtubeApiPromise;
 }
 
-
-/* =========================================
-   EXTRACT YOUTUBE VIDEO ID
-========================================= */
-
-function extractYouTubeId(url) {
-  if (!url) return "";
-
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.hostname.includes("youtu.be")) {
-      return parsed.pathname.replace("/", "").split("/")[0];
-    }
-
-    if (parsed.hostname.includes("youtube.com")) {
-      if (parsed.searchParams.get("v")) {
-        return parsed.searchParams.get("v");
-      }
-
-      const parts = parsed.pathname.split("/").filter(Boolean);
-
-      if (
-        parts[0] === "embed" ||
-        parts[0] === "shorts" ||
-        parts[0] === "live"
-      ) {
-        return parts[1] || "";
-      }
-    }
-
-  } catch (error) {
-    console.warn("Invalid YouTube URL:", error);
-  }
-
-  return "";
-}
-
-
-/* =========================================
-   CREATE YOUTUBE PLAYER
-========================================= */
-
-async function createYouTubePlayer(videoId) {
-  if (!videoId) return;
-
-  await loadYouTubeAPI();
-
+async function createYouTubePlayer() {
   const container = byId("mmYoutubePlayer");
   if (!container) return;
 
-  if (youtubePlayer) {
-    try {
-      youtubePlayer.destroy();
-    } catch (error) {}
+  if (youtubePlayer) return;
 
-    youtubePlayer = null;
-  }
+  try {
+    await loadYouTubeAPI();
 
-  container.innerHTML = '<div id="mmYoutubeFrame"></div>';
+    container.innerHTML = '<div id="mmYoutubeFrame"></div>';
 
-  youtubePlayer = new window.YT.Player("mmYoutubeFrame", {
-    videoId,
-    playerVars: {
-      autoplay: 0,
-      controls: 1,
-      playsinline: 1,
-      rel: 0,
-      modestbranding: 1
-    },
-    events: {
-      onReady: () => {
-        lastYoutubeVideoId = videoId;
-        updatePlaybackStatus("Karaoke video loaded.");
+    youtubePlayer = new window.YT.Player("mmYoutubeFrame", {
+      width: "100%",
+      height: "390",
+      videoId: "",
+      playerVars: {
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1
       },
-      onStateChange: event => {
-        if (event.data === window.YT.PlayerState.PLAYING) {
-          updatePlaybackStatus("Karaoke is playing.");
-        } else if (event.data === window.YT.PlayerState.PAUSED) {
-          updatePlaybackStatus("Karaoke is paused.");
-        } else if (event.data === window.YT.PlayerState.ENDED) {
-          updatePlaybackStatus("Karaoke video ended.");
+      events: {
+        onReady: () => {
+          byId("mmPlaybackStatus").textContent =
+            "Karaoke player ready. Waiting for host playback.";
+        },
+        onError: event => {
+          console.warn("YouTube player error:", event.data);
+          byId("mmPlaybackStatus").textContent =
+            "This YouTube video cannot be played here.";
         }
-      },
-      onError: event => {
-        console.error("YouTube player error:", event.data);
-        updatePlaybackStatus(
-          "YouTube could not play this video. Try another karaoke link."
-        );
       }
-    }
-  });
+    });
+
+  } catch (error) {
+    console.error("YouTube setup error:", error);
+
+    container.textContent =
+      "Unable to load the YouTube player. Please refresh the page.";
+  }
 }
 
+function playbackPosition(data) {
+  const base = Number(data.basePosition || 0);
 
-/* =========================================
-   PLAYBACK STATUS
-========================================= */
+  if (safeText(data.state).toLowerCase() !== "playing") {
+    return Math.max(0, base);
+  }
 
-function updatePlaybackStatus(message) {
-  const status = byId("mmPlaybackStatus");
-  if (status) status.textContent = message;
+  const startedAt = Number(data.startedAt || 0);
+
+  if (!startedAt) return Math.max(0, base);
+
+  return Math.max(0, base + (Date.now() - startedAt) / 1000);
+}
+
+async function applyPlayback(data) {
+  const statusElement = byId("mmPlaybackStatus");
+  if (!data) data = {};
+
+  const videoId = safeText(data.videoId).trim();
+  const state = safeText(data.state).toLowerCase();
+
+  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    if (statusElement) {
+      statusElement.textContent =
+        "Waiting for the host to select a karaoke video.";
+    }
+    return;
+  }
+
+  await createYouTubePlayer();
+
+  if (!youtubePlayer || !window.YT?.PlayerState) return;
+
+  const signature = [
+    videoId,
+    state,
+    data.basePosition || 0,
+    data.startedAt || 0,
+    data.updatedAt || 0
+  ].join("|");
+
+  if (signature === lastPlaybackSignature) return;
+
+  lastPlaybackSignature = signature;
+
+  const position = playbackPosition(data);
+
+  try {
+    if (videoId !== lastYoutubeVideoId) {
+      lastYoutubeVideoId = videoId;
+
+      youtubePlayer.loadVideoById({
+        videoId,
+        startSeconds: position
+      });
+
+    } else if (state === "playing") {
+      const currentTime =
+        typeof youtubePlayer.getCurrentTime === "function"
+          ? youtubePlayer.getCurrentTime()
+          : 0;
+
+      if (Math.abs(currentTime - position) > 3) {
+        youtubePlayer.seekTo(position, true);
+      }
+
+      youtubePlayer.playVideo();
+
+    } else if (state === "paused") {
+      youtubePlayer.seekTo(position, true);
+      youtubePlayer.pauseVideo();
+
+    } else if (state === "stopped") {
+      youtubePlayer.stopVideo();
+    }
+
+    if (statusElement) {
+      statusElement.textContent =
+        state === "playing"
+          ? "Host is playing the karaoke video."
+          : state === "paused"
+            ? "Karaoke video paused by host."
+            : state === "stopped"
+              ? "Karaoke video stopped by host."
+              : "Karaoke video selected.";
+    }
+
+  } catch (error) {
+    console.warn("Playback sync error:", error);
+  }
+}
+
+function listenToKaraokePlayback() {
+  if (!showId) return;
+
+  const playbackRef = ref(db, "karaokePlayback/" + showId);
+
+  if (playbackListener) {
+    off(playbackRef, "value", playbackListener);
+  }
+
+  playbackListener = snapshot => {
+    applyPlayback(snapshot.val() || {});
+  };
+
+  onValue(playbackRef, playbackListener);
 }
