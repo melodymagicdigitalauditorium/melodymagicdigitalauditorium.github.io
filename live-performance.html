@@ -121,6 +121,19 @@ header p {
   line-height: 1.6;
 }
 
+.lifecycle-panel {
+  background: #090909;
+  border: 1px solid #8b6a2c;
+  border-radius: 8px;
+  padding: 13px;
+  margin-top: 12px;
+  color: #e9bd57;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.lifecycle-panel strong { display:block; margin-bottom:5px; }
+
 .placeholder {
   background: #090909;
   border: 1px solid #333;
@@ -182,6 +195,13 @@ footer {
   </div>
   <p class="info">
     Wait for the host to assign your stage and grant your microphone access.
+  </p>
+  <div id="singerShowLifecycle" class="lifecycle-panel" role="status" aria-live="polite">
+    <strong>Checking show status...</strong>
+    Your entry will become available when the scheduled show time arrives or the host starts the show manually.
+  </div>
+  <p id="singerEntryNotice" class="info">
+    Your entry is confirmed. You can enter the auditorium when the show starts at the scheduled time or when the host starts it manually.
   </p>
 </section>
 
