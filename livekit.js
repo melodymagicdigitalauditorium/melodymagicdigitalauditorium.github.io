@@ -1783,3 +1783,1446 @@ function listenToKaraokePlayback() {
 
   onValue(playbackRef, playbackListener);
 }
+/* =========================================
+   JOIN AUDITORIUM
+========================================= */
+
+async function joinAuditorium() {
+  if (joining || isJoined) return;
+
+  joining = true;
+  setButtonState("mmJoinBtn", true, "Connecting...");
+
+  try {
+    await waitForAuth();
+    await loadShow();
+
+    isHost = await verifyHost();
+
+    const tokenData = await getAccessToken();
+
+    currentRole = safeText(tokenData.role).toLowerCase();
+
+    if (!["host", "singer", "audience"].includes(currentRole)) {
+      throw new Error("Invalid auditorium role returned by server.");
+    }
+
+    if (requestedMode === "singer" && currentRole !== "singer") {
+      throw new Error("Singer access was not confirmed.");
+    }
+
+    if (!isHost && requestedMode !== "singer" && currentRole !== "audience") {
+      throw new Error("Audience access was not confirmed.");
+    }
+
+    microphoneAllowed =
+      currentRole === "host" &&
+      tokenData.microphoneAllowed === true;
+
+    cameraAllowed =
+      currentRole === "host" &&
+      tokenData.cameraAllowed === true;
+
+    if (currentRole === "singer") {
+      microphoneAllowed = tokenData.microphoneAllowed === true;
+
+      // Approved singers can use their camera even while waiting.
+      // The Worker must return cameraAllowed: true for approved singers.
+      cameraAllowed = tokenData.cameraAllowed === true;
+    }
+
+    if (currentRole === "audience") {
+      microphoneAllowed = false;
+      cameraAllowed = false;
+    }
+
+    const isPerformer =
+      currentRole === "host" ||
+      currentRole === "singer";
+
+    byId("mmMyControls").hidden = !isPerformer;
+
+    const hostCanUseEffects =
+      currentRole === "host" &&
+      isHost &&
+      IS_HOST_CONTROL_PAGE;
+
+    if (byId("mmAudioEffects")) {
+      byId("mmAudioEffects").hidden = !hostCanUseEffects;
+    }
+
+    if (byId("mmHostControls")) {
+      byId("mmHostControls").hidden = true;
+    }
+
+    room = new Room({
+      adaptiveStream: true,
+      dynacast: true
+    });
+
+    registerRoomEvents();
+
+    await room.connect(
+      tokenData.url || LIVEKIT_URL,
+      tokenData.token
+    );
+
+    isJoined = true;
+
+    setButtonState("mmJoinBtn", true, "Connected");
+    setButtonState("mmLeaveBtn", false, "Leave Auditorium");
+
+    byId("mmRoleInfo").textContent =
+      "Connected as: " + currentRole.toUpperCase();
+
+    showMessage("Connected to the live auditorium.", "success");
+
+    updateControlButtons();
+    updateReactionButtons();
+    updateCommentControls();
+    updateAudienceCount();
+
+    await createVideoTile(room.localParticipant, true);
+
+    for (const participant of room.remoteParticipants.values()) {
+      await createVideoTile(participant, false);
+    }
+
+    // Singer camera is automatically switched ON immediately after joining.
+    // This is independent of stage assignment and microphone permission.
+    if (currentRole === "singer" && cameraAllowed) {
+      try {
+        await room.localParticipant.setCameraEnabled(true);
+        localCameraEnabled = true;
+        showMessage(
+          "You are connected. Your camera is ON; your microphone remains OFF until the host allows it.",
+          "success"
+        );
+      } catch (cameraError) {
+        localCameraEnabled = false;
+        showMessage(
+          "You joined, but camera access needs attention: " +
+          cameraError.message,
+          "warning"
+        );
+      }
+    }
+
+    if (
+      currentRole === "host" &&
+      isHost &&
+      IS_HOST_CONTROL_PAGE
+    ) {
+      if (byId("mmHostControls")) {
+        byId("mmHostControls").hidden = false;
+      }
+
+      if (byId("mmAudioEffects")) {
+        byId("mmAudioEffects").hidden = false;
+      }
+
+      await loadHostRegistrations();
+      listenToParticipantControls();
+      listenToStage();
+
+    } else {
+      if (byId("mmHostControls")) {
+        byId("mmHostControls").hidden = true;
+      }
+
+      if (byId("mmAudioEffects")) {
+        byId("mmAudioEffects").hidden = true;
+      }
+
+      listenToMyPermissions();
+      listenToStage();
+    }
+
+    listenToLiveComments();
+    listenToQueue();
+    listenToCurrentPerformance();
+    listenToKaraokePlayback();
+
+    updateControlButtons();
+    updateAudienceCount();
+
+  } catch (error) {
+    console.error("Join error:", error);
+
+    showMessage(
+      error.message || "Unable to enter auditorium.",
+      "error"
+    );
+
+    if (room) {
+        } catch (error) {
+    console.error("Join error:", error);
+
+    showMessage(
+      error.message || "Unable to enter auditorium.",
+      "error"
+    );
+
+    if (room) {
+      try {
+        await room.disconnect();
+      } catch (e) {}
+    }
+
+    room = null;
+    isJoined = false;
+
+    updateReactionButtons();
+    updateCommentControls();
+    updateAudienceCount();
+
+  } finally {
+    joining = false;
+
+    setButtonState(
+      "mmJoinBtn",
+      isJoined,
+      isJoined ? "Connected" : "Enter Live Auditorium"
+    );
+  }
+}
+
+
+/* =========================================
+   ROOM EVENTS
+========================================= */
+
+function registerRoomEvents() {
+  if (!room) return;
+
+  room.on(
+    RoomEvent.TrackSubscribed,
+    async (track, publication, participant) => {
+      await attachRemoteTrack(track, participant);
+    }
+  );
+
+  room.on(
+    RoomEvent.TrackUnsubscribed,
+    track => {
+      detachTrackElements(track);
+    }
+  );
+
+  room.on(
+    RoomEvent.ParticipantConnected,
+    async participant => {
+      await createVideoTile(participant, false);
+      updateAudienceCount();
+
+      showMessage(
+        (participant.name || "A participant") +
+        " joined the auditorium."
+      );
+    }
+  );
+
+  room.on(
+    RoomEvent.ParticipantDisconnected,
+    participant => {
+      removeParticipantTile(participant.identity);
+      updateAudienceCount();
+    }
+  );
+
+  room.on(
+    RoomEvent.DataReceived,
+    (payload, participant, kind, topic) => {
+      receiveReaction(payload, participant, kind, topic);
+    }
+  );
+
+  room.on(RoomEvent.Disconnected, () => {
+    if (!leaving) {
+      isJoined = false;
+      localMicEnabled = false;
+      localCameraEnabled = false;
+
+      microphoneAllowed = false;
+      cameraAllowed = false;
+
+      stopMicrophoneEffects();
+
+      showMessage("Disconnected from the auditorium.", "warning");
+
+      resetButtons();
+      updateReactionButtons();
+      updateCommentControls();
+      updateAudienceCount();
+    }
+  });
+
+  room.on(
+    RoomEvent.LocalTrackPublished,
+    async publication => {
+      if (publication.track) {
+        await attachLocalTrack(publication.track);
+      }
+    }
+  );
+
+  room.on(
+    RoomEvent.LocalTrackUnpublished,
+    publication => {
+      if (publication.track) {
+        detachTrackElements(publication.track);
+      }
+    }
+  );
+}
+
+
+/* =========================================
+   VIDEO AND AUDIO TILES
+========================================= */
+
+function getTileId(identity) {
+  return "mmTile_" +
+    safeText(identity).replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+async function createVideoTile(participant, isLocal) {
+  const grid = byId("mmVideoGrid");
+  if (!grid) return;
+
+  const identity = safeText(
+    participant.identity || "participant"
+  );
+
+  const tileId = getTileId(identity);
+
+  let tile = byId(tileId);
+
+  if (!tile) {
+    tile = document.createElement("div");
+    tile.className = "mm-video-box";
+    tile.id = tileId;
+
+    const name = document.createElement("div");
+    name.className = "mm-video-name";
+
+    name.textContent = isLocal
+      ? "You (" + currentRole + ")"
+      : (participant.name || identity);
+
+    const media = document.createElement("div");
+    media.id = tileId + "_media";
+
+    tile.append(name, media);
+    grid.appendChild(tile);
+  }
+
+  if (participant.trackPublications) {
+    participant.trackPublications.forEach(publication => {
+      if (publication.track) {
+        attachTrackToTile(
+          publication.track,
+          tileId + "_media"
+        );
+      }
+    });
+  }
+}
+
+async function attachRemoteTrack(track, participant) {
+  await createVideoTile(participant, false);
+
+  attachTrackToTile(
+    track,
+          }
+    });
+  }
+}
+
+async function attachRemoteTrack(track, participant) {
+  await createVideoTile(participant, false);
+
+  attachTrackToTile(
+    track,
+    getTileId(participant.identity) + "_media"
+  );
+}
+
+async function attachLocalTrack(track) {
+  if (!room) return;
+
+  attachTrackToTile(
+    track,
+    getTileId(room.localParticipant.identity) + "_media"
+  );
+}
+
+function attachTrackToTile(track, targetId) {
+  const target = byId(targetId);
+  if (!target || !track) return;
+
+  const attached = track.attach();
+
+  const elements = Array.isArray(attached)
+    ? attached
+    : [attached];
+
+  elements.forEach(element => {
+    if (!element) return;
+
+    element.style.width = "100%";
+
+    if (track.kind === Track.Kind.Video) {
+      element.style.maxHeight = "360px";
+      element.autoplay = true;
+      element.playsInline = true;
+    }
+
+    if (track.kind === Track.Kind.Audio) {
+      element.autoplay = true;
+      element.controls = false;
+    }
+
+    if (!target.contains(element)) {
+      target.appendChild(element);
+    }
+
+    const playResult = element.play?.();
+
+    if (playResult && typeof playResult.catch === "function") {
+      playResult.catch(() => {
+        showMessage(
+          "Your browser may require a click to start live audio.",
+          "warning"
+        );
+      });
+    }
+  });
+}
+
+function detachTrackElements(track) {
+  if (!track) return;
+
+  try {
+    const elements = track.detach();
+
+    const list = Array.isArray(elements)
+      ? elements
+      : [elements];
+
+    list.forEach(element => element?.remove());
+
+  } catch (error) {
+    console.warn("Track detach error:", error);
+  }
+}
+
+function removeParticipantTile(identity) {
+  const tile = byId(getTileId(identity));
+  if (tile) tile.remove();
+}
+
+
+/* =========================================
+   HOST MICROPHONE AUDIO EFFECTS
+========================================= */
+
+function hostCanUseAudioEffects() {
+  return (
+    isJoined &&
+    isHost &&
+    currentRole === "host" &&
+    IS_HOST_CONTROL_PAGE
+  );
+}
+
+async function startMicrophoneEffects() {
+  if (!hostCanUseAudioEffects()) {
+    throw new Error("Only the verified host can use these audio effects.");
+  }
+
+  if (!microphoneAllowed) {
+    throw new Error("The host microphone is not permitted.");
+  }
+
+  if (!room || !isJoined) {
+    throw new Error("Join the auditorium first.");
+  }
+
+  if (publishedMicrophoneTrack) return;
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Microphone access is not supported.");
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false
+    },
+    video: false
+  });
+
+  rawMicrophoneTrack = stream.getAudioTracks()[0];
+
+  if (!rawMicrophoneTrack) {
+    throw new Error("No microphone was found.");
+  }
+
+  audioEffects = new VirtualAudioEffects();
+
+  processedMicrophoneTrack =
+    await audioEffects.start(rawMicrophoneTrack);
+
+  audioEffects.setEcho(Number(byId("mmEcho").value));
+  audioEffects.setDelayTime(Number(byId("mmDelay").value));
+  audioEffects.setFeedback(Number(byId("mmFeedback").value));
+  audioEffects.setReverb(Number(byId("mmReverb").value));
+  audioEffects.setMix(Number(byId("mmMix").value));
+  audioEffects.setVolume(Number(byId("mmVolume").value));
+  audioEffects.setMonitorVolume(
+    Number(byId("mmMonitorVolume").value)
+  );
+  audioEffects.setMonitor(byId("mmMonitor").checked);
+
+  audioEffects.setMuted(false);
+
+  await room.localParticipant.publishTrack(
+    processedMicrophoneTrack,
+    {
+      name: "Melody Magic Host Processed Microphone",
+      source: Track.Source.Microphone
+    }
+  );
+
+  publishedMicrophoneTrack = processedMicrophoneTrack;
+  localMicEnabled = true;
+
+  if (byId("mmEffectsStatus")) {
+    byId("mmEffectsStatus").textContent =
+      "Host microphone active. Audio effects are processing your voice.";
+  }
+
+  updateControlButtons();
+}
+
+
+/* =========================================
+   STOP MICROPHONE EFFECTS
+========================================= */
+
+async function stopMicrophoneEffects() {
+  if (room && publishedMicrophoneTrack) {
+      );
+
+  publishedMicrophoneTrack = processedMicrophoneTrack;
+  localMicEnabled = true;
+
+  if (byId("mmEffectsStatus")) {
+    byId("mmEffectsStatus").textContent =
+      "Host microphone active. Audio effects are processing your voice.";
+  }
+
+  updateControlButtons();
+}
+
+
+/* =========================================
+   STOP MICROPHONE EFFECTS
+========================================= */
+
+async function stopMicrophoneEffects() {
+  if (room && publishedMicrophoneTrack) {
+    try {
+      await room.localParticipant.unpublishTrack(
+        publishedMicrophoneTrack,
+        true
+      );
+    } catch (error) {
+      console.warn("Microphone unpublish:", error);
+    }
+  }
+
+  publishedMicrophoneTrack = null;
+  processedMicrophoneTrack = null;
+
+  if (audioEffects) {
+    audioEffects.stop();
+    audioEffects = null;
+  }
+
+  if (rawMicrophoneTrack) {
+    try {
+      rawMicrophoneTrack.stop();
+    } catch (error) {}
+  }
+
+  rawMicrophoneTrack = null;
+  localMicEnabled = false;
+
+  if (byId("mmEffectsStatus")) {
+    byId("mmEffectsStatus").textContent = "Host microphone is OFF.";
+  }
+
+  updateControlButtons();
+}
+
+
+/* =========================================
+   TOGGLE MICROPHONE
+========================================= */
+
+async function toggleMicrophone() {
+  if (!room || !isJoined) return;
+
+  if (!microphoneAllowed) {
+    showMessage("The host has not granted microphone permission.", "warning");
+    return;
+  }
+
+  try {
+    if (localMicEnabled) {
+      if (currentRole === "host") {
+        await stopMicrophoneEffects();
+      } else {
+        await room.localParticipant.setMicrophoneEnabled(false);
+        localMicEnabled = false;
+      }
+
+      showMessage("Microphone OFF.");
+      updateControlButtons();
+      return;
+    }
+
+    if (currentRole === "host") {
+      if (!hostCanUseAudioEffects()) {
+        showMessage(
+          "Host microphone effects are available only in Host Control Room.",
+          "error"
+        );
+        return;
+      }
+
+      await startMicrophoneEffects();
+
+    } else if (currentRole === "singer") {
+      await room.localParticipant.setMicrophoneEnabled(true);
+      localMicEnabled = true;
+    }
+
+    updateControlButtons();
+    showMessage("Microphone ON.", "success");
+
+  } catch (error) {
+    console.error("Microphone error:", error);
+
+    if (currentRole === "host") {
+      await stopMicrophoneEffects();
+    }
+
+    showMessage("Microphone error: " + error.message, "error");
+  }
+}
+
+
+/* =========================================
+   CAMERA
+========================================= */
+
+async function toggleCamera() {
+  if (!room || !isJoined) return;
+
+  if (!cameraAllowed) {
+    showMessage("Camera access is not available.", "warning");
+    return;
+  }
+
+  try {
+    const nextState = !localCameraEnabled;
+
+    if (nextState) {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera access is not supported.");
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+
+      if (!devices.some(device => device.kind === "videoinput")) {
+        throw new Error("No camera device was found.");
+      }
+    }
+
+    await room.localParticipant.setCameraEnabled(nextState);
+
+    localCameraEnabled = nextState;
+    updateControlButtons();
+
+  } catch (error) {
+    localCameraEnabled = false;
+    updateControlButtons();
+
+    showMessage("Camera error: " + error.message, "error");
+  }
+}
+
+
+/* =========================================
+   UPDATE BUTTONS
+========================================= */
+
+function updateControlButtons() {
+  const mic = byId("mmMicBtn");
+  const camera = byId("mmCameraBtn");
+  const info = byId("mmPermissionInfo");
+
+  if (!mic || !camera) return;
+
+  mic.disabled = !isJoined || !microphoneAllowed;
+  camera.disabled = !isJoined || !cameraAllowed;
+
+  mic.textContent = localMicEnabled
+    ? "Microphone ON"
+    : "Microphone OFF";
+
+  camera.textContent = localCameraEnabled
+    ? "Camera ON"
+    : "Camera OFF";
+
+  if (info) {
+    if (currentRole === "audience") {
+      info.textContent =
+        "Audience mode: microphone and camera are disabled.";
+    } else if (currentRole === "singer") {
+        const info = byId("mmPermissionInfo");
+
+  if (!mic || !camera) return;
+
+  mic.disabled = !isJoined || !microphoneAllowed;
+  camera.disabled = !isJoined || !cameraAllowed;
+
+  mic.textContent = localMicEnabled
+    ? "Microphone ON"
+    : "Microphone OFF";
+
+  camera.textContent = localCameraEnabled
+    ? "Camera ON"
+    : "Camera OFF";
+
+  if (info) {
+    if (currentRole === "audience") {
+      info.textContent =
+        "Audience mode: microphone and camera are disabled.";
+    } else if (currentRole === "singer") {
+      info.textContent =
+        "Camera: available while waiting and performing. Microphone: " +
+        (microphoneAllowed ? "Host has granted permission." : "OFF — waiting for host permission.");
+    } else {
+      info.textContent =
+        "Host microphone: " +
+        (microphoneAllowed ? "Allowed" : "Not allowed") +
+        " | Camera: " +
+        (cameraAllowed ? "Allowed" : "Not allowed");
+    }
+  }
+}
+
+
+/* =========================================
+   MY PERMISSION LISTENER
+========================================= */
+
+function listenToMyPermissions() {
+  if (!currentUser || !showId) return;
+
+  const permissionRef = ref(
+    db,
+    "participantControls/" + showId + "/" + currentUser.uid
+  );
+
+  if (permissionListener) {
+    off(permissionRef, "value", permissionListener);
+  }
+
+  permissionListener = snapshot => {
+    const controls = snapshot.val() || {};
+
+    if (currentRole !== "singer") {
+      microphoneAllowed = false;
+      cameraAllowed = false;
+      updateControlButtons();
+      return;
+    }
+
+    const selected =
+      stageSingerUids.includes(currentUser.uid);
+
+    // Microphone needs BOTH stage selection and host permission.
+    microphoneAllowed =
+      selected && controls.microphoneAllowed === true;
+
+    // Camera remains available to an approved singer, even in the queue.
+    cameraAllowed = true;
+
+    enforceCurrentPermissions();
+    updateControlButtons();
+  };
+
+  onValue(permissionRef, permissionListener);
+}
+
+
+/* =========================================
+   ENFORCE PERMISSIONS
+========================================= */
+
+async function enforceCurrentPermissions() {
+  if (!room) return;
+
+  if (!microphoneAllowed && localMicEnabled) {
+    if (currentRole === "host") {
+      await stopMicrophoneEffects();
+    } else {
+      try {
+        await room.localParticipant.setMicrophoneEnabled(false);
+      } catch (error) {}
+
+      localMicEnabled = false;
+    }
+  }
+
+  // Do not turn off a singer's camera when they are removed from the stage.
+  // Camera access is available to approved singers while they wait.
+
+  updateControlButtons();
+}
+
+
+/* =========================================
+   STAGE LISTENER
+========================================= */
+
+function listenToStage() {
+  if (!showId) return;
+
+  const stageRef = ref(db, "liveStage/" + showId);
+
+  if (stageListener) {
+    off(stageRef, "value", stageListener);
+  }
+
+  stageListener = snapshot => {
+    const stage = snapshot.val() || {};
+
+    stageSingerUids = normalizeArray(stage.singerUids);
+
+    if (currentRole === "singer" && currentUser) {
+      const selected = stageSingerUids.includes(currentUser.uid);
+
+      if (!selected) {
+        microphoneAllowed = false;
+      } else {
+        const controls = participantPermissions[currentUser.uid] || {};
+        microphoneAllowed = controls.microphoneAllowed === true;
+      }
+
+      // Keep the camera available to the approved singer while waiting.
+      cameraAllowed = true;
+
+      enforceCurrentPermissions();
+    }
+
+    updateControlButtons();
+  };
+
+  onValue(stageRef, stageListener);
+}
+
+
+/* =========================================
+   HOST: LOAD APPROVED REGISTRATIONS
+========================================= */
+
+async function loadHostRegistrations() {
+  if (!isHost || !IS_HOST_CONTROL_PAGE || !showId) return;
+
+  const registrationsRef = ref(
+    db,
+    "showRegistrations/" + showId
+  );
+
+  if (registrationListener) {
+    off(registrationsRef, "value", registrationListener);
+  }
+
+  registrationListener = snapshot => {
+    registrations = snapshot.val() || {};
+    populateSingerSelectors();
+    renderSingerPermissionControls();
+  };
+
+  onValue(registrationsRef, registrationListener);
+}
+
+function getApprovedRegistrations() {
+  return Object.entries(registrations)
+    .map(([id, item]) => ({
+      id,
+      ...item
+    }))
+    .filter(item =>
+      item.singerUid &&
+      isApproved(item.status)
+    );
+      });
+  };
+
+  onValue(registrationsRef, registrationListener);
+}
+
+function getApprovedRegistrations() {
+  return Object.entries(registrations)
+    .map(([id, item]) => ({
+      id,
+      ...item
+    }))
+    .filter(item =>
+      item.singerUid &&
+      isApproved(item.status)
+    );
+}
+
+}
+
+function populateSingerSelectors() {
+  if (!IS_HOST_CONTROL_PAGE) return;
+
+  const first = byId("mmSingerOne");
+  const second = byId("mmSingerTwo");
+
+  if (!first || !second) return;
+
+  const approved = getApprovedRegistrations();
+
+  const buildOptions = (select, label) => {
+    const previous = select.value;
+
+    select.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = label;
+    select.appendChild(placeholder);
+
+    approved.forEach(item => {
+      const option = document.createElement("option");
+
+      option.value = item.singerUid;
+      option.textContent =
+        item.singerName || item.name || "Singer";
+
+      select.appendChild(option);
+    });
+
+    if (approved.some(item => item.singerUid === previous)) {
+      select.value = previous;
+    }
+  };
+
+  buildOptions(first, "Select approved singer");
+  buildOptions(second, "Select second singer");
+}
+
+
+/* =========================================
+   HOST: PERMISSION LISTENER
+========================================= */
+
+function listenToParticipantControls() {
+  if (!isHost || !IS_HOST_CONTROL_PAGE || !showId) return;
+
+  const controlsRef = ref(
+    db,
+    "participantControls/" + showId
+  );
+
+  if (controlsListener) {
+    off(controlsRef, "value", controlsListener);
+  }
+
+  controlsListener = snapshot => {
+    participantPermissions = snapshot.val() || {};
+    renderSingerPermissionControls();
+  };
+
+  onValue(controlsRef, controlsListener);
+}
+
+
+/* =========================================
+   HOST: RENDER SINGER PERMISSIONS
+========================================= */
+
+function renderSingerPermissionControls() {
+  if (!IS_HOST_CONTROL_PAGE || !isHost) return;
+
+  const container = byId("mmSingerPermissions");
+  if (!container) return;
+
+  const approved = getApprovedRegistrations();
+
+  if (!approved.length) {
+    container.textContent =
+      "No approved singers with linked accounts were found.";
+    return;
+  }
+
+  container.innerHTML = "";
+
+  approved.forEach(item => {
+    const controls =
+      participantPermissions[item.singerUid] || {};
+
+    const micOn = controls.microphoneAllowed === true;
+    const selected = stageSingerUids.includes(item.singerUid);
+
+    const card = document.createElement("div");
+    card.className = "mm-singer-control";
+
+    const name = document.createElement("strong");
+    name.textContent =
+      item.singerName || item.name || "Singer";
+
+    const status = document.createElement("div");
+    status.className = "mm-permission-status";
+
+    status.textContent =
+      (selected ? "On main stage" : "Waiting in queue") +
+      " | Microphone: " + (micOn ? "Allowed" : "OFF") +
+      " | Camera: Available to approved singer";
+
+    const micButton = document.createElement("button");
+
+    micButton.textContent = micOn
+      ? "Revoke Microphone"
+      : "Grant Microphone";
+
+    micButton.addEventListener("click", () => {
+      changeSingerPermission(item.singerUid, !micOn);
+    });
+
+    card.append(name, status, micButton);
+    container.appendChild(card);
+  });
+}
+
+
+/* =========================================
+   HOST: CHANGE SINGER MICROPHONE PERMISSION
+========================================= */
+
+async function changeSingerPermission(singerUid, microphone) {
+  if (!isHost || !IS_HOST_CONTROL_PAGE || !isJoined) {
+    showMessage("Only the verified host can change permissions.", "error");
+    return;
+  }
+
+  if (!stageSingerUids.includes(singerUid)) {
+    showMessage(
+      "Assign this singer to the main stage first.",
+      "warning"
+    );
+    return;
+  }
+
+  try {
+    await workerRequest({
+      action: "syncPermissions",
+      uid: singerUid,
+      microphoneAllowed: microphone === true,
+      cameraAllowed: true
+    });
+
+    showMessage(
+      "Singer microphone permission updated.",
+      "success"
+    );
+
+  } catch (error) {
+    console.error("Permission update error:", error);
+
+    showMessage(
+      "Could not update singer permission: " + error.message,
+      "error"
+    );
+  }
+}
+
+
+/* =========================================
+   HOST: ASSIGN MAIN STAGE
+========================================= */
+
+async function selectMainSingers() {
+  if (!isHost || !IS_HOST_CONTROL_PAGE || !isJoined || !currentUser) {
+    showMessage("Only the verified host can assign the main stage.", "error");
+    return;
+  }
+
+  const mode = byId("mmStageMode").value;
+  const singerOne = byId("mmSingerOne").value;
+  const singerTwo = byId("mmSingerTwo").value;
+    if (!singerOne) {
+    showMessage("Please select the first singer.", "warning");
+    return;
+  }
+
+  if (mode === "duet" && !singerTwo) {
+    showMessage("Please select the second singer for duet.", "warning");
+    return;
+  }
+
+  if (mode === "solo" && singerTwo) {
+    showMessage("For solo mode, select only one singer.", "warning");
+    return;
+  }
+
+  if (singerOne === singerTwo && singerTwo) {
+    showMessage("Please select two different singers.", "warning");
+    return;
+  }
+
+  const selectedUids = mode === "duet"
+    ? [singerOne, singerTwo]
+    : [singerOne];
+
+  const approved = getApprovedRegistrations();
+
+  const selected = selectedUids.map(uid =>
+    approved.find(item => item.singerUid === uid)
+  );
+
+  if (selected.some(item => !item)) {
+    showMessage("One or more selected singers are not approved.", "error");
+    return;
+  }
+
+  const registrationIds = selected.map(item => item.id);
+
+  const singerNames = selected.map(item =>
+    item.singerName || item.name || "Singer"
+  );
+
+  const stageButton = byId("mmSetStageBtn");
+
+  stageButton.disabled = true;
+  stageButton.textContent = "Assigning...";
+
+  try {
+    const stageData = {
+      mode,
+      registrationIds,
+      singerUids: selectedUids,
+      singerNames,
+      registrationId: registrationIds[0],
+      singerUid: selectedUids[0],
+      singerName: singerNames[0],
+      updatedAt: Date.now()
+    };
+
+    await set(
+      ref(db, "liveStage/" + showId),
+      stageData
+    );
+
+    for (const item of approved) {
+      await workerRequest({
+        action: "syncPermissions",
+        uid: item.singerUid,
+        microphoneAllowed: false,
+        cameraAllowed: true
+      });
+    }
+
+    showMessage(
+      mode.toUpperCase() +
+      " stage assigned. Grant microphone permission separately.",
+      "success"
+    );
+
+  } catch (error) {
+    console.error("Stage assignment error:", error);
+
+    showMessage(
+      "Unable to assign stage: " + error.message,
+      "error"
+    );
+
+  } finally {
+    stageButton.disabled = false;
+    stageButton.textContent = "Assign Main Stage";
+  }
+}
+
+
+/* =========================================
+   FIREBASE LISTENER CLEANUP
+========================================= */
+
+function stopFirebaseListeners() {
+  if (permissionListener && currentUser && showId) {
+    off(
+      ref(db, "participantControls/" + showId + "/" + currentUser.uid),
+      "value",
+      permissionListener
+    );
+  }
+
+  if (stageListener && showId) {
+    off(
+      ref(db, "liveStage/" + showId),
+      "value",
+      stageListener
+    );
+  }
+
+  if (registrationListener && showId) {
+    off(
+      ref(db, "showRegistrations/" + showId),
+      "value",
+      registrationListener
+    );
+  }
+
+  if (controlsListener && showId) {
+    off(
+      ref(db, "participantControls/" + showId),
+      "value",
+      controlsListener
+    );
+  }
+
+  if (commentsListener && showId) {
+    off(
+      ref(db, "liveComments/" + showId),
+      "value",
+      commentsListener
+    );
+  }
+
+  if (queueListener && showId) {
+    off(
+      ref(db, "performanceQueue/" + showId),
+      "value",
+      queueListener
+    );
+  }
+
+  if (playbackListener && showId) {
+    off(
+      ref(db, "karaokePlayback/" + showId),
+      "value",
+      playbackListener
+    );
+  }
+
+  permissionListener = null;
+  stageListener = null;
+  registrationListener = null;
+  controlsListener = null;
+  commentsListener = null;
+  queueListener = null;
+  playbackListener = null;
+}
+
+
+/* =========================================
+   LEAVE AUDITORIUM
+========================================= */
+
+async function leaveAuditorium() {
+  if (leaving) return;
+
+  leaving = true;
+
+  try {
+    if (currentRole === "host") {
+      await stopMicrophoneEffects();
+    } else if (room && localMicEnabled) {
+      try {
+        await room.localParticipant.setMicrophoneEnabled(false);
+              try {
+        await room.localParticipant.setCameraEnabled(false);
+      } catch (error) {}
+
+      await room.disconnect();
+    }
+
+  } catch (error) {
+    console.warn("Leave error:", error);
+
+  } finally {
+    stopFirebaseListeners();
+
+    room = null;
+    isJoined = false;
+
+    localMicEnabled = false;
+    localCameraEnabled = false;
+
+    microphoneAllowed = false;
+    cameraAllowed = false;
+
+    resetButtons();
+    updateReactionButtons();
+    updateCommentControls();
+    updateAudienceCount();
+
+    const grid = byId("mmVideoGrid");
+    if (grid) grid.innerHTML = "";
+
+    showMessage("You have left the auditorium.");
+
+    leaving = false;
+  }
+}
+
+
+/* =========================================
+   RESET BUTTONS
+========================================= */
+
+function resetButtons() {
+  setButtonState(
+    "mmJoinBtn",
+    false,
+    "Enter Live Auditorium"
+  );
+
+  setButtonState(
+    "mmLeaveBtn",
+    true,
+    "Leave Auditorium"
+  );
+
+  setButtonState("mmMicBtn", true, "Microphone OFF");
+  setButtonState("mmCameraBtn", true, "Camera OFF");
+
+  if (byId("mmRoleInfo")) {
+    byId("mmRoleInfo").textContent = "";
+  }
+
+  if (byId("mmHostControls")) {
+    byId("mmHostControls").hidden = true;
+  }
+
+  if (byId("mmAudioEffects")) {
+    byId("mmAudioEffects").hidden = true;
+  }
+
+  if (byId("mmMyControls")) {
+    byId("mmMyControls").hidden = true;
+  }
+}
+
+
+/* =========================================
+   INITIALIZE
+========================================= */
+
+async function initializeShow() {
+  createPanel();
+  updateReactionButtons();
+  updateCommentControls();
+
+  if (!showId) {
+    showMessage(
+      "Show ID is missing. Please open the correct show link.",
+      "error"
+    );
+
+    setButtonState("mmJoinBtn", true);
+    return;
+  }
+
+  if (requestedMode === "singer" && !registrationId) {
+    showMessage(
+      "Singer registration ID is missing from the entry link.",
+      "error"
+    );
+
+    setButtonState("mmJoinBtn", true);
+    return;
+  }
+
+  try {
+    await waitForAuth();
+    await loadShow();
+
+    isHost = await verifyHost();
+
+    if (byId("mmHostControls")) {
+      byId("mmHostControls").hidden = true;
+    }
+
+    if (byId("mmAudioEffects")) {
+      byId("mmAudioEffects").hidden = true;
+    }
+
+    if (isHost) {
+      byId("mmRoleInfo").textContent =
+        IS_HOST_CONTROL_PAGE
+          ? "Host verified. Enter the auditorium to manage the stage and audio."
+          : "Host account detected. Host controls are available only in the Host Control Room.";
+
+      showMessage("Host verified. Enter the auditorium when ready.");
+
+    } else if (requestedMode === "singer") {
+      byId("mmRoleInfo").textContent =
+        "Singer entry requested. Your registration will be checked.";
+
+      showMessage("Singer entry ready. Click Enter Live Auditorium.");
+
+    } else {
+      byId("mmRoleInfo").textContent =
+        "Audience entry. Microphone and camera are disabled.";
+
+      showMessage("Audience entry ready. Click Enter Live Auditorium.");
+    }
+
+    listenToStage();
+
+  } catch (error) {
+    console.error("Initialization error:", error);
+
+    showMessage(
+      error.message || "Unable to initialize auditorium.",
+      "error"
+    );
+
+    setButtonState("mmJoinBtn", true);
+  }
+}
+
+
+/* =========================================
+   START
+========================================= */
+
+initializeShow();
+
+window.addEventListener("beforeunload", () => {
+  stopFirebaseListeners();
+
+  if (room) {
+    room.disconnect();
+  }
+
+  if (audioEffects) {
+    audioEffects.stop();
+  }
+
+  if (youtubePlayer && typeof youtubePlayer.destroy === "function") {
+    youtubePlayer.destroy();
+  }
+});
