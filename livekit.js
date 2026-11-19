@@ -1871,28 +1871,47 @@ function isShowLive(data = currentShow) {
 
 function listenToShowLifecycle() {
   if (!showId || requestedMode !== "singer") return;
+
   const lifecycleRef = ref(db, "shows/" + showId);
-  if (showLifecycleListener) off(lifecycleRef, "value", showLifecycleListener);
+
+  if (showLifecycleListener) {
+    off(lifecycleRef, "value", showLifecycleListener);
+  }
+
   showLifecycleListener = snapshot => {
     if (!snapshot.exists()) return;
+
     currentShow = snapshot.val();
+
     const liveNow = isShowLive();
+    const ended = safeText(currentShow.liveStatus).toLowerCase() === "ended";
+
     if (liveNow) {
       setSingerVisibleStatus(
         "Show has started!",
-        "The host has started the show. Join now — your Enter button is ready."
+        "Connecting you to the live auditorium and adding you to the show queue automatically..."
       );
-      showMessage("Show has started! Join now.", "success");
-      setButtonState("mmJoinBtn", false, "Enter Live Auditorium");
+
+      showMessage("Show started. Connecting automatically...", "success");
+
+      // No Enter button or singer action is required. The approved singer
+      // joins the LiveKit room automatically when the host starts the show.
+      if (!isJoined && !joining && !singerAutoJoinStarted) {
+        singerAutoJoinStarted = true;
+        joinAuditorium();
+      }
     } else {
-      const ended = safeText(currentShow.liveStatus).toLowerCase() === "ended";
+      singerAutoJoinStarted = false;
+
       setSingerVisibleStatus(
         ended ? "Show ended" : "Waiting for host",
-        ended ? "This show has ended." : "Your registration is confirmed. Entry opens automatically when the host starts the show."
+        ended
+          ? "This show has ended."
+          : "Your registration is confirmed. You will join automatically when the host starts the show."
       );
-      setButtonState("mmJoinBtn", true, ended ? "Show Ended" : "Waiting for host");
     }
   };
+
   onValue(lifecycleRef, showLifecycleListener);
 }
 
@@ -3136,7 +3155,7 @@ async function initializeShow() {
       byId("mmRoleInfo").textContent =
         "Singer entry requested. Your registration will be checked.";
 
-      showMessage("Singer entry ready. Click Enter Live Auditorium.");
+      showMessage("Singer registration confirmed. Waiting for the host to start the show.");
 
     } else {
       byId("mmRoleInfo").textContent =
@@ -3150,7 +3169,7 @@ async function initializeShow() {
       listenToShowLifecycle();
       setSingerVisibleStatus(
         "Waiting for host",
-        "Your registration is approved. You can enter as soon as the host starts this show."
+        "Your registration is approved. You will join automatically when the host starts this show."
       );
     }
 
