@@ -2154,9 +2154,18 @@ async function createVideoTile(participant, isLocal) {
     participant.identity || "participant"
   );
 
-  const isHostParticipant =
-    (isLocal && currentRole === "host") ||
-    (!!currentShow?.hostUid && identity === safeText(currentShow.hostUid));
+  // Never label the local singer as the host, even if the singer
+  // is signed in with the same Firebase account used to create the show.
+  // On a singer page, only a REMOTE participant matching hostUid is host.
+  const isHostParticipant = requestedMode === "singer"
+    ? (!isLocal &&
+       !!currentShow?.hostUid &&
+       identity === safeText(currentShow.hostUid) &&
+       identity !== safeText(currentUser?.uid))
+    : ((isLocal && currentRole === "host") ||
+       (!isLocal &&
+        !!currentShow?.hostUid &&
+        identity === safeText(currentShow.hostUid)));
 
   const grid = byId(isHostParticipant ? "mmHostVideoGrid" : "mmVideoGrid");
   if (!grid) return;
