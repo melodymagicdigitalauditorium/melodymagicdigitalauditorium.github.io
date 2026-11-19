@@ -861,19 +861,7 @@ function createPanel() {
       </div>
     </div>
 
-    <div class="mm-section">
-      <h3>🎵 Common Karaoke Screen</h3>
-      <div id="mmYoutubeContainer" class="mm-card">
-        <div id="mmYoutubePlayer">
-          <div class="mm-note">
-            The host's selected karaoke video will appear here.
-          </div>
-        </div>
-        <div id="mmPlaybackStatus" class="mm-note">
-          Waiting for host playback.
-        </div>
-      </div>
-    </div>
+    <!-- Karaoke player is rendered once by the host page's dedicated Karaoke Performance section. -->
 
     <div class="mm-section mm-two-column">
       <div class="mm-card">
