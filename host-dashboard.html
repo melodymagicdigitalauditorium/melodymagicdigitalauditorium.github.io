@@ -242,7 +242,7 @@ onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
-ref,get,set,push,remove,onValue
+ref,get,set,update,push,remove,onValue
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const CLOUD_NAME="quqojlew";
@@ -718,6 +718,16 @@ $("createShowBtn").onclick=async()=>{
       maxSingers,
       status,
 
+      // Keep publication status separate from show lifecycle.
+      liveStatus:"Scheduled",
+      isLive:false,
+      liveStartedAt:0,
+      liveEndedAt:0,
+
+      // Store an absolute timestamp so the Worker can enforce
+      // scheduled entry consistently for every visitor.
+      scheduledAt:new Date(showDate+"T"+showTime+":00").getTime(),
+
       hostUid:currentUser.uid,
       hostEmail:currentUser.email||"",
       hostName:hostApplication?.name||
@@ -851,21 +861,129 @@ async function updateSingerStatus(id,rid,status){
     return alert("Not your show.");
   }
 
+  if(!planActive){
+    return alert("Your host subscription is inactive.");
+  }
+
   try{
-    const snap=await get(ref(db,"showRegistrations/"+id+"/"+rid));
-
-    if(!snap.exists())throw new Error("Registration not found.");
-
-    const old=snap.val();
-
-    await set(
-      ref(db,"showRegistrations/"+id+"/"+rid),
-      {...old,status}
+    const registrationRef=ref(
+      db,
+      "showRegistrations/"+id+"/"+rid
     );
 
-    openRegistrations(id);
+    const queueRef=ref(
+      db,
+      "performanceQueue/"+id+"/"+rid
+    );
+
+    const snap=await get(registrationRef);
+
+    if(!snap.exists()){
+      throw new Error("Registration not found.");
+    }
+
+    const old=snap.val()||{};
+    const queueSnap=await get(queueRef);
+    const oldQueue=queueSnap.exists()
+      ? queueSnap.val()||{}
+      : {};
+
+    const now=Date.now();
+
+    const singerUid=String(
+      old.singerUid||
+      old.uid||
+      old.userId||
+      old.userUid||
+      ""
+    ).trim();
+
+    const singerName=String(
+      old.singerName||
+      old.name||
+      old.fullName||
+      "Singer"
+    );
+
+    const songName=String(
+      old.songName||
+      old.song||
+      ""
+    );
+
+    const updates={};
+
+    updates["showRegistrations/"+id+"/"+rid]={
+      ...old,
+      showId:id,
+      registrationId:rid,
+      status,
+      updatedAt:now,
+      ...(status==="Approved"
+        ? {approvedAt:now,approvedBy:currentUser.uid}
+        : {})
+    };
+
+    if(status==="Approved"){
+      if(!singerUid){
+        throw new Error(
+          "Singer UID is missing in this registration. Cannot add this singer to the live queue."
+        );
+      }
+
+      const previousQueueStatus=String(
+        oldQueue.status||""
+      ).toLowerCase();
+
+      const queueStatus=
+        previousQueueStatus==="playing"||
+        previousQueueStatus==="completed"
+          ? oldQueue.status
+          : "Queued";
+
+      updates["performanceQueue/"+id+"/"+rid]={
+        ...old,
+        ...oldQueue,
+
+        showId:id,
+        registrationId:rid,
+        singerUid,
+
+        name:singerName,
+        singerName,
+        songName,
+
+        language:old.language||"",
+        soloCount:Number(old.soloCount||0),
+        duetCount:Number(old.duetCount||0),
+
+        status:queueStatus,
+        approvedAt:oldQueue.approvedAt||now,
+        updatedAt:now
+      };
+
+    }else if(status==="Rejected"){
+      const previousQueueStatus=String(
+        oldQueue.status||""
+      ).toLowerCase();
+
+      // Do not remove a singer who is already performing
+      // or whose performance has been completed.
+      if(
+        previousQueueStatus!=="playing"&&
+        previousQueueStatus!=="completed"
+      ){
+        updates["performanceQueue/"+id+"/"+rid]=null;
+      }
+    }
+
+    // One root update keeps registration and queue in sync.
+    await update(ref(db),updates);
+
+    await openRegistrations(id);
 
   }catch(e){
+    console.error("Singer approval update failed:",e);
     alert("Could not update status: "+e.message);
   }
 }
