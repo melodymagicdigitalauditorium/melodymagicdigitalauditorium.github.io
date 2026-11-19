@@ -78,6 +78,8 @@ let showLifecycleState = "Scheduled";
 
 let joining = false;
 let leaving = false;
+let singerAutoJoinTimer = null;
+let singerAutoJoinStarted = false;
 
 let lastReactionTimes = [];
 
@@ -432,6 +434,11 @@ function displayName() {
 ========================================= */
 
 function createPanel() {
+  if (requestedMode === "singer") {
+    const singerOnlyStyle = document.createElement("style");
+    singerOnlyStyle.textContent = "#mmLiveKitPanel{display:none!important}";
+    document.head.appendChild(singerOnlyStyle);
+  }
   if (!IS_HOST_CONTROL_PAGE) {
     byId("mmAudioEffects")?.remove();
     byId("mmHostControls")?.remove();
@@ -1823,14 +1830,14 @@ async function joinAuditorium() {
       await createVideoTile(participant, false);
     }
 
-    if (currentRole === "singer" && cameraAllowed) {
+    if (currentRole === "singer") {
       try {
         await room.localParticipant.setCameraEnabled(true);
         localCameraEnabled = true;
-        showMessage("You are connected. Your camera is ON; your microphone remains OFF until the host allows it.", "success");
+        showMessage("Connected live. Camera is ON. Microphone will turn ON when the host assigns you and grants permission.", "success");
       } catch (cameraError) {
         localCameraEnabled = false;
-        showMessage("You joined, but camera access needs attention: " + cameraError.message, "warning");
+        showMessage("Connected live, but camera permission needs attention: " + cameraError.message, "warning");
       }
     }
 
@@ -1857,6 +1864,12 @@ async function joinAuditorium() {
   } catch (error) {
     console.error("Join error:", error);
     showMessage(error.message || "Unable to enter auditorium.", "error");
+    if (requestedMode === "singer" && !leaving) {
+      const singerStatus = byId("singerConnectionStatus");
+      if (singerStatus) singerStatus.textContent = "Retrying automatically";
+      if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
+      singerAutoJoinTimer = setTimeout(() => { if (!isJoined && !joining && !leaving) joinAuditorium(); }, 8000);
+    }
     if (room) {
       try { await room.disconnect(); } catch (disconnectError) {
         console.warn("Room cleanup error:", disconnectError);
@@ -1872,6 +1885,8 @@ async function joinAuditorium() {
   } finally {
     joining = false;
     setButtonState("mmJoinBtn", isJoined, isJoined ? "Connected" : "Enter Live Auditorium");
+    const singerStatus = byId("singerConnectionStatus");
+    if (requestedMode === "singer" && singerStatus) singerStatus.textContent = isJoined ? "LIVE" : "Connecting...";
   }
 }
 
@@ -2364,14 +2379,10 @@ function listenToMyPermissions() {
     const selected =
       stageSingerUids.includes(currentUser.uid);
 
-    // Microphone needs BOTH stage selection and host permission.
-    microphoneAllowed =
-      selected && controls.microphoneAllowed === true;
-
-    // Camera remains available to an approved singer, even in the queue.
+    microphoneAllowed = selected && controls.microphoneAllowed === true;
     cameraAllowed = true;
-
     enforceCurrentPermissions();
+    autoEnableSingerMicrophone();
     updateControlButtons();
   };
 
@@ -2382,6 +2393,20 @@ function listenToMyPermissions() {
 /* =========================================
    ENFORCE PERMISSIONS
 ========================================= */
+
+async function autoEnableSingerMicrophone() {
+  if (currentRole !== "singer" || !room || !isJoined || !microphoneAllowed || localMicEnabled) return;
+  try {
+    await room.localParticipant.setMicrophoneEnabled(true);
+    localMicEnabled = true;
+    showMessage("Main stage assigned. Microphone is ON.", "success");
+    updateControlButtons();
+  } catch (error) {
+    localMicEnabled = false;
+    showMessage("Stage assigned, but microphone permission is needed in browser settings: " + error.message, "warning");
+    updateControlButtons();
+  }
+}
 
 async function enforceCurrentPermissions() {
   if (!room) return;
@@ -2431,8 +2456,8 @@ function listenToStage() {
       }
       // When selected, microphone permission comes from the singer's own controls listener.
       cameraAllowed = true;
-
       enforceCurrentPermissions();
+      autoEnableSingerMicrophone();
     }
 
     updateControlButtons();
@@ -2822,6 +2847,7 @@ function stopFirebaseListeners() {
 async function leaveAuditorium() {
   if (leaving) return;
   leaving = true;
+  if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
   try {
     if (currentRole === "host") {
       await stopMicrophoneEffects();
@@ -2964,6 +2990,14 @@ async function initializeShow() {
     }
 
     listenToStage();
+    if (requestedMode === "singer") {
+      const singerStatus = byId("singerConnectionStatus");
+      if (singerStatus) singerStatus.textContent = "Waiting for show to start";
+      if (!singerAutoJoinStarted) {
+        singerAutoJoinStarted = true;
+        joinAuditorium();
+      }
+    }
 
   } catch (error) {
     console.error("Initialization error:", error);
