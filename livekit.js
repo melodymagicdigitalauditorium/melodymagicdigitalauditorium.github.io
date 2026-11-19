@@ -1757,6 +1757,18 @@ async function applyPlayback(data) {
     const player = await createYouTubePlayer(videoId);
     if (!player) return;
 
+    const sharedVolume = Math.max(0, Math.min(100, Number(
+      data.volume === undefined ? 100 : data.volume
+    )));
+
+    // Apply the host's shared volume even when playback itself has not changed.
+    player.setVolume(sharedVolume);
+    if (sharedVolume === 0) {
+      player.mute();
+    } else {
+      player.unMute();
+    }
+
     const signature = [
       videoId,
       state,
