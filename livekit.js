@@ -2016,9 +2016,8 @@ async function joinAuditorium() {
     listenToQueue();
     listenToCurrentPerformance();
 
-    // The Firebase listener creates the singer player only after the
-    // host's real video ID arrives. This avoids an empty black iframe.
-    listenToKaraokePlayback();
+    // Karaoke playback listener is started during Firebase initialization,
+    // independently of LiveKit connection success.
     updateControlButtons();
     updateAudienceCount();
 
@@ -3132,6 +3131,13 @@ async function initializeShow() {
   try {
     await waitForAuth();
     await loadShow();
+
+    // Start the shared karaoke listener as soon as Firebase is ready.
+    // It must not depend on the LiveKit camera/microphone connection:
+    // a singer should still receive the host's video if LiveKit is delayed.
+    if (requestedMode === "singer" || requestedMode === "audience") {
+      listenToKaraokePlayback();
+    }
 
     isHost = await verifyHost();
 
