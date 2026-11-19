@@ -546,7 +546,7 @@ async function loadSelectedVideo(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await update(ref(db,"karaokePlayback/"+showId),data);
 
     currentVideoId=id;
     playbackData=data;
@@ -602,7 +602,7 @@ async function playForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await update(ref(db,"karaokePlayback/"+showId),data);
 
     playbackData=data;
 
@@ -646,7 +646,7 @@ async function pauseForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await update(ref(db,"karaokePlayback/"+showId),data);
 
     playbackData=data;
 
@@ -684,7 +684,7 @@ async function resumeForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await update(ref(db,"karaokePlayback/"+showId),data);
 
     playbackData=data;
 
@@ -723,7 +723,7 @@ async function stopForEveryone(){
       updatedBy:currentUser.uid
     };
 
-    await set(ref(db,"karaokePlayback/"+showId),data);
+    await update(ref(db,"karaokePlayback/"+showId),data);
 
     playbackData=data;
 
