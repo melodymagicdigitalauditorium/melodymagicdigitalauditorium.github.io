@@ -1806,10 +1806,30 @@ function listenToKaraokePlayback() {
   }
 
   playbackListener = snapshot => {
-    applyPlayback(snapshot.val() || {});
+    const data = snapshot.val() || {};
+    if (!data.videoId) {
+      const status = byId("mmPlaybackStatus");
+      if (status) {
+        status.textContent =
+          "Waiting for the host to load a YouTube karaoke video.";
+      }
+      return;
+    }
+    applyPlayback(data);
   };
 
-  onValue(playbackRef, playbackListener);
+  onValue(
+    playbackRef,
+    playbackListener,
+    error => {
+      console.error("Karaoke Firebase listener error:", error);
+      const status = byId("mmPlaybackStatus");
+      if (status) {
+        status.textContent =
+          "Cannot receive the host's karaoke video: " + error.message;
+      }
+    }
+  );
 }
 function isShowLive(data = currentShow) {
   return !!data && (
@@ -1945,6 +1965,24 @@ async function joinAuditorium() {
     listenToLiveComments();
     listenToQueue();
     listenToCurrentPerformance();
+
+    // Prepare the singer's single common karaoke player as soon as the
+    // singer joins, then listen for the host's shared playback state.
+    if (currentRole === "singer" && !IS_HOST_CONTROL_PAGE) {
+      const playbackStatus = byId("mmPlaybackStatus");
+      if (playbackStatus) {
+        playbackStatus.textContent =
+          "Connecting to the host's common karaoke screen...";
+      }
+      createYouTubePlayer().catch(error => {
+        console.error("Singer karaoke player initialization failed:", error);
+        if (playbackStatus) {
+          playbackStatus.textContent =
+            "Karaoke player could not load: " + error.message;
+        }
+      });
+    }
+
     listenToKaraokePlayback();
     updateControlButtons();
     updateAudienceCount();
