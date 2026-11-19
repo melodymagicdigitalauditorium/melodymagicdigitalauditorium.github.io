@@ -57,7 +57,13 @@ hr{border-color:#51401e;margin:18px 0}
 </section>
 
 <section class="card" id="hostControls" style="display:none">
-  <h3>👑 Host Performance Controls</h3>
+  <h3>👑 Host Show Controls</h3>
+  <p class="small">Start the show when you are ready. Approved singers will be notified and their Enter button will become available.</p>
+  <button class="green" id="startShowBtn">▶ START SHOW</button>
+  <button class="red" id="endShowBtn">■ END SHOW</button>
+  <p id="showLifecycleMessage" class="small"></p>
+  <hr>
+  <h3>🎤 Host Performance Controls</h3>
   <p class="small">Only the approved host with an active subscription can manage performances.</p>
 
   <button class="green" id="startBtn">▶ START NEXT PERFORMER</button>
@@ -697,6 +703,37 @@ async function stopForEveryone(){
   }
 }
 
+async function setShowLiveState(isLive){
+  if(!isHost||!currentUser||!showData) throw new Error("Only the verified host can change show status.");
+  const now=Date.now();
+  const values=isLive
+    ? {liveStatus:"Live",isLive:true,liveStartedAt:now,liveEndedAt:0}
+    : {liveStatus:"Ended",isLive:false,liveEndedAt:now};
+  await update(ref(db,"shows/"+showId),values);
+  showData={...showData,...values};
+  $("showLifecycleMessage").textContent=isLive
+    ? "Show is LIVE. Approved singers can now enter."
+    : "Show ended. New singer entries are closed.";
+  $("showStatus").textContent="Show date: "+(showData.date||"")+" | Time: "+(showData.time||"")+" | Status: "+(showData.liveStatus||"Scheduled");
+}
+async function startShow(){
+  try{
+    $("startShowBtn").disabled=true;
+    await setShowLiveState(true);
+  }catch(error){
+    $("showLifecycleMessage").textContent="Could not start show: "+error.message;
+  }finally{$("startShowBtn").disabled=false;}
+}
+async function endShow(){
+  if(!confirm("End this show now?"))return;
+  try{
+    $("endShowBtn").disabled=true;
+    await setShowLiveState(false);
+  }catch(error){
+    $("showLifecycleMessage").textContent="Could not end show: "+error.message;
+  }finally{$("endShowBtn").disabled=false;}
+}
+
 async function verifyHost(user){
 
   if(!user||!showData||showData.hostUid!==user.uid)
@@ -1074,6 +1111,8 @@ async function finishAndNext(){
   }
 }
 
+$("startShowBtn").addEventListener("click",startShow);
+$("endShowBtn").addEventListener("click",endShow);
 $("startBtn").addEventListener("click",startNextPerformer);
 $("finishBtn").addEventListener("click",finishCurrent);
 $("nextBtn").addEventListener("click",finishAndNext);
@@ -1154,6 +1193,12 @@ async function initializeForUser(user){
     if(isHost){
 
       $("hostControls").style.display="block";
+      $("showLifecycleMessage").textContent=
+        showData.liveStatus==="Live"||showData.isLive===true
+          ? "Show is LIVE. Singers may enter."
+          : showData.liveStatus==="Ended"
+            ? "This show has ended."
+            : "Show is scheduled. Start it when ready.";
       $("karaokeControls").style.display="block";
 
       $("loginStatus").textContent=
