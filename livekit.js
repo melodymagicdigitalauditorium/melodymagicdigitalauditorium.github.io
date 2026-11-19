@@ -385,6 +385,14 @@ function showMessage(message, type = "info") {
   console.log("[Melody Magic]", message);
 }
 
+function setSingerVisibleStatus(statusText, detailText) {
+  if (requestedMode !== "singer") return;
+  const status = byId("singerConnectionStatus");
+  const detail = byId("singerStatusText");
+  if (status) status.textContent = statusText;
+  if (detail && detailText) detail.textContent = detailText;
+}
+
 function setButtonState(id, disabled, text) {
   const button = byId(id);
   if (!button) return;
@@ -1773,6 +1781,7 @@ async function joinAuditorium() {
   if (joining || isJoined) return;
   joining = true;
   setButtonState("mmJoinBtn", true, "Connecting...");
+  setSingerVisibleStatus("Connecting...", "Checking singer login, show registration, token server, and LiveKit connection.");
 
   try {
     await waitForAuth();
@@ -1820,6 +1829,7 @@ async function joinAuditorium() {
       byId("mmRoleInfo").textContent = "Connected as: " + currentRole.toUpperCase();
     }
     showMessage("Connected to the live auditorium.", "success");
+    setSingerVisibleStatus("LIVE", "You are connected to the auditorium. Camera is starting; microphone will activate when the host assigns your stage and grants permission.");
 
     updateControlButtons();
     updateReactionButtons();
@@ -1864,6 +1874,7 @@ async function joinAuditorium() {
   } catch (error) {
     console.error("Join error:", error);
     showMessage(error.message || "Unable to enter auditorium.", "error");
+    setSingerVisibleStatus("Connection failed", (error.message || "Unable to enter auditorium.") + " Retrying automatically in 8 seconds.");
     if (requestedMode === "singer" && !leaving) {
       const singerStatus = byId("singerConnectionStatus");
       if (singerStatus) singerStatus.textContent = "Retrying automatically";
@@ -2992,7 +3003,9 @@ async function initializeShow() {
     listenToStage();
     if (requestedMode === "singer") {
       const singerStatus = byId("singerConnectionStatus");
-      if (singerStatus) singerStatus.textContent = "Waiting for show to start";
+      if (singerStatus) singerStatus.textContent = "Connecting...";
+      const singerDetail = byId("singerStatusText");
+      if (singerDetail) singerDetail.textContent = "Automatic connection started. Checking your registration and show status.";
       if (!singerAutoJoinStarted) {
         singerAutoJoinStarted = true;
         joinAuditorium();
