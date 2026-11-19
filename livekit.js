@@ -87,6 +87,16 @@ let audioEffects = null;
 let rawMicrophoneTrack = null;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
+let sharedAudioSettings = {
+  echo: 0,
+  delay: 280,
+  feedback: 25,
+  reverb: 0,
+  mix: 0,
+  volume: 80
+};
+let audioSettingsListener = null;
+let audioSettingsSaveTimer = null;
 
 let youtubePlayer = null;
 let youtubePlayerReadyPromise = null;
@@ -752,39 +762,40 @@ function createPanel() {
     </div>
 
     <div class="mm-section" id="mmAudioEffects" hidden>
-      <h3>🎚️ Host Microphone Audio Effects</h3>
+      <h3>🎚️ Auditorium Master Singer Audio Mixer</h3>
       <div class="mm-note">
-        These controls are exclusively for the verified host.
-        Headphones are recommended when monitoring your voice.
+        Host-only master controls. These settings are applied to every singer's
+        microphone before it is published to the auditorium. Changes are shared live.
+        Use headphones when monitoring your own microphone.
       </div>
 
       <div class="mm-effect-control">
-        <label>Echo: <strong id="mmEchoValue">0%</strong></label>
+        <label>Master Echo: <strong id="mmEchoValue">0%</strong></label>
         <input id="mmEcho" type="range" min="0" max="100" value="0">
       </div>
 
       <div class="mm-effect-control">
-        <label>Delay Time: <strong id="mmDelayValue">280 ms</strong></label>
+        <label>Master Delay Time: <strong id="mmDelayValue">280 ms</strong></label>
         <input id="mmDelay" type="range" min="50" max="1000" value="280">
       </div>
 
       <div class="mm-effect-control">
-        <label>Echo Feedback: <strong id="mmFeedbackValue">25%</strong></label>
+        <label>Master Echo Feedback: <strong id="mmFeedbackValue">25%</strong></label>
         <input id="mmFeedback" type="range" min="0" max="85" value="25">
       </div>
 
       <div class="mm-effect-control">
-        <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
+        <label>Master Reverb: <strong id="mmReverbValue">0%</strong></label>
         <input id="mmReverb" type="range" min="0" max="100" value="0">
       </div>
 
       <div class="mm-effect-control">
-        <label>Wet / Dry Mix: <strong id="mmMixValue">0%</strong></label>
+        <label>Master Wet / Dry Mix: <strong id="mmMixValue">0%</strong></label>
         <input id="mmMix" type="range" min="0" max="100" value="0">
       </div>
 
       <div class="mm-effect-control">
-        <label>Microphone Output: <strong id="mmVolumeValue">80%</strong></label>
+        <label>Singer Microphone Master Volume: <strong id="mmVolumeValue">80%</strong></label>
         <input id="mmVolume" type="range" min="0" max="100" value="80">
       </div>
 
@@ -954,40 +965,12 @@ function createPanel() {
   });
 
   if (IS_HOST_CONTROL_PAGE && byId("mmAudioEffects")) {
-    byId("mmEcho").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmEchoValue").textContent = value + "%";
-      audioEffects?.setEcho(value);
-          });
-
-    byId("mmDelay").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmDelayValue").textContent = value + " ms";
-      audioEffects?.setDelayTime(value);
-    });
-
-    byId("mmFeedback").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmFeedbackValue").textContent = value + "%";
-      audioEffects?.setFeedback(value);
-    });
-
-    byId("mmReverb").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmReverbValue").textContent = value + "%";
-      audioEffects?.setReverb(value);
-    });
-
-    byId("mmMix").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmMixValue").textContent = value + "%";
-      audioEffects?.setMix(value);
-    });
-
-    byId("mmVolume").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmVolumeValue").textContent = value + "%";
-      audioEffects?.setVolume(value);
+    ["mmEcho", "mmDelay", "mmFeedback", "mmReverb", "mmMix", "mmVolume"].forEach(id => {
+      byId(id).addEventListener("input", () => {
+        updateAudioControlLabels();
+        applySharedAudioSettingsToEffects();
+        scheduleSharedAudioSettingsSave();
+      });
     });
 
     byId("mmMonitor").addEventListener("change", event => {
@@ -1982,6 +1965,7 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    listenToSharedAudioSettings();
 
     setButtonState("mmJoinBtn", true, "Connected");
     setButtonState("mmLeaveBtn", false, "Leave Auditorium");
@@ -2298,25 +2282,172 @@ function removeParticipantTile(identity) {
 
 
 /* =========================================
-   HOST MICROPHONE AUDIO EFFECTS
+   SHARED AUDITORIUM AUDIO SETTINGS
+   Stored inside karaokePlayback so the existing
+   host write / singer read path and rules are reused.
+========================================= */
+
+function normalizeSharedAudioSettings(value = {}) {
+  return {
+    echo: Math.max(0, Math.min(100, Number(value.echo ?? 0))),
+    delay: Math.max(50, Math.min(1000, Number(value.delay ?? 280))),
+    feedback: Math.max(0, Math.min(85, Number(value.feedback ?? 25))),
+    reverb: Math.max(0, Math.min(100, Number(value.reverb ?? 0))),
+    mix: Math.max(0, Math.min(100, Number(value.mix ?? 0))),
+    volume: Math.max(0, Math.min(100, Number(value.volume ?? 80)))
+  };
+}
+
+function updateAudioControlLabels() {
+  const values = {
+    mmEchoValue: [byId("mmEcho")?.value, "%"],
+    mmDelayValue: [byId("mmDelay")?.value, " ms"],
+    mmFeedbackValue: [byId("mmFeedback")?.value, "%"],
+    mmReverbValue: [byId("mmReverb")?.value, "%"],
+    mmMixValue: [byId("mmMix")?.value, "%"],
+    mmVolumeValue: [byId("mmVolume")?.value, "%"]
+  };
+
+  Object.entries(values).forEach(([id, pair]) => {
+    const element = byId(id);
+    if (element && pair[0] !== undefined) {
+      element.textContent = pair[0] + pair[1];
+    }
+  });
+}
+
+function readAudioSettingsFromControls() {
+  return normalizeSharedAudioSettings({
+    echo: byId("mmEcho")?.value,
+    delay: byId("mmDelay")?.value,
+    feedback: byId("mmFeedback")?.value,
+    reverb: byId("mmReverb")?.value,
+    mix: byId("mmMix")?.value,
+    volume: byId("mmVolume")?.value
+  });
+}
+
+function applySharedAudioSettingsToEffects() {
+  sharedAudioSettings = normalizeSharedAudioSettings(sharedAudioSettings);
+  if (!audioEffects) return;
+
+  audioEffects.setEcho(sharedAudioSettings.echo);
+  audioEffects.setDelayTime(sharedAudioSettings.delay);
+  audioEffects.setFeedback(sharedAudioSettings.feedback);
+  audioEffects.setReverb(sharedAudioSettings.reverb);
+  audioEffects.setMix(sharedAudioSettings.mix);
+  audioEffects.setVolume(sharedAudioSettings.volume);
+}
+
+function displaySharedAudioSettings() {
+  const pairs = [
+    ["mmEcho", sharedAudioSettings.echo],
+    ["mmDelay", sharedAudioSettings.delay],
+    ["mmFeedback", sharedAudioSettings.feedback],
+    ["mmReverb", sharedAudioSettings.reverb],
+    ["mmMix", sharedAudioSettings.mix],
+    ["mmVolume", sharedAudioSettings.volume]
+  ];
+
+  pairs.forEach(([id, value]) => {
+    const input = byId(id);
+    if (input) input.value = String(value);
+  });
+
+  updateAudioControlLabels();
+  applySharedAudioSettingsToEffects();
+}
+
+function scheduleSharedAudioSettingsSave() {
+  if (!hostCanUseAudioEffects()) return;
+
+  sharedAudioSettings = readAudioSettingsFromControls();
+
+  if (audioSettingsSaveTimer) {
+    clearTimeout(audioSettingsSaveTimer);
+  }
+
+  audioSettingsSaveTimer = setTimeout(async () => {
+    try {
+      await set(
+        ref(db, "karaokePlayback/" + showId + "/audioSettings"),
+        {
+          ...sharedAudioSettings,
+          updatedAt: Date.now(),
+          updatedBy: currentUser.uid
+        }
+      );
+      if (byId("mmEffectsStatus")) {
+        byId("mmEffectsStatus").textContent =
+          "Master microphone settings are live for all singers.";
+      }
+    } catch (error) {
+      console.error("Shared audio settings save failed:", error);
+      showMessage("Could not share audio settings: " + error.message, "error");
+    }
+  }, 180);
+}
+
+function listenToSharedAudioSettings() {
+  if (!showId) return;
+
+  const settingsRef = ref(
+    db,
+    "karaokePlayback/" + showId + "/audioSettings"
+  );
+
+  if (audioSettingsListener) {
+    off(settingsRef, "value", audioSettingsListener);
+  }
+
+  audioSettingsListener = snapshot => {
+    const value = snapshot.val();
+
+    if (value) {
+      sharedAudioSettings = normalizeSharedAudioSettings(value);
+      displaySharedAudioSettings();
+    } else {
+      sharedAudioSettings = normalizeSharedAudioSettings();
+      displaySharedAudioSettings();
+
+      // Only the verified host initializes the shared defaults.
+      if (hostCanUseAudioEffects()) {
+        set(settingsRef, {
+          ...sharedAudioSettings,
+          updatedAt: Date.now(),
+          updatedBy: currentUser.uid
+        }).catch(error => {
+          console.warn("Could not initialize shared audio settings:", error);
+        });
+      }
+    }
+  };
+
+  onValue(settingsRef, audioSettingsListener);
+}
+
+
+/* =========================================
+   HOST AND SINGER MICROPHONE AUDIO EFFECTS
 ========================================= */
 
 function hostCanUseAudioEffects() {
   return (
     isJoined &&
-    isHost &&
-    currentRole === "host" &&
-    IS_HOST_CONTROL_PAGE
+    (
+      (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) ||
+      (currentRole === "singer" && microphoneAllowed)
+    )
   );
 }
 
 async function startMicrophoneEffects() {
   if (!hostCanUseAudioEffects()) {
-    throw new Error("Only the verified host can use these audio effects.");
+    throw new Error("Microphone processing is not currently permitted.");
   }
 
   if (!microphoneAllowed) {
-    throw new Error("The host microphone is not permitted.");
+    throw new Error("The host has not granted microphone permission.");
   }
 
   if (!room || !isJoined) {
@@ -2349,23 +2480,23 @@ async function startMicrophoneEffects() {
   processedMicrophoneTrack =
     await audioEffects.start(rawMicrophoneTrack);
 
-  audioEffects.setEcho(Number(byId("mmEcho").value));
-  audioEffects.setDelayTime(Number(byId("mmDelay").value));
-  audioEffects.setFeedback(Number(byId("mmFeedback").value));
-  audioEffects.setReverb(Number(byId("mmReverb").value));
-  audioEffects.setMix(Number(byId("mmMix").value));
-  audioEffects.setVolume(Number(byId("mmVolume").value));
-  audioEffects.setMonitorVolume(
-    Number(byId("mmMonitorVolume").value)
-  );
-  audioEffects.setMonitor(byId("mmMonitor").checked);
+  applySharedAudioSettingsToEffects();
+
+  if (currentRole === "host") {
+    audioEffects.setMonitorVolume(
+      Number(byId("mmMonitorVolume")?.value || 35)
+    );
+    audioEffects.setMonitor(Boolean(byId("mmMonitor")?.checked));
+  }
 
   audioEffects.setMuted(false);
 
   await room.localParticipant.publishTrack(
     processedMicrophoneTrack,
     {
-      name: "Melody Magic Host Processed Microphone",
+      name: currentRole === "host"
+        ? "Melody Magic Host Processed Microphone"
+        : "Melody Magic Singer Processed Microphone",
       source: Track.Source.Microphone
     }
   );
@@ -2375,7 +2506,9 @@ async function startMicrophoneEffects() {
 
   if (byId("mmEffectsStatus")) {
     byId("mmEffectsStatus").textContent =
-      "Host microphone active. Audio effects are processing your voice.";
+      currentRole === "host"
+        ? "Host microphone active. Master sound is shared with all singers."
+        : "Your microphone is live with the host's master audio effects.";
   }
 
   updateControlButtons();
@@ -2405,7 +2538,7 @@ async function stopMicrophoneEffects() {
   }
   rawMicrophoneTrack = null;
   localMicEnabled = false;
-  if (byId("mmEffectsStatus")) byId("mmEffectsStatus").textContent = "Host microphone is OFF.";
+  if (byId("mmEffectsStatus")) byId("mmEffectsStatus").textContent = "Microphone is OFF.";
   updateControlButtons();
 }
 
@@ -2423,32 +2556,14 @@ async function toggleMicrophone() {
 
   try {
     if (localMicEnabled) {
-      if (currentRole === "host") {
-        await stopMicrophoneEffects();
-      } else {
-        await room.localParticipant.setMicrophoneEnabled(false);
-        localMicEnabled = false;
-      }
-
+      await stopMicrophoneEffects();
       showMessage("Microphone OFF.");
       updateControlButtons();
       return;
     }
 
-    if (currentRole === "host") {
-      if (!hostCanUseAudioEffects()) {
-        showMessage(
-          "Host microphone effects are available only in Host Control Room.",
-          "error"
-        );
-        return;
-      }
-
+    if (currentRole === "host" || currentRole === "singer") {
       await startMicrophoneEffects();
-
-    } else if (currentRole === "singer") {
-      await room.localParticipant.setMicrophoneEnabled(true);
-      localMicEnabled = true;
     }
 
     updateControlButtons();
@@ -2583,9 +2698,8 @@ function listenToMyPermissions() {
 async function autoEnableSingerMicrophone() {
   if (currentRole !== "singer" || !room || !isJoined || !microphoneAllowed || localMicEnabled) return;
   try {
-    await room.localParticipant.setMicrophoneEnabled(true);
-    localMicEnabled = true;
-    showMessage("Main stage assigned. Microphone is ON.", "success");
+    await startMicrophoneEffects();
+    showMessage("Main stage assigned. Host master audio effects are ON.", "success");
     updateControlButtons();
   } catch (error) {
     localMicEnabled = false;
@@ -2598,15 +2712,7 @@ async function enforceCurrentPermissions() {
   if (!room) return;
 
   if (!microphoneAllowed && localMicEnabled) {
-    if (currentRole === "host") {
-      await stopMicrophoneEffects();
-    } else {
-      try {
-        await room.localParticipant.setMicrophoneEnabled(false);
-      } catch (error) {}
-
-      localMicEnabled = false;
-    }
+    await stopMicrophoneEffects();
   }
 
   // Do not turn off a singer's camera when they are removed from the stage.
@@ -3016,6 +3122,14 @@ function stopFirebaseListeners() {
     );
   }
 
+  if (audioSettingsListener && showId) {
+    off(
+      ref(db, "karaokePlayback/" + showId + "/audioSettings"),
+      "value",
+      audioSettingsListener
+    );
+  }
+
   if (showLifecycleListener && showId) {
     off(
       ref(db, "shows/" + showId),
@@ -3032,6 +3146,7 @@ function stopFirebaseListeners() {
   commentsListener = null;
   queueListener = null;
   playbackListener = null;
+  audioSettingsListener = null;
 }
 
 
@@ -3044,7 +3159,7 @@ async function leaveAuditorium() {
   leaving = true;
   if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
   try {
-    if (currentRole === "host") {
+    if (publishedMicrophoneTrack || audioEffects || rawMicrophoneTrack) {
       await stopMicrophoneEffects();
     } else if (room && localMicEnabled) {
       try { await room.localParticipant.setMicrophoneEnabled(false); } catch (error) {}
