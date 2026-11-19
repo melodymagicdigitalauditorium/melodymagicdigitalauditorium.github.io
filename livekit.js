@@ -2881,6 +2881,15 @@ function stopFirebaseListeners() {
     );
   }
 
+  if (showLifecycleListener && showId) {
+    off(
+      ref(db, "shows/" + showId),
+      "value",
+      showLifecycleListener
+    );
+  }
+
+  showLifecycleListener = null;
   permissionListener = null;
   stageListener = null;
   registrationListener = null;
