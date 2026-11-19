@@ -1631,7 +1631,7 @@ function loadYouTubeAPI() {
   return youtubeApiPromise;
 }
 
-async function createYouTubePlayer() {
+async function createYouTubePlayer(initialVideoId = "") {
   const container = byId("mmYoutubePlayer");
   if (!container) return null;
 
@@ -1640,16 +1640,22 @@ async function createYouTubePlayer() {
   youtubePlayerReadyPromise = (async () => {
     await loadYouTubeAPI();
 
+    // Do not create an empty YouTube iframe. Start with the actual video
+    // received from Firebase so the singer never gets a blank player shell.
+    container.style.minHeight = "240px";
     container.innerHTML = '<div id="mmYoutubeFrame"></div>';
+
+    const playerWidth = Math.max(320, container.clientWidth || 640);
+    const playerHeight = Math.max(240, Math.round(playerWidth * 9 / 16));
 
     return await new Promise((resolve, reject) => {
       let settled = false;
 
       try {
         youtubePlayer = new window.YT.Player("mmYoutubeFrame", {
-          width: "100%",
-          height: "100%",
-          videoId: "",
+          width: playerWidth,
+          height: playerHeight,
+          videoId: initialVideoId,
           playerVars: {
             autoplay: 0,
             controls: 1,
@@ -1663,20 +1669,40 @@ async function createYouTubePlayer() {
             onReady: event => {
               if (settled) return;
               settled = true;
+              const iframe = container.querySelector("iframe");
+              if (iframe) {
+                iframe.style.width = "100%";
+                iframe.style.height = "100%";
+                iframe.style.minHeight = "240px";
+                iframe.style.display = "block";
+              }
               const status = byId("mmPlaybackStatus");
               if (status) status.textContent =
-                "Karaoke player ready. Syncing the host's video...";
+                "Karaoke screen connected. Syncing the host's video...";
               resolve(event.target);
             },
             onError: event => {
               console.warn("YouTube player error:", event.data);
+              const messages = {
+                2: "The host's YouTube video ID is invalid.",
+                5: "This YouTube video cannot play in the HTML5 player.",
+                100: "The host's YouTube video was removed or is private.",
+                101: "This YouTube video owner does not allow embedding.",
+                150: "This YouTube video owner does not allow embedding."
+              };
+              const message = messages[event.data] ||
+                ("YouTube player error (" + event.data + ").");
               const status = byId("mmPlaybackStatus");
-              if (status) status.textContent =
-                "YouTube player error (" + event.data + "). Check that this video allows embedding.";
+              if (status) status.textContent = message;
               if (!settled) {
                 settled = true;
-                reject(new Error("YouTube player error: " + event.data));
+                reject(new Error(message));
               }
+            },
+            onAutoplayBlocked: () => {
+              const status = byId("mmPlaybackStatus");
+              if (status) status.textContent =
+                "Your browser blocked automatic playback. Tap the video once, then ask the host to press PLAY FOR EVERYONE again.";
             }
           }
         });
@@ -1728,7 +1754,7 @@ async function applyPlayback(data) {
 
   try {
     // Wait until the YouTube iframe reports onReady before sending commands.
-    const player = await createYouTubePlayer();
+    const player = await createYouTubePlayer(videoId);
     if (!player) return;
 
     const signature = [
@@ -1808,7 +1834,12 @@ function listenToKaraokePlayback() {
   playbackListener = snapshot => {
     const data = snapshot.val() || {};
     if (!data.videoId) {
+      const playerBox = byId("mmYoutubePlayer");
       const status = byId("mmPlaybackStatus");
+      if (playerBox && !youtubePlayer) {
+        playerBox.innerHTML =
+          '<div style="height:100%;min-height:240px;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;color:#bbb;background:#050505">Waiting for the host to select a karaoke video...</div>';
+      }
       if (status) {
         status.textContent =
           "Waiting for the host to load a YouTube karaoke video.";
@@ -1966,23 +1997,8 @@ async function joinAuditorium() {
     listenToQueue();
     listenToCurrentPerformance();
 
-    // Prepare the singer's single common karaoke player as soon as the
-    // singer joins, then listen for the host's shared playback state.
-    if (currentRole === "singer" && !IS_HOST_CONTROL_PAGE) {
-      const playbackStatus = byId("mmPlaybackStatus");
-      if (playbackStatus) {
-        playbackStatus.textContent =
-          "Connecting to the host's common karaoke screen...";
-      }
-      createYouTubePlayer().catch(error => {
-        console.error("Singer karaoke player initialization failed:", error);
-        if (playbackStatus) {
-          playbackStatus.textContent =
-            "Karaoke player could not load: " + error.message;
-        }
-      });
-    }
-
+    // The Firebase listener creates the singer player only after the
+    // host's real video ID arrives. This avoids an empty black iframe.
     listenToKaraokePlayback();
     updateControlButtons();
     updateAudienceCount();
