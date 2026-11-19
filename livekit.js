@@ -1773,12 +1773,52 @@ function listenToKaraokePlayback() {
 
   onValue(playbackRef, playbackListener);
 }
+function isShowLive(data = currentShow) {
+  return !!data && (
+    safeText(data.liveStatus).toLowerCase() === "live" ||
+    data.isLive === true
+  );
+}
+
+function listenToShowLifecycle() {
+  if (!showId || requestedMode !== "singer") return;
+  const lifecycleRef = ref(db, "shows/" + showId);
+  if (showLifecycleListener) off(lifecycleRef, "value", showLifecycleListener);
+  showLifecycleListener = snapshot => {
+    if (!snapshot.exists()) return;
+    currentShow = snapshot.val();
+    const liveNow = isShowLive();
+    if (liveNow) {
+      setSingerVisibleStatus(
+        "Show has started!",
+        "The host has started the show. Join now — your Enter button is ready."
+      );
+      showMessage("Show has started! Join now.", "success");
+      setButtonState("mmJoinBtn", false, "Enter Live Auditorium");
+    } else {
+      const ended = safeText(currentShow.liveStatus).toLowerCase() === "ended";
+      setSingerVisibleStatus(
+        ended ? "Show ended" : "Waiting for host",
+        ended ? "This show has ended." : "Your registration is confirmed. Entry opens automatically when the host starts the show."
+      );
+      setButtonState("mmJoinBtn", true, ended ? "Show Ended" : "Waiting for host");
+    }
+  };
+  onValue(lifecycleRef, showLifecycleListener);
+}
+
 /* =========================================
    JOIN AUDITORIUM
 ========================================= */
 
 async function joinAuditorium() {
   if (joining || isJoined) return;
+  if (requestedMode === "singer" && !isShowLive()) {
+    showMessage("The host has not started this show yet.");
+    setSingerVisibleStatus("Waiting for host", "You will be notified here when the host starts the show.");
+    setButtonState("mmJoinBtn", true, "Waiting for host");
+    return;
+  }
   joining = true;
   setButtonState("mmJoinBtn", true, "Connecting...");
   setSingerVisibleStatus("Connecting...", "Checking singer login, show registration, token server, and LiveKit connection.");
@@ -3002,14 +3042,11 @@ async function initializeShow() {
 
     listenToStage();
     if (requestedMode === "singer") {
-      const singerStatus = byId("singerConnectionStatus");
-      if (singerStatus) singerStatus.textContent = "Connecting...";
-      const singerDetail = byId("singerStatusText");
-      if (singerDetail) singerDetail.textContent = "Automatic connection started. Checking your registration and show status.";
-      if (!singerAutoJoinStarted) {
-        singerAutoJoinStarted = true;
-        joinAuditorium();
-      }
+      listenToShowLifecycle();
+      setSingerVisibleStatus(
+        "Waiting for host",
+        "Your registration is approved. You can enter as soon as the host starts this show."
+      );
     }
 
   } catch (error) {
