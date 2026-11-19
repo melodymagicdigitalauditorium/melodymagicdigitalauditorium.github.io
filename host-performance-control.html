@@ -111,7 +111,7 @@ hr{border-color:#51401e;margin:18px 0}
         <span>100% Maximum</span>
       </div>
 
-      <p class="small">This slider controls YouTube volume on the host device only.</p>
+      <p class="small">Controls the common karaoke screen volume for the host, singers and audience.</p>
     </div>
 
     <p id="videoStatus" class="small">Host video controls are ready.</p>
@@ -308,9 +308,11 @@ async function createYouTubePlayer(){
   });
 }
 
-function setKaraokeVolume(){
+function setKaraokeVolume(value){
 
-  const volume=Number($("karaokeVolume").value);
+  const volume=Math.max(0,Math.min(100,Number(
+    value===undefined ? $("karaokeVolume").value : value
+  )));
 
   $("volumeValue").textContent=volume+"%";
 
@@ -330,7 +332,32 @@ function setKaraokeVolume(){
   }
 }
 
-$("karaokeVolume").addEventListener("input",setKaraokeVolume);
+async function publishKaraokeVolume(){
+
+  if(!isHost||!currentUser||!showId)return;
+
+  const volume=Number($("karaokeVolume").value);
+
+  setKaraokeVolume(volume);
+
+  try{
+
+    await update(ref(db,"karaokePlayback/"+showId),{
+      volume,
+      volumeUpdatedAt:Date.now(),
+      volumeUpdatedBy:currentUser.uid
+    });
+
+    videoMessage("Common karaoke volume set to "+volume+"% for everyone.");
+
+  }catch(error){
+
+    console.error("Shared volume update error:",error);
+    videoMessage("Could not update common volume: "+error.message);
+  }
+}
+
+$("karaokeVolume").addEventListener("input",publishKaraokeVolume);
 
 function expectedPosition(data){
 
@@ -356,6 +383,13 @@ async function applyPlayback(data){
 
   playbackData=data;
 
+  const sharedVolume=Math.max(0,Math.min(100,Number(
+    data.volume===undefined ? 100 : data.volume
+  )));
+
+  $("karaokeVolume").value=String(sharedVolume);
+  setKaraokeVolume(sharedVolume);
+
   if(applyingPlayback)return;
 
   applyingPlayback=true;
@@ -365,6 +399,8 @@ async function applyPlayback(data){
     await createYouTubePlayer();
 
     if(!playerReady||!youtubePlayer)return;
+
+    setKaraokeVolume(sharedVolume);
 
     const newVideo=data.videoId!==currentVideoId;
 
@@ -505,6 +541,7 @@ async function loadSelectedVideo(){
       state:"stopped",
       basePosition:0,
       startedAt:0,
+      volume:Number($("karaokeVolume").value),
       updatedAt:Date.now(),
       updatedBy:currentUser.uid
     };
