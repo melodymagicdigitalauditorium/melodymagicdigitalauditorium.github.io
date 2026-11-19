@@ -3100,11 +3100,50 @@ function resetButtons() {
 
 
 /* =========================================
+   PUBLIC COMMENT AND REACTION CONTROLS
+========================================= */
+
+function wirePublicInteractionControls() {
+  // The singer page has its own visible controls outside the hidden
+  // LiveKit panel. Rebind those visible elements explicitly.
+  const sendButton = byId("mmSendCommentBtn");
+  if (sendButton) {
+    const freshButton = sendButton.cloneNode(true);
+    freshButton.disabled = !isJoined || !currentUser;
+    sendButton.replaceWith(freshButton);
+    freshButton.addEventListener("click", sendLiveComment);
+  }
+
+  const commentInput = byId("mmCommentInput");
+  if (commentInput) {
+    const freshInput = commentInput.cloneNode(true);
+    commentInput.replaceWith(freshInput);
+    freshInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") sendLiveComment();
+    });
+  }
+
+  const reactionButtons = byId("mmReactionButtons");
+  if (reactionButtons) {
+    const freshReactions = reactionButtons.cloneNode(true);
+    reactionButtons.replaceWith(freshReactions);
+    freshReactions.addEventListener("click", event => {
+      const button = event.target.closest("[data-reaction]");
+      if (button && !button.disabled) sendReaction(button.dataset.reaction);
+    });
+  }
+
+  updateCommentControls();
+  updateReactionButtons();
+}
+
+/* =========================================
    INITIALIZE
 ========================================= */
 
 async function initializeShow() {
   createPanel();
+  wirePublicInteractionControls();
   updateReactionButtons();
   updateCommentControls();
 
