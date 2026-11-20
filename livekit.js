@@ -2055,16 +2055,12 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // Only the host-control tab produces karaoke audio. Other devices keep
-    // the shared video visible but mute their local YouTube audio to avoid
-    // hearing a second, unsynchronised soundtrack.
-    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
-      player.setVolume(sharedVolume);
-      if (sharedVolume === 0) player.mute();
-      else player.unMute();
-    } else {
-      player.mute();
-    }
+    // Each connected device plays the same host-controlled YouTube video
+    // locally. Firebase playback state keeps players aligned; this avoids
+    // requiring a desktop tab-audio mixer to hear the karaoke track.
+    player.setVolume(sharedVolume);
+    if (sharedVolume === 0) player.mute();
+    else player.unMute();
 
     const signature = [
       videoId,
@@ -2371,10 +2367,6 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
-      if (track.kind === Track.Kind.Audio && currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE && programmeMixer) {
-        addRemoteSingerToProgrammeMixer(track, participant);
-        return;
-      }
       await attachRemoteTrack(track, participant);
     }
   );
@@ -2544,13 +2536,10 @@ function attachTrackToTile(track, targetId) {
   if (!target || !track) return;
 
   if (track.kind === Track.Kind.Audio) {
-    // When the host's professional programme mixer is running, singer tracks
-    // feed that mixer. Otherwise play the singer's original LiveKit mic track
-    // directly so the host can hear singers on mobile and desktop.
-    const hostMixing = currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE && Boolean(programmeMixer);
-    const hostDirectMonitor = currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE && !programmeMixer;
-    if (hostMixing) return;
-    if (track.name !== "Melody Magic Programme Audio" && !hostDirectMonitor) return;
+    // Normal auditorium mode: play each remote participant microphone once.
+    // The tab-capture programme mixer is not required for singers or audience.
+    // Ignore any legacy mixed programme track to prevent duplicate audio.
+    if (track.name === "Melody Magic Programme Audio") return;
   }
 
   const attached = track.attach();
