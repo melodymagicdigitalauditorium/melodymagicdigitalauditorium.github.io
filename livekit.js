@@ -81,6 +81,8 @@ let singerAutoJoinTimer = null;
 let singerAutoJoinStarted = false;
 let hostReconnectTimer = null;
 let hostReconnectAttempts = 0;
+let hostRestoreCameraAfterReconnect = false;
+let hostRestoreMicAfterReconnect = false;
 
 let lastReactionTimes = [];
 
@@ -2268,6 +2270,23 @@ async function joinAuditorium() {
     }
 
     if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
+      if (hostRestoreCameraAfterReconnect && cameraAllowed) {
+        try {
+          await room.localParticipant.setCameraEnabled(true);
+          localCameraEnabled = true;
+        } catch (cameraError) {
+          showMessage("Reconnected, but the host camera needs to be turned on again: " + cameraError.message, "warning");
+        }
+      }
+      if (hostRestoreMicAfterReconnect && microphoneAllowed) {
+        try {
+          await startMicrophoneEffects();
+        } catch (micError) {
+          showMessage("Reconnected, but the host microphone needs to be turned on again: " + micError.message, "warning");
+        }
+      }
+      hostRestoreCameraAfterReconnect = false;
+      hostRestoreMicAfterReconnect = false;
       if (byId("mmHostControls")) byId("mmHostControls").hidden = false;
       if (byId("mmAudioEffects")) byId("mmAudioEffects").hidden = false;
       await loadHostRegistrations();
@@ -2404,6 +2423,8 @@ function registerRoomEvents() {
   room.on(RoomEvent.Disconnected, async () => {
     if (leaving || room !== registeredRoom) return;
 
+    hostRestoreCameraAfterReconnect = localCameraEnabled;
+    hostRestoreMicAfterReconnect = localMicEnabled;
     isJoined = false;
     localMicEnabled = false;
     localCameraEnabled = false;
