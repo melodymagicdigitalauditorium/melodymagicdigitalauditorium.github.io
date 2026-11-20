@@ -35,10 +35,10 @@ const showId = params.get("showId");
 const registrationId = params.get("registrationId");
 const requestedMode = (params.get("mode") || "audience").toLowerCase();
 
-const IS_HOST_CONTROL_PAGE =
-  location.pathname.toLowerCase().endsWith(
-    "host-performance-control.html"
-  );
+const IS_HOST_CONTROL_PAGE = [
+  "host-performance-control.html",
+  "live-stage.html"
+].some(page => location.pathname.toLowerCase().endsWith(page));
 
 const REACTION_TOPIC = "mm-reactions";
 
@@ -2229,7 +2229,7 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
-      if (track.kind === Track.Kind.Audio && currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
+      if (track.kind === Track.Kind.Audio && currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE && programmeMixer) {
         addRemoteSingerToProgrammeMixer(track, participant);
         return;
       }
@@ -2398,10 +2398,13 @@ function attachTrackToTile(track, targetId) {
   if (!target || !track) return;
 
   if (track.kind === Track.Kind.Audio) {
-    // The host mixes remote singer microphones; audience and singers hear
-    // only the host's single programme track, never the original mic tracks.
-    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) return;
-    if (track.name !== "Melody Magic Programme Audio") return;
+    // When the host's professional programme mixer is running, singer tracks
+    // feed that mixer. Otherwise play the singer's original LiveKit mic track
+    // directly so the host can hear singers on mobile and desktop.
+    const hostMixing = currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE && Boolean(programmeMixer);
+    const hostDirectMonitor = currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE && !programmeMixer;
+    if (hostMixing) return;
+    if (track.name !== "Melody Magic Programme Audio" && !hostDirectMonitor) return;
   }
 
   const attached = track.attach();
