@@ -4,7 +4,7 @@ import {
   Track
 } from "https://esm.sh/livekit-client@2";
 
-import { auth, db } from "./firebase.js";
+import { auth, db, connectAuditorium } from "./firebase.js";
 
 import {
   ref,
@@ -33,7 +33,7 @@ const params = new URLSearchParams(location.search);
 
 const showId = params.get("showId");
 const registrationId = params.get("registrationId");
-const requestedMode = (params.get("mode") || "audience").toLowerCase();
+let requestedMode = (params.get("mode") || "audience").toLowerCase();
 
 // All live features stay inside the existing host-performance-control auditorium.
 const IS_HOST_CONTROL_PAGE =
@@ -66,6 +66,8 @@ let participantPermissions = {};
 let permissionListener = null;
 let stageListener = null;
 let registrationListener = null;
+let singerRegistrationListener = null;
+let singerRegistration = null;
 let controlsListener = null;
 
 let commentsListener = null;
@@ -644,6 +646,38 @@ function isApproved(value) {
   return ["approved", "queued", "playing"].includes(
     safeText(value).toLowerCase()
   );
+}
+
+async function findCurrentSingerRegistration(){
+ if(!currentUser||!showId)return null;
+ const snapshot=await get(ref(db,"showRegistrations/"+showId));
+ if(!snapshot.exists())return null;
+ return Object.entries(snapshot.val()||{})
+  .map(([id,item])=>({id,...(item||{})}))
+  .filter(item=>item.singerUid===currentUser.uid&&isApproved(item.status))
+  .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0))[0]||null;
+}
+
+function listenForCurrentSingerRegistration(){
+ if(!currentUser||!showId||isHost)return;
+ const registrationsRef=ref(db,"showRegistrations/"+showId);
+ if(singerRegistrationListener)off(registrationsRef,"value",singerRegistrationListener);
+ singerRegistrationListener=snapshot=>{
+  const found=Object.entries(snapshot.val()||{})
+   .map(([id,item])=>({id,...(item||{})}))
+   .filter(item=>item.singerUid===currentUser.uid&&isApproved(item.status))
+   .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0))[0]||null;
+  if(!found)return;
+  singerRegistration=found;
+  requestedMode="singer";
+  if(!showLifecycleListener)listenToShowLifecycle();
+  setSingerVisibleStatus("Approved singer","You will join this same auditorium automatically when the host starts the show.");
+  if(isShowLive()&&!isJoined&&!joining){
+   singerAutoJoinStarted=true;
+   joinAuditorium();
+  }
+ };
+ onValue(registrationsRef,singerRegistrationListener);
 }
 
 function normalizeArray(value) {
@@ -1304,32 +1338,9 @@ function createPanel() {
    AUTHENTICATION
 ========================================= */
 
-function waitForAuth() {
-  return new Promise((resolve, reject) => {
-    if (auth.currentUser) {
-      currentUser = auth.currentUser;
-      resolve(currentUser);
-      return;
-    }
-
-    let unsubscribe;
-
-    const timeout = setTimeout(() => {
-      if (!currentUser) {
-        unsubscribe?.();
-        reject(new Error("Please sign in before entering the auditorium."));
-      }
-    }, 20000);
-
-    unsubscribe = onAuthStateChanged(auth, user => {
-      if (user) {
-        currentUser = user;
-        clearTimeout(timeout);
-        unsubscribe?.();
-        resolve(user);
-      }
-    });
-  });
+async function waitForAuth() {
+  currentUser = await connectAuditorium();
+  return currentUser;
 }
 
 
@@ -1456,17 +1467,13 @@ async function workerRequest(data) {
 ========================================= */
 
 async function getAccessToken() {
-  // A singer link must always request singer access first.
-  // Host-account detection must not override an explicit singer entry.
+  // Approved singers are detected from the signed-in anonymous Firebase session.
+  // No OTP, singer-specific URL, or registration ID is required.
   if (requestedMode === "singer") {
-    if (!registrationId) {
-      throw new Error("Singer registration ID is missing.");
-    }
-
     return workerRequest({
       action: "joinSinger",
-      registrationId,
-      name: currentUser.displayName || "Singer"
+      ...(registrationId ? { registrationId } : {}),
+      name: currentUser.displayName || singerRegistration?.singerName || "Singer"
     });
   }
 
@@ -3757,6 +3764,10 @@ function stopFirebaseListeners() {
     );
   }
 
+  if (singerRegistrationListener && showId) {
+    off(ref(db, "showRegistrations/" + showId), "value", singerRegistrationListener);
+  }
+
   if (controlsListener && showId) {
     off(
       ref(db, "participantControls/" + showId),
@@ -3962,16 +3973,6 @@ async function initializeShow() {
     return;
   }
 
-  if (requestedMode === "singer" && !registrationId) {
-    showMessage(
-      "Singer registration ID is missing from the entry link.",
-      "error"
-    );
-
-    setButtonState("mmJoinBtn", true);
-    return;
-  }
-
   try {
     await waitForAuth();
     await loadShow();
@@ -3984,6 +3985,11 @@ async function initializeShow() {
     }
 
     isHost = await verifyHost();
+
+    if (!isHost) {
+      singerRegistration = await findCurrentSingerRegistration();
+      if (singerRegistration) requestedMode = "singer";
+    }
 
     if (byId("mmHostControls")) {
       byId("mmHostControls").hidden = true;
@@ -4015,6 +4021,7 @@ async function initializeShow() {
     }
 
     listenToStage();
+    if (!isHost) listenForCurrentSingerRegistration();
     if (requestedMode === "singer") {
       listenToShowLifecycle();
       setSingerVisibleStatus(
