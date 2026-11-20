@@ -108,6 +108,7 @@ let youtubePlayerReadyPromise = null;
 let youtubeApiPromise = null;
 let lastYoutubeVideoId = "";
 let lastPlaybackSignature = "";
+let playbackStartTimer = null;
 let playbackSyncTimer = null;
 let sharedKaraokeTracks = [];
 let sharedKaraokeStarting = false;
@@ -739,9 +740,9 @@ function createPanel() {
     <style>
       #mmLiveKitPanel {
         width:100%;
-        max-width:1100px;
-        margin:20px auto;
-        padding:18px;
+        max-width:940px;
+        margin:9px auto;
+        padding:10px;
         box-sizing:border-box;
         color:#fff;
         background:#111;
@@ -926,8 +927,8 @@ function createPanel() {
       }
 
       #mmLiveKitPanel .mm-effect-control {
-        margin:12px 0;
-        padding:10px;
+        margin:7px 0;
+        padding:7px;
         background:#1b1b1b;
         border-radius:8px;
       }
@@ -1972,7 +1973,8 @@ async function createYouTubePlayer(initialVideoId = "") {
           videoId: initialVideoId,
           playerVars: {
             autoplay: 0,
-            controls: 1,
+            controls: 0,
+            disablekb: 1,
             playsinline: 1,
             rel: 0,
             modestbranding: 1,
@@ -2110,27 +2112,26 @@ async function applyPlayback(data) {
 
     // A selected/stopped video must be cued, not loaded (loadVideoById
     // starts playback and can race the player's onReady event).
+    if (state !== "playing") clearTimeout(playbackStartTimer);
+
     if (isNewVideo || state === "stopped" || state === "selected") {
       if (state === "playing") {
-        player.loadVideoById({
-          videoId,
-          startSeconds: position
-        });
+        player.cueVideoById({ videoId, startSeconds: position });
+        clearTimeout(playbackStartTimer);
+        const playAt = Number(data.startedAt || Date.now());
+        playbackStartTimer = setTimeout(() => {
+          if (!youtubePlayer) return;
+          const target = playbackPosition(data);
+          const current = youtubePlayer.getCurrentTime?.() || 0;
+          if (Math.abs(current - target) > 1) youtubePlayer.seekTo(target, true);
+          youtubePlayer.playVideo();
+        }, Math.max(0, playAt - Date.now()));
       } else {
-        player.cueVideoById({
-          videoId,
-          startSeconds: position
-        });
+        player.cueVideoById({ videoId, startSeconds: position });
       }
     } else if (state === "playing") {
-      const currentTime =
-        typeof player.getCurrentTime === "function"
-          ? player.getCurrentTime()
-          : 0;
-
-      if (Math.abs(currentTime - position) > 3) {
-        player.seekTo(position, true);
-      }
+      const currentTime = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
+      if (Math.abs(currentTime - position) > 2.5) player.seekTo(position, true);
       player.playVideo();
     } else if (state === "paused") {
       player.seekTo(position, true);
