@@ -109,6 +109,7 @@ let lastPlaybackSignature = "";
 let playbackSyncTimer = null;
 let sharedKaraokeTracks = [];
 let sharedKaraokeStarting = false;
+let sharedKaraokeStopping = false;
 
 let liveComments = [];
 let liveQueue = [];
@@ -2382,10 +2383,14 @@ function registerRoomEvents() {
       const source = publication?.source || track?.source;
       if (source === Track.Source.ScreenShare) {
         attachTrackToTile(track, "mmSharedKaraokeVideo");
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Host is sharing the karaoke video. Waiting for shared audio...";
         return;
       }
       if (source === Track.Source.ScreenShareAudio) {
         attachTrackToTile(track, "mmSharedKaraokeAudio");
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "LIVE — the same karaoke video and audio are being shared with everyone.";
         return;
       }
       await attachRemoteTrack(track, participant);
@@ -3072,7 +3077,6 @@ async function startSharedKaraokeCapture() {
     // The host must select THIS Chrome tab and tick Share tab audio.
     tracks = await room.localParticipant.createScreenTracks({
       audio: true,
-      preferCurrentTab: true,
       selfBrowserSurface: "include",
       surfaceSwitching: "exclude"
     });
@@ -3084,7 +3088,10 @@ async function startSharedKaraokeCapture() {
     }
 
     const videoElement = byId("videoPlayer");
-    if (!videoElement || !window.CropTarget || typeof videoTrack.mediaStreamTrack?.cropTo !== "function") {
+    if (!videoElement || videoElement.offsetWidth < 1 || videoElement.offsetHeight < 1) {
+      throw new Error("Load the YouTube karaoke video first, then start sharing.");
+    }
+    if (!window.CropTarget || typeof videoTrack.mediaStreamTrack?.cropTo !== "function") {
       throw new Error("This Chrome version cannot crop the karaoke area. Use the latest desktop Chrome and share This tab.");
     }
 
@@ -3092,23 +3099,29 @@ async function startSharedKaraokeCapture() {
     const cropTarget = await window.CropTarget.fromElement(videoElement);
     await videoTrack.mediaStreamTrack.cropTo(cropTarget);
 
+    const publishedTracks = [];
     await room.localParticipant.publishTrack(videoTrack, {
       name: "Melody Magic Shared Karaoke Video",
       source: Track.Source.ScreenShare
     });
+    publishedTracks.push(videoTrack);
     await room.localParticipant.publishTrack(audioTrack, {
       name: "Melody Magic Shared Karaoke Audio",
       source: Track.Source.ScreenShareAudio
     });
+    publishedTracks.push(audioTrack);
 
     sharedKaraokeTracks = tracks;
     videoTrack.mediaStreamTrack.addEventListener("ended", () => {
-      stopSharedKaraokeCapture("Screen sharing was stopped in Chrome.");
+      if (!sharedKaraokeStopping) {
+        stopSharedKaraokeCapture("Screen sharing was stopped in Chrome.");
+      }
     }, { once: true });
 
     setSharedKaraokeStatus("LIVE — everyone is receiving the same karaoke video and tab audio.");
   } catch (error) {
     for (const track of tracks) {
+      try { await room?.localParticipant?.unpublishTrack(track); } catch (unpublishError) {}
       try { track.stop(); } catch (stopError) {}
     }
     throw error;
@@ -3119,6 +3132,7 @@ async function startSharedKaraokeCapture() {
 }
 
 async function stopSharedKaraokeCapture(statusMessage = "Karaoke sharing stopped.") {
+  sharedKaraokeStopping = true;
   const tracks = sharedKaraokeTracks.slice();
   sharedKaraokeTracks = [];
   if (room?.localParticipant) {
@@ -3131,9 +3145,31 @@ async function stopSharedKaraokeCapture(statusMessage = "Karaoke sharing stopped
   }
   setSharedKaraokeStatus(statusMessage);
   updateSharedKaraokeButton();
+  sharedKaraokeStopping = false;
 }
 
 function wireSharedKaraokeButton() {
+  const soundButton = byId("mmEnableKaraokeSound");
+  if (soundButton && soundButton.dataset.mmWired !== "true") {
+    soundButton.dataset.mmWired = "true";
+    soundButton.addEventListener("click", async () => {
+      const audioBox = byId("mmSharedKaraokeAudio");
+      const audioElements = audioBox ? audioBox.querySelectorAll("audio") : [];
+      if (!audioElements.length) {
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Waiting for the host to start sharing karaoke audio.";
+        return;
+      }
+      try {
+        for (const audio of audioElements) await audio.play();
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Karaoke sound enabled. Enjoy the show!";
+      } catch (error) {
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Sound is still blocked. Check your browser sound permission and tap again.";
+      }
+    });
+  }
   const button = byId("mmShareKaraokeBtn");
   if (!button || button.dataset.mmWired === "true") return;
   button.dataset.mmWired = "true";
