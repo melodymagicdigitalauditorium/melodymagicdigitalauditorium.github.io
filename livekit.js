@@ -107,6 +107,8 @@ let youtubeApiPromise = null;
 let lastYoutubeVideoId = "";
 let lastPlaybackSignature = "";
 let playbackSyncTimer = null;
+let sharedKaraokeTracks = [];
+let sharedKaraokeStarting = false;
 
 let liveComments = [];
 let liveQueue = [];
@@ -2035,6 +2037,15 @@ async function applyPlayback(data) {
   const statusElement = byId("mmPlaybackStatus");
   if (!data) data = {};
 
+  // Singer and audience devices no longer create separate YouTube embeds.
+  // They receive one cropped host video track and one matching tab-audio track.
+  if (!IS_HOST_CONTROL_PAGE) {
+    if (statusElement) {
+      statusElement.textContent = "Waiting for the host to share the common karaoke video and audio...";
+    }
+    return;
+  }
+
   const videoId = safeText(data.videoId).trim();
   const state = safeText(data.state).toLowerCase();
 
@@ -2147,7 +2158,7 @@ function listenToKaraokePlayback() {
       }
       if (status) {
         status.textContent =
-          "Waiting for the host to load a YouTube karaoke video.";
+          "Waiting for the host to share the common karaoke video and audio.";
       }
       return;
     }
@@ -2275,6 +2286,7 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    updateSharedKaraokeButton();
     listenToSharedAudioSettings();
 
     setButtonState("mmJoinBtn", true, "Connected");
@@ -2367,6 +2379,15 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
+      const source = publication?.source || track?.source;
+      if (source === Track.Source.ScreenShare) {
+        attachTrackToTile(track, "mmSharedKaraokeVideo");
+        return;
+      }
+      if (source === Track.Source.ScreenShareAudio) {
+        attachTrackToTile(track, "mmSharedKaraokeAudio");
+        return;
+      }
       await attachRemoteTrack(track, participant);
     }
   );
@@ -2418,6 +2439,7 @@ function registerRoomEvents() {
 
       stopMicrophoneEffects();
       stopProfessionalProgrammeMixer();
+      stopSharedKaraokeCapture("Disconnected from the live auditorium.");
 
       showMessage("Disconnected from the auditorium.", "warning");
 
@@ -2432,7 +2454,7 @@ function registerRoomEvents() {
     RoomEvent.LocalTrackPublished,
     async publication => {
       if (publication.track) {
-        await attachLocalTrack(publication.track);
+        await attachLocalTrack(publication.track, publication);
       }
     }
   );
@@ -2507,7 +2529,11 @@ async function createVideoTile(participant, isLocal) {
 
   if (participant.trackPublications) {
     participant.trackPublications.forEach(publication => {
-      if (publication.track) {
+      if (
+        publication.track &&
+        publication.source !== Track.Source.ScreenShare &&
+        publication.source !== Track.Source.ScreenShareAudio
+      ) {
         attachTrackToTile(
           publication.track,
           tileId + "_media"
@@ -2522,8 +2548,10 @@ async function attachRemoteTrack(track, participant) {
   attachTrackToTile(track, getTileId(participant.identity) + "_media");
 }
 
-function attachLocalTrack(track) {
+function attachLocalTrack(track, publication) {
   if (!room) return;
+  const source = publication?.source || track?.source;
+  if (source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio) return;
 
   attachTrackToTile(
     track,
@@ -3007,6 +3035,125 @@ async function stopMicrophoneEffects() {
   localMicEnabled = false;
   if (byId("mmEffectsStatus")) byId("mmEffectsStatus").textContent = "Microphone is OFF.";
   updateControlButtons();
+}
+
+/* =========================================
+   ONE SHARED KARAOKE VIDEO + AUDIO
+========================================= */
+
+function setSharedKaraokeStatus(message) {
+  const status = byId("mmShareKaraokeStatus");
+  if (status) status.textContent = message;
+}
+
+function updateSharedKaraokeButton() {
+  const button = byId("mmShareKaraokeBtn");
+  if (!button) return;
+  const sharing = sharedKaraokeTracks.length > 0;
+  button.disabled = !isJoined || sharedKaraokeStarting;
+  button.textContent = sharing
+    ? "■ STOP SHARING KARAOKE"
+    : "▶ SHARE KARAOKE WITH EVERYONE";
+}
+
+async function startSharedKaraokeCapture() {
+  if (!room || !isJoined || !isHost || currentRole !== "host" || !IS_HOST_CONTROL_PAGE) {
+    throw new Error("The approved host must enter the live auditorium before sharing karaoke.");
+  }
+  if (sharedKaraokeStarting) return;
+  if (sharedKaraokeTracks.length) return;
+
+  sharedKaraokeStarting = true;
+  updateSharedKaraokeButton();
+  setSharedKaraokeStatus("Opening Chrome's sharing picker...");
+
+  let tracks = [];
+  try {
+    // The host must select THIS Chrome tab and tick Share tab audio.
+    tracks = await room.localParticipant.createScreenTracks({
+      audio: true,
+      preferCurrentTab: true,
+      selfBrowserSurface: "include",
+      surfaceSwitching: "exclude"
+    });
+
+    const videoTrack = tracks.find(track => track.kind === Track.Kind.Video);
+    const audioTrack = tracks.find(track => track.kind === Track.Kind.Audio);
+    if (!videoTrack || !audioTrack) {
+      throw new Error("Chrome did not provide tab audio. Start again, choose This tab, and tick Share tab audio.");
+    }
+
+    const videoElement = byId("videoPlayer");
+    if (!videoElement || !window.CropTarget || typeof videoTrack.mediaStreamTrack?.cropTo !== "function") {
+      throw new Error("This Chrome version cannot crop the karaoke area. Use the latest desktop Chrome and share This tab.");
+    }
+
+    // Crop the shared tab to the YouTube player only, keeping host controls private.
+    const cropTarget = await window.CropTarget.fromElement(videoElement);
+    await videoTrack.mediaStreamTrack.cropTo(cropTarget);
+
+    await room.localParticipant.publishTrack(videoTrack, {
+      name: "Melody Magic Shared Karaoke Video",
+      source: Track.Source.ScreenShare
+    });
+    await room.localParticipant.publishTrack(audioTrack, {
+      name: "Melody Magic Shared Karaoke Audio",
+      source: Track.Source.ScreenShareAudio
+    });
+
+    sharedKaraokeTracks = tracks;
+    videoTrack.mediaStreamTrack.addEventListener("ended", () => {
+      stopSharedKaraokeCapture("Screen sharing was stopped in Chrome.");
+    }, { once: true });
+
+    setSharedKaraokeStatus("LIVE — everyone is receiving the same karaoke video and tab audio.");
+  } catch (error) {
+    for (const track of tracks) {
+      try { track.stop(); } catch (stopError) {}
+    }
+    throw error;
+  } finally {
+    sharedKaraokeStarting = false;
+    updateSharedKaraokeButton();
+  }
+}
+
+async function stopSharedKaraokeCapture(statusMessage = "Karaoke sharing stopped.") {
+  const tracks = sharedKaraokeTracks.slice();
+  sharedKaraokeTracks = [];
+  if (room?.localParticipant) {
+    for (const track of tracks) {
+      try { await room.localParticipant.unpublishTrack(track); } catch (error) {}
+    }
+  }
+  for (const track of tracks) {
+    try { track.stop(); } catch (error) {}
+  }
+  setSharedKaraokeStatus(statusMessage);
+  updateSharedKaraokeButton();
+}
+
+function wireSharedKaraokeButton() {
+  const button = byId("mmShareKaraokeBtn");
+  if (!button || button.dataset.mmWired === "true") return;
+  button.dataset.mmWired = "true";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      if (sharedKaraokeTracks.length) {
+        await stopSharedKaraokeCapture();
+      } else {
+        await startSharedKaraokeCapture();
+      }
+    } catch (error) {
+      console.error("Shared karaoke error:", error);
+      setSharedKaraokeStatus("Could not share: " + error.message);
+      showMessage(error.message, "error");
+    } finally {
+      updateSharedKaraokeButton();
+    }
+  });
+  updateSharedKaraokeButton();
 }
 
 /* =========================================
@@ -3760,6 +3907,7 @@ function wirePublicInteractionControls() {
 async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
+  wireSharedKaraokeButton();
   updateReactionButtons();
   updateCommentControls();
 
