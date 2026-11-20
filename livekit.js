@@ -1808,16 +1808,25 @@ function updateActivePerformerKaraokeLayout() {
   const activeRegistrationId = safeText(
     performance.currentPerformerId || performance.registrationId
   );
-  const isMyPerformance =
-    (requestedMode === "singer" || currentRole === "singer") &&
-    safeText(performance.status).toLowerCase() === "performing" &&
-    (
-      (!!myUid && !!performance.singerUid && performance.singerUid === myUid) ||
-      (!!myRegistrationId && !!activeRegistrationId && activeRegistrationId === myRegistrationId)
-    );
+  const normalizeIdentity = value => safeText(value).trim().toLowerCase().replace(/\\s+/g, " ");
+  const myName = normalizeIdentity(singerRegistration?.singerName || singerRegistration?.name);
+  const activeName = normalizeIdentity(
+    performance.currentPerformerName || performance.singerName || performance.name
+  );
+  const myMobile = safeText(singerRegistration?.mobile).replace(/\\D/g, "").slice(-10);
+  const activeMobile = safeText(performance.mobile || performance.singerMobile).replace(/\\D/g, "").slice(-10);
+  const isSinger = requestedMode === "singer" || currentRole === "singer" || !!singerRegistration;
+  const isPerforming = safeText(performance.status || performance.performanceStatus).toLowerCase() === "performing";
+  const identityMatches =
+    (!!myUid && !!performance.singerUid && performance.singerUid === myUid) ||
+    (!!myRegistrationId && !!activeRegistrationId && activeRegistrationId === myRegistrationId) ||
+    (!!myName && !!activeName && activeName === myName) ||
+    (!!myMobile && !!activeMobile && activeMobile === myMobile);
+  const isMyPerformance = isSinger && isPerforming && identityMatches;
 
   document.body.classList.toggle("mm-active-performer", isMyPerformance);
-  const heading = document.querySelector("#mmSharedKaraokeVideo")?.closest(".card")?.querySelector("h2");
+  const karaokeCard = document.querySelector("#mmSharedKaraokeVideo")?.closest(".card");
+  const heading = karaokeCard?.querySelector("h2");
   if (heading) heading.textContent = isMyPerformance
     ? "🎵 Karaoke — MAIN PERFORMANCE SCREEN"
     : "🎵 Karaoke — Mini Player";
