@@ -108,6 +108,7 @@ let youtubePlayerReadyPromise = null;
 let youtubeApiPromise = null;
 let lastYoutubeVideoId = "";
 let lastPlaybackSignature = "";
+let playbackStartTimer = null;
 let playbackSyncTimer = null;
 let sharedKaraokeTracks = [];
 let sharedKaraokeStarting = false;
@@ -739,9 +740,9 @@ function createPanel() {
     <style>
       #mmLiveKitPanel {
         width:100%;
-        max-width:1100px;
-        margin:20px auto;
-        padding:18px;
+        max-width:940px;
+        margin:9px auto;
+        padding:10px;
         box-sizing:border-box;
         color:#fff;
         background:#111;
@@ -926,8 +927,8 @@ function createPanel() {
       }
 
       #mmLiveKitPanel .mm-effect-control {
-        margin:12px 0;
-        padding:10px;
+        margin:7px 0;
+        padding:7px;
         background:#1b1b1b;
         border-radius:8px;
       }
@@ -1068,35 +1069,13 @@ function createPanel() {
       </div>
 
       <div class="mm-effect-control">
-        <label>Master Echo Feedback: <strong id="mmFeedbackValue">25%</strong></label>
-        <input id="mmFeedback" type="range" min="0" max="85" value="25">
-      </div>
-
-      <div class="mm-effect-control">
         <label>Master Reverb: <strong id="mmReverbValue">0%</strong></label>
         <input id="mmReverb" type="range" min="0" max="100" value="0">
       </div>
 
       <div class="mm-effect-control">
-        <label>Master Wet / Dry Mix: <strong id="mmMixValue">0%</strong></label>
-        <input id="mmMix" type="range" min="0" max="100" value="0">
-      </div>
-
-      <div class="mm-effect-control">
         <label>Singer Microphone Master Volume: <strong id="mmVolumeValue">80%</strong></label>
         <input id="mmVolume" type="range" min="0" max="100" value="80">
-      </div>
-
-      <div class="mm-effect-control">
-        <label>
-          <input id="mmMonitor" type="checkbox">
-          Monitor my voice through this device
-        </label>
-
-        <label>Monitor Volume: <strong id="mmMonitorValue">35%</strong></label>
-        <input id="mmMonitorVolume" type="range" min="0" max="100" value="35">
-
-        <div class="mm-note">Use headphones to avoid feedback.</div>
       </div>
 
       <div id="mmEffectsStatus" class="mm-note">
@@ -1315,7 +1294,7 @@ function createPanel() {
   });
 
   if (IS_HOST_CONTROL_PAGE && byId("mmAudioEffects")) {
-    ["mmEcho", "mmDelay", "mmFeedback", "mmReverb", "mmMix", "mmVolume"].forEach(id => {
+    ["mmEcho", "mmDelay", "mmReverb", "mmVolume"].forEach(id => {
       byId(id).addEventListener("input", () => {
         updateAudioControlLabels();
         applySharedAudioSettingsToEffects();
@@ -1323,15 +1302,6 @@ function createPanel() {
       });
     });
 
-    byId("mmMonitor").addEventListener("change", event => {
-      audioEffects?.setMonitor(event.target.checked);
-    });
-
-    byId("mmMonitorVolume").addEventListener("input", event => {
-      const value = Number(event.target.value);
-      byId("mmMonitorValue").textContent = value + "%";
-      audioEffects?.setMonitorVolume(value);
-    });
   }
 }
 
@@ -1825,7 +1795,7 @@ function updateActivePerformerKaraokeLayout() {
   const isMyPerformance = isSinger && isPerforming && identityMatches;
 
   document.body.classList.toggle("mm-active-performer", isMyPerformance);
-  const karaokeCard = document.querySelector("#mmSharedKaraokeVideo")?.closest(".card");
+  const karaokeCard = document.querySelector("#mmYoutubePlayer")?.closest(".card");
   const heading = karaokeCard?.querySelector("h2");
   if (heading) heading.textContent = isMyPerformance
     ? "🎵 Karaoke — MAIN PERFORMANCE SCREEN"
@@ -2003,7 +1973,8 @@ async function createYouTubePlayer(initialVideoId = "") {
           videoId: initialVideoId,
           playerVars: {
             autoplay: 0,
-            controls: 1,
+            controls: 0,
+            disablekb: 1,
             playsinline: 1,
             rel: 0,
             modestbranding: 1,
@@ -2022,8 +1993,15 @@ async function createYouTubePlayer(initialVideoId = "") {
                 iframe.style.display = "block";
               }
               const status = byId("mmPlaybackStatus");
-              if (status) status.textContent =
-                "Karaoke screen connected. Syncing the host's video...";
+              if (status) status.textContent = "Karaoke player connected. Waiting for host playback...";
+              const enableButton = byId("mmEnableKaraokeSound");
+              if (enableButton) {
+                enableButton.hidden = true;
+                enableButton.onclick = () => {
+                  try { event.target.unMute(); event.target.playVideo(); enableButton.hidden = true; }
+                  catch (error) { if (status) status.textContent = "Tap the karaoke player to enable sound."; }
+                };
+              }
               resolve(event.target);
             },
             onError: event => {
@@ -2046,8 +2024,9 @@ async function createYouTubePlayer(initialVideoId = "") {
             },
             onAutoplayBlocked: () => {
               const status = byId("mmPlaybackStatus");
-              if (status) status.textContent =
-                "Your browser blocked automatic playback. Tap the video once, then ask the host to press PLAY FOR EVERYONE again.";
+              if (status) status.textContent = "Tap ENABLE KARAOKE SOUND once to allow synchronized playback.";
+              const enableButton = byId("mmEnableKaraokeSound");
+              if (enableButton) enableButton.hidden = false;
             }
           }
         });
@@ -2075,25 +2054,17 @@ function playbackPosition(data) {
     return Math.max(0, base);
   }
 
-  const startedAt = Number(data.startedAt || 0);
-
-  if (!startedAt) return Math.max(0, base);
-
-  return Math.max(0, base + (Date.now() - startedAt) / 1000);
+  const syncAt = Number(data.syncAt || data.startedAt || 0);
+  const syncPosition = data.syncPosition === undefined ? base : Number(data.syncPosition || 0);
+  if (!syncAt) return Math.max(0, base);
+  return Math.max(0, syncPosition + (Date.now() - syncAt) / 1000);
 }
 
 async function applyPlayback(data) {
   const statusElement = byId("mmPlaybackStatus");
   if (!data) data = {};
 
-  // Singer and audience devices no longer create separate YouTube embeds.
-  // They receive one cropped host video track and one matching tab-audio track.
-  if (!IS_HOST_CONTROL_PAGE) {
-    if (statusElement) {
-      statusElement.textContent = "Waiting for the host to share the common karaoke video and audio...";
-    }
-    return;
-  }
+  // Each singer and audience device plays the same YouTube video, synchronized through Firebase.
 
   const videoId = safeText(data.videoId).trim();
   const state = safeText(data.state).toLowerCase();
@@ -2127,6 +2098,8 @@ async function applyPlayback(data) {
       state,
       data.basePosition || 0,
       data.startedAt || 0,
+      data.syncPosition || 0,
+      data.syncAt || 0,
       data.updatedAt || 0
     ].join("|");
 
@@ -2139,27 +2112,26 @@ async function applyPlayback(data) {
 
     // A selected/stopped video must be cued, not loaded (loadVideoById
     // starts playback and can race the player's onReady event).
+    if (state !== "playing") clearTimeout(playbackStartTimer);
+
     if (isNewVideo || state === "stopped" || state === "selected") {
       if (state === "playing") {
-        player.loadVideoById({
-          videoId,
-          startSeconds: position
-        });
+        player.cueVideoById({ videoId, startSeconds: position });
+        clearTimeout(playbackStartTimer);
+        const playAt = Number(data.startedAt || Date.now());
+        playbackStartTimer = setTimeout(() => {
+          if (!youtubePlayer) return;
+          const target = playbackPosition(data);
+          const current = youtubePlayer.getCurrentTime?.() || 0;
+          if (Math.abs(current - target) > 1) youtubePlayer.seekTo(target, true);
+          youtubePlayer.playVideo();
+        }, Math.max(0, playAt - Date.now()));
       } else {
-        player.cueVideoById({
-          videoId,
-          startSeconds: position
-        });
+        player.cueVideoById({ videoId, startSeconds: position });
       }
     } else if (state === "playing") {
-      const currentTime =
-        typeof player.getCurrentTime === "function"
-          ? player.getCurrentTime()
-          : 0;
-
-      if (Math.abs(currentTime - position) > 3) {
-        player.seekTo(position, true);
-      }
+      const currentTime = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
+      if (Math.abs(currentTime - position) > 2.5) player.seekTo(position, true);
       player.playVideo();
     } else if (state === "paused") {
       player.seekTo(position, true);
@@ -2430,18 +2402,8 @@ function registerRoomEvents() {
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
       const source = publication?.source || track?.source;
-      if (source === Track.Source.ScreenShare) {
-        attachTrackToTile(track, "mmSharedKaraokeVideo");
-        const status = byId("mmPlaybackStatus");
-        if (status) status.textContent = "Host is sharing the karaoke video. Waiting for shared audio...";
-        return;
-      }
-      if (source === Track.Source.ScreenShareAudio) {
-        attachTrackToTile(track, "mmSharedKaraokeAudio");
-        const status = byId("mmPlaybackStatus");
-        if (status) status.textContent = "LIVE — the same karaoke video and audio are being shared with everyone.";
-        return;
-      }
+      // Karaoke is synchronized through each viewer's YouTube player and Firebase.
+      if (source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio) return;
       await attachRemoteTrack(track, participant);
     }
   );
@@ -4001,7 +3963,6 @@ function wirePublicInteractionControls() {
 async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
-  wireSharedKaraokeButton();
   updateReactionButtons();
   updateCommentControls();
 
