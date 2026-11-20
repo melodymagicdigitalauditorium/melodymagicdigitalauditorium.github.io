@@ -35,10 +35,9 @@ const showId = params.get("showId");
 const registrationId = params.get("registrationId");
 const requestedMode = (params.get("mode") || "audience").toLowerCase();
 
+// All live features stay inside the existing host-performance-control auditorium.
 const IS_HOST_CONTROL_PAGE =
-  location.pathname.toLowerCase().endsWith(
-    "host-performance-control.html"
-  );
+  location.pathname.toLowerCase().endsWith("host-performance-control.html");
 
 const REACTION_TOPIC = "mm-reactions";
 
@@ -84,6 +83,10 @@ let singerAutoJoinStarted = false;
 let lastReactionTimes = [];
 
 let audioEffects = null;
+let programmeMixer = null;
+let publishedProgrammeTrack = null;
+let programmeMixerStarting = false;
+const programmeRemoteInputs = new Map();
 let rawMicrophoneTrack = null;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
@@ -104,6 +107,9 @@ let youtubeApiPromise = null;
 let lastYoutubeVideoId = "";
 let lastPlaybackSignature = "";
 let playbackSyncTimer = null;
+let sharedKaraokeTracks = [];
+let sharedKaraokeStarting = false;
+let sharedKaraokeStopping = false;
 
 let liveComments = [];
 let liveQueue = [];
@@ -373,6 +379,227 @@ class VirtualAudioEffects {
 }
 
 
+
+/* =========================================
+   DESKTOP HOST PROGRAMME MIXER
+   Captures the host's Chrome tab audio and mixes it
+   with the host microphone and active singer tracks.
+========================================= */
+
+class ProfessionalProgrammeMixer {
+  constructor(onStatus = () => {}) {
+    this.onStatus = onStatus;
+    this.context = null;
+    this.destination = null;
+    this.master = null;
+    this.inputs = new Map();
+    this.captureStream = null;
+    this.hostMicStream = null;
+    this.outputTrack = null;
+    this.monitorGain = null;
+    this.delaySend = null;
+    this.delay = null;
+    this.delayFeedback = null;
+    this.echoWet = null;
+    this.reverbSend = null;
+    this.reverb = null;
+    this.reverbWet = null;
+  }
+
+  async initialize() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser.");
+    this.context = new AudioContextClass();
+    if (this.context.state === "suspended") await this.context.resume();
+    this.destination = this.context.createMediaStreamDestination();
+    this.master = this.context.createGain();
+    this.master.gain.value = 0.9;
+    this.master.connect(this.destination);
+    this.monitorGain = this.context.createGain();
+    this.monitorGain.gain.value = 0;
+    this.master.connect(this.monitorGain);
+    this.monitorGain.connect(this.context.destination);
+
+    // Shared programme-bus echo and reverb sends. Each channel feeds the
+    // dry master plus these effects, so the audience receives one mixed track.
+    this.delaySend = this.context.createGain();
+    this.delaySend.gain.value = 0;
+    this.delay = this.context.createDelay(1.5);
+    this.delay.delayTime.value = 0.28;
+    this.delayFeedback = this.context.createGain();
+    this.delayFeedback.gain.value = 0.22;
+    this.echoWet = this.context.createGain();
+    this.echoWet.gain.value = 0;
+    this.delaySend.connect(this.delay);
+    this.delay.connect(this.echoWet);
+    this.delay.connect(this.delayFeedback);
+    this.delayFeedback.connect(this.delay);
+    this.echoWet.connect(this.master);
+
+    this.reverbSend = this.context.createGain();
+    this.reverbSend.gain.value = 0;
+    this.reverb = this.context.createConvolver();
+    const impulseLength = Math.floor(this.context.sampleRate * 1.7);
+    const impulse = this.context.createBuffer(2, impulseLength, this.context.sampleRate);
+    for (let channel = 0; channel < 2; channel++) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < impulseLength; i++) {
+        const decay = Math.pow(1 - i / impulseLength, 2.8);
+        data[i] = (Math.random() * 2 - 1) * decay;
+      }
+    }
+    this.reverb.buffer = impulse;
+    this.reverbWet = this.context.createGain();
+    this.reverbWet.gain.value = 0;
+    this.reverbSend.connect(this.reverb);
+    this.reverb.connect(this.reverbWet);
+    this.reverbWet.connect(this.master);
+
+    this.outputTrack = this.destination.stream.getAudioTracks()[0];
+    if (!this.outputTrack) throw new Error("The mixer could not create an output audio track.");
+  }
+
+  addInput(key, track, initialVolume = 1) {
+    if (!this.context || !track || track.kind !== "audio" || track.readyState === "ended") return false;
+    this.removeInput(key);
+    const source = this.context.createMediaStreamSource(new MediaStream([track]));
+    const alignmentDelay = this.context.createDelay(2.5);
+    alignmentDelay.delayTime.value = 0;
+    const gain = this.context.createGain();
+    gain.gain.value = Math.max(0, Math.min(2, Number(initialVolume)));
+    source.connect(alignmentDelay);
+    alignmentDelay.connect(gain);
+    gain.connect(this.master);
+    gain.connect(this.delaySend);
+    gain.connect(this.reverbSend);
+    this.inputs.set(key, { source, alignmentDelay, gain, track });
+    return true;
+  }
+
+  removeInput(key) {
+    const input = this.inputs.get(key);
+    if (!input) return;
+    try { input.source.disconnect(); } catch (error) {}
+    try { input.alignmentDelay?.disconnect(); } catch (error) {}
+    try { input.gain.disconnect(); } catch (error) {}
+    this.inputs.delete(key);
+  }
+
+  setVolume(key, value) {
+    const input = this.inputs.get(key);
+    if (input && this.context) {
+      input.gain.gain.setTargetAtTime(
+        Math.max(0, Math.min(2, Number(value) / 100)),
+        this.context.currentTime,
+        0.025
+      );
+    }
+  }
+
+  setInputDelay(key, milliseconds) {
+    const input = this.inputs.get(key);
+    if (input?.alignmentDelay && this.context) {
+      const seconds = Math.max(0, Math.min(2.5, Number(milliseconds) / 1000));
+      input.alignmentDelay.delayTime.setTargetAtTime(seconds, this.context.currentTime, 0.04);
+    }
+  }
+
+  setMasterVolume(value) {
+    if (this.master && this.context) {
+      this.master.gain.setTargetAtTime(
+        Math.max(0, Math.min(1.5, Number(value) / 100)),
+        this.context.currentTime,
+        0.025
+      );
+    }
+  }
+
+  async captureCurrentTab(capturePromise) {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      throw new Error("This browser does not support tab-audio capture. Use desktop Chrome.");
+    }
+    this.captureStream = await capturePromise;
+    const tabAudio = this.captureStream.getAudioTracks()[0];
+    this.captureStream.getVideoTracks().forEach(track => track.stop());
+    if (!tabAudio) {
+      this.captureStream.getTracks().forEach(track => track.stop());
+      this.captureStream = null;
+      throw new Error("Chrome did not provide tab audio. Select the Melody Magic tab and enable Share tab audio.");
+    }
+    this.addInput("youtube", tabAudio, 1);
+    tabAudio.addEventListener("ended", () => {
+      this.onStatus("Tab audio capture ended. Stopping the programme mixer.");
+      stopProfessionalProgrammeMixer().catch(error => console.warn("Mixer auto-stop:", error));
+    }, { once: true });
+  }
+
+  async captureHostMicrophone() {
+    this.hostMicStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      },
+      video: false
+    });
+    const mic = this.hostMicStream.getAudioTracks()[0];
+    if (!mic) throw new Error("No host microphone was found.");
+    this.addInput("host-mic", mic, 0.8);
+  }
+
+  setEcho(value) {
+    if (!this.delaySend || !this.echoWet || !this.context) return;
+    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    this.delaySend.gain.setTargetAtTime(amount * 0.65, this.context.currentTime, 0.04);
+    this.echoWet.gain.setTargetAtTime(amount * 0.8, this.context.currentTime, 0.04);
+  }
+
+  setDelayTime(value) {
+    if (!this.delay || !this.context) return;
+    const seconds = Math.max(0.05, Math.min(1.2, Number(value) / 1000));
+    this.delay.delayTime.setTargetAtTime(seconds, this.context.currentTime, 0.04);
+  }
+
+  setEchoFeedback(value) {
+    if (!this.delayFeedback || !this.context) return;
+    const amount = Math.max(0, Math.min(85, Number(value))) / 100;
+    this.delayFeedback.gain.setTargetAtTime(amount, this.context.currentTime, 0.04);
+  }
+
+  setReverb(value) {
+    if (!this.reverbSend || !this.reverbWet || !this.context) return;
+    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    this.reverbSend.gain.setTargetAtTime(amount * 0.45, this.context.currentTime, 0.04);
+    this.reverbWet.gain.setTargetAtTime(amount * 0.75, this.context.currentTime, 0.04);
+  }
+
+  setMonitoring(enabled, volume = 25) {
+    if (!this.monitorGain || !this.context) return;
+    this.monitorGain.gain.setTargetAtTime(
+      enabled ? Math.max(0, Math.min(0.5, Number(volume) / 100)) : 0,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  async stop() {
+    for (const key of [...this.inputs.keys()]) this.removeInput(key);
+    this.captureStream?.getTracks().forEach(track => { try { track.stop(); } catch (error) {} });
+    this.hostMicStream?.getTracks().forEach(track => { try { track.stop(); } catch (error) {} });
+    if (this.outputTrack) {
+      try { this.outputTrack.stop(); } catch (error) {}
+    }
+    if (this.context && this.context.state !== "closed") {
+      try { await this.context.close(); } catch (error) {}
+    }
+    this.captureStream = null;
+    this.hostMicStream = null;
+    this.outputTrack = null;
+    this.context = null;
+  }
+}
+
+
 /* =========================================
    HELPERS
 ========================================= */
@@ -554,6 +781,31 @@ function createPanel() {
         min-height:150px;
         object-fit:contain;
         background:#000;
+      }
+
+      /* Main-stage singer is prominent; waiting singers stay compact. */
+      #mmLiveKitPanel .mm-video-box.mm-main-stage {
+        grid-column:1 / -1;
+        border-color:#d7ad4c;
+        box-shadow:0 0 0 1px rgba(215,173,76,.25);
+      }
+      #mmLiveKitPanel .mm-video-box.mm-main-stage video {
+        min-height:300px;
+        max-height:68vh;
+        object-fit:contain;
+      }
+      #mmLiveKitPanel .mm-video-box.mm-waiting-stage {
+        min-height:110px;
+      }
+      #mmLiveKitPanel .mm-video-box.mm-waiting-stage video {
+        min-height:100px;
+        max-height:170px;
+      }
+      @media(max-width:600px) {
+        #mmLiveKitPanel .mm-video-box.mm-main-stage video {
+          min-height:210px;
+          max-height:48vh;
+        }
       }
 
       #mmLiveKitPanel .mm-video-box audio {
@@ -814,6 +1066,45 @@ function createPanel() {
       <div id="mmEffectsStatus" class="mm-note">
         Host microphone effects are ready.
       </div>
+
+      <div class="mm-section" id="mmProgrammeMixer" hidden style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
+        <h3>🎚️ Professional YouTube + Microphone Mixer</h3>
+        <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. YouTube ads, if shown, are included in the captured audio. Use headphones to prevent feedback.</p>
+        <button type="button" id="mmStartProgrammeMixer">▶ START PROFESSIONAL MIXER</button>
+        <button type="button" id="mmStopProgrammeMixer" disabled>■ STOP MIXER</button>
+        <div id="mmProgrammeMixerStatus" class="mm-note">Mixer is OFF. Join the auditorium before starting.</div>
+        <label>YouTube tab audio: <strong id="mmYoutubeMixValue">100%</strong></label>
+        <input id="mmYoutubeMix" type="range" min="0" max="150" value="100">
+        <div class="mm-effect-control">
+          <label>Karaoke audio alignment (delay YouTube): <strong id="mmProgrammeSyncDelayValue">0 ms</strong></label>
+          <input id="mmProgrammeSyncDelay" type="range" min="0" max="1500" step="10" value="0">
+          <p class="mm-note">Increase this if the singer's incoming voice is late. This delays karaoke audio only; it does not delay the video.</p>
+        </div>
+        <label>Host microphone: <strong id="mmHostMicMixValue">80%</strong></label>
+        <input id="mmHostMicMix" type="range" min="0" max="150" value="80">
+        <label>Singer microphones: <strong id="mmSingerMixValue">100%</strong></label>
+        <input id="mmSingerMix" type="range" min="0" max="150" value="100">
+        <label>Programme master: <strong id="mmProgrammeMasterValue">90%</strong></label>
+        <input id="mmProgrammeMaster" type="range" min="0" max="150" value="90">
+        <div class="mm-effect-control">
+          <label>Programme echo: <strong id="mmProgrammeEchoValue">0%</strong></label>
+          <input id="mmProgrammeEcho" type="range" min="0" max="100" value="0">
+        </div>
+        <div class="mm-effect-control">
+          <label>Echo delay: <strong id="mmProgrammeDelayValue">280 ms</strong></label>
+          <input id="mmProgrammeDelay" type="range" min="50" max="1200" value="280">
+        </div>
+        <div class="mm-effect-control">
+          <label>Echo feedback: <strong id="mmProgrammeFeedbackValue">22%</strong></label>
+          <input id="mmProgrammeFeedback" type="range" min="0" max="85" value="22">
+        </div>
+        <div class="mm-effect-control">
+          <label>Programme reverb: <strong id="mmProgrammeReverbValue">0%</strong></label>
+          <input id="mmProgrammeReverb" type="range" min="0" max="100" value="0">
+        </div>
+        <label><input type="checkbox" id="mmProgrammeMonitor"> Monitor mixed programme audio (headphones only)</label>
+        <p class="mm-note">Audience members receive the programme mix instead of separate singer microphone playback.</p>
+      </div>
     </div>
 
     <div class="mm-section" id="mmReactionSection">
@@ -944,6 +1235,29 @@ function createPanel() {
 
   byId("mmMicBtn").addEventListener("click", toggleMicrophone);
   byId("mmCameraBtn").addEventListener("click", toggleCamera);
+
+  byId("mmStartProgrammeMixer")?.addEventListener("click", startProfessionalProgrammeMixer);
+  byId("mmStopProgrammeMixer")?.addEventListener("click", stopProfessionalProgrammeMixer);
+  ["mmYoutubeMix","mmHostMicMix","mmSingerMix","mmProgrammeMaster"].forEach(id => {
+    byId(id)?.addEventListener("input", updateProfessionalMixerVolumes);
+  });
+  byId("mmProgrammeSyncDelay")?.addEventListener("input", updateProfessionalMixerVolumes);
+  byId("mmProgrammeMonitor")?.addEventListener("change", event => {
+    programmeMixer?.setMonitoring(event.target.checked, 20);
+  });
+  [
+    ["mmProgrammeEcho","mmProgrammeEchoValue",value => programmeMixer?.setEcho(value),"%"],
+    ["mmProgrammeDelay","mmProgrammeDelayValue",value => programmeMixer?.setDelayTime(value), " ms"],
+    ["mmProgrammeFeedback","mmProgrammeFeedbackValue",value => programmeMixer?.setEchoFeedback(value),"%"],
+    ["mmProgrammeReverb","mmProgrammeReverbValue",value => programmeMixer?.setReverb(value),"%"]
+  ].forEach(([inputId,labelId,apply,suffix]) => {
+    byId(inputId)?.addEventListener("input", event => {
+      const value = Number(event.target.value);
+      const label = byId(labelId);
+      if (label) label.textContent = value + suffix;
+      apply(value);
+    });
+  });
 
   byId("mmSetStageBtn")?.addEventListener(
     "click",
@@ -1724,6 +2038,15 @@ async function applyPlayback(data) {
   const statusElement = byId("mmPlaybackStatus");
   if (!data) data = {};
 
+  // Singer and audience devices no longer create separate YouTube embeds.
+  // They receive one cropped host video track and one matching tab-audio track.
+  if (!IS_HOST_CONTROL_PAGE) {
+    if (statusElement) {
+      statusElement.textContent = "Waiting for the host to share the common karaoke video and audio...";
+    }
+    return;
+  }
+
   const videoId = safeText(data.videoId).trim();
   const state = safeText(data.state).toLowerCase();
 
@@ -1744,13 +2067,12 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // Apply the host's shared volume even when playback itself has not changed.
+    // The host-control page uses its own YouTube player. Singer/audience
+    // pages use this shared, Firebase-synchronised player and must hear it.
+    // Each device plays its own YouTube stream, so ads may still differ.
     player.setVolume(sharedVolume);
-    if (sharedVolume === 0) {
-      player.mute();
-    } else {
-      player.unMute();
-    }
+    if (sharedVolume === 0) player.mute();
+    else player.unMute();
 
     const signature = [
       videoId,
@@ -1837,7 +2159,7 @@ function listenToKaraokePlayback() {
       }
       if (status) {
         status.textContent =
-          "Waiting for the host to load a YouTube karaoke video.";
+          "Waiting for the host to share the common karaoke video and audio.";
       }
       return;
     }
@@ -1965,6 +2287,7 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    updateSharedKaraokeButton();
     listenToSharedAudioSettings();
 
     setButtonState("mmJoinBtn", true, "Connected");
@@ -2057,6 +2380,19 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
+      const source = publication?.source || track?.source;
+      if (source === Track.Source.ScreenShare) {
+        attachTrackToTile(track, "mmSharedKaraokeVideo");
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Host is sharing the karaoke video. Waiting for shared audio...";
+        return;
+      }
+      if (source === Track.Source.ScreenShareAudio) {
+        attachTrackToTile(track, "mmSharedKaraokeAudio");
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "LIVE — the same karaoke video and audio are being shared with everyone.";
+        return;
+      }
       await attachRemoteTrack(track, participant);
     }
   );
@@ -2064,6 +2400,7 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackUnsubscribed,
     track => {
+      removeRemoteSingerFromProgrammeMixer(track);
       detachTrackElements(track);
     }
   );
@@ -2106,6 +2443,8 @@ function registerRoomEvents() {
       cameraAllowed = false;
 
       stopMicrophoneEffects();
+      stopProfessionalProgrammeMixer();
+      stopSharedKaraokeCapture("Disconnected from the live auditorium.");
 
       showMessage("Disconnected from the auditorium.", "warning");
 
@@ -2120,7 +2459,7 @@ function registerRoomEvents() {
     RoomEvent.LocalTrackPublished,
     async publication => {
       if (publication.track) {
-        await attachLocalTrack(publication.track);
+        await attachLocalTrack(publication.track, publication);
       }
     }
   );
@@ -2182,6 +2521,7 @@ async function createVideoTile(participant, isLocal) {
       ? "HOST — " + (participant.name || "Host")
       : (isLocal ? "You (" + currentRole + ")" : (participant.name || identity));
 
+    tile.dataset.participantIdentity = identity;
     const media = document.createElement("div");
     media.id = tileId + "_media";
 
@@ -2189,9 +2529,17 @@ async function createVideoTile(participant, isLocal) {
     grid.appendChild(tile);
   }
 
+  const isOnMainStage = stageSingerUids.includes(identity);
+  tile.classList.toggle("mm-main-stage", isOnMainStage);
+  tile.classList.toggle("mm-waiting-stage", !isOnMainStage && !isHostParticipant);
+
   if (participant.trackPublications) {
     participant.trackPublications.forEach(publication => {
-      if (publication.track) {
+      if (
+        publication.track &&
+        publication.source !== Track.Source.ScreenShare &&
+        publication.source !== Track.Source.ScreenShareAudio
+      ) {
         attachTrackToTile(
           publication.track,
           tileId + "_media"
@@ -2206,8 +2554,10 @@ async function attachRemoteTrack(track, participant) {
   attachTrackToTile(track, getTileId(participant.identity) + "_media");
 }
 
-function attachLocalTrack(track) {
+function attachLocalTrack(track, publication) {
   if (!room) return;
+  const source = publication?.source || track?.source;
+  if (source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio) return;
 
   attachTrackToTile(
     track,
@@ -2218,6 +2568,13 @@ function attachLocalTrack(track) {
 function attachTrackToTile(track, targetId) {
   const target = byId(targetId);
   if (!target || !track) return;
+
+  if (track.kind === Track.Kind.Audio) {
+    // Normal auditorium mode: play each remote participant microphone once.
+    // The tab-capture programme mixer is not required for singers or audience.
+    // Ignore any legacy mixed programme track to prevent duplicate audio.
+    if (track.name === "Melody Magic Programme Audio") return;
+  }
 
   const attached = track.attach();
 
@@ -2515,6 +2872,150 @@ async function startMicrophoneEffects() {
 }
 
 
+
+/* =========================================
+   PROFESSIONAL PROGRAMME MIXER CONTROL
+========================================= */
+
+function mixerStatus(message) {
+  const el = byId("mmProgrammeMixerStatus");
+  if (el) el.textContent = message;
+}
+
+function updateProfessionalMixerVolumes() {
+  const controls = [
+    ["mmYoutubeMix","mmYoutubeMixValue","youtube"],
+    ["mmHostMicMix","mmHostMicMixValue","host-mic"],
+    ["mmSingerMix","mmSingerMixValue","singers"]
+  ];
+  controls.forEach(([inputId,labelId,key]) => {
+    const value = Number(byId(inputId)?.value ?? 100);
+    const label = byId(labelId);
+    if (label) label.textContent = value + "%";
+    if (!programmeMixer) return;
+    if (key === "singers") {
+      programmeRemoteInputs.forEach((inputKey) => programmeMixer.setVolume(inputKey, value));
+    } else {
+      programmeMixer.setVolume(key, value);
+    }
+  });
+  const syncDelay = Number(byId("mmProgrammeSyncDelay")?.value ?? 0);
+  const syncLabel = byId("mmProgrammeSyncDelayValue");
+  if (syncLabel) syncLabel.textContent = syncDelay + " ms";
+  programmeMixer?.setInputDelay("youtube", syncDelay);
+
+  const master = Number(byId("mmProgrammeMaster")?.value ?? 90);
+  const masterLabel = byId("mmProgrammeMasterValue");
+  if (masterLabel) masterLabel.textContent = master + "%";
+  programmeMixer?.setMasterVolume(master);
+}
+
+function addRemoteSingerToProgrammeMixer(track, participant) {
+  if (!track || track.kind !== Track.Kind.Audio || track.name === "Melody Magic Programme Audio") return;
+  const mediaTrack = track.mediaStreamTrack;
+  if (!mediaTrack) return;
+  const key = "singer:" + safeText(participant?.identity) + ":" + safeText(mediaTrack.id);
+  programmeRemoteInputs.set(mediaTrack.id, key);
+  if (programmeMixer) {
+    programmeMixer.addInput(key, mediaTrack, Number(byId("mmSingerMix")?.value ?? 100) / 100);
+    updateProfessionalMixerVolumes();
+  }
+}
+
+function removeRemoteSingerFromProgrammeMixer(track) {
+  const mediaTrack = track?.mediaStreamTrack;
+  if (!mediaTrack) return;
+  const key = programmeRemoteInputs.get(mediaTrack.id);
+  if (key && programmeMixer) programmeMixer.removeInput(key);
+  programmeRemoteInputs.delete(mediaTrack.id);
+}
+
+async function startProfessionalProgrammeMixer() {
+  if (programmeMixerStarting || programmeMixer) return;
+  if (!isJoined || currentRole !== "host" || !isHost || !IS_HOST_CONTROL_PAGE) {
+    mixerStatus("Only the approved host can start the programme mixer from the host control room.");
+    return;
+  }
+  if (!microphoneAllowed) {
+    mixerStatus("Host microphone permission is required. Ask the auditorium server to grant microphone access.");
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || !navigator.mediaDevices?.getDisplayMedia) {
+    mixerStatus("This feature requires desktop Chrome with tab-audio capture support.");
+    return;
+  }
+
+  programmeMixerStarting = true;
+  const startButton = byId("mmStartProgrammeMixer");
+  if (startButton) startButton.disabled = true;
+  mixerStatus("Choose the Melody Magic host-control tab and enable Share tab audio in Chrome.");
+
+  try {
+    // Request tab capture synchronously inside the button gesture.
+    const displayCapturePromise = navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 1 },
+      audio: true
+    });
+    const mixer = new ProfessionalProgrammeMixer(mixerStatus);
+    programmeMixer = mixer;
+    await mixer.initialize();
+    await mixer.captureCurrentTab(displayCapturePromise);
+    await mixer.captureHostMicrophone();
+
+    // Include singers who were already connected before the mixer started.
+    if (room) {
+      for (const participant of room.remoteParticipants.values()) {
+        for (const publication of participant.trackPublications.values()) {
+          if (publication.track && publication.track.kind === Track.Kind.Audio) {
+            addRemoteSingerToProgrammeMixer(publication.track, participant);
+          }
+        }
+      }
+    }
+
+    updateProfessionalMixerVolumes();
+    const output = mixer.outputTrack;
+    await room.localParticipant.publishTrack(output, {
+      name: "Melody Magic Programme Audio",
+      source: Track.Source.Microphone
+    });
+    publishedProgrammeTrack = output;
+
+    const stopButton = byId("mmStopProgrammeMixer");
+    if (stopButton) stopButton.disabled = false;
+    if (startButton) startButton.disabled = true;
+    mixerStatus("LIVE — YouTube tab, host microphone and connected singer microphones are mixed into one programme audio track.");
+    showMessage("Professional programme mixer is live.", "success");
+  } catch (error) {
+    console.error("Professional mixer start failed:", error);
+    await stopProfessionalProgrammeMixer();
+    mixerStatus("Mixer could not start: " + error.message);
+    showMessage("Professional mixer error: " + error.message, "error");
+  } finally {
+    programmeMixerStarting = false;
+    if (!programmeMixer && startButton) startButton.disabled = false;
+  }
+}
+
+async function stopProfessionalProgrammeMixer() {
+  const mixer = programmeMixer;
+  programmeMixer = null;
+  if (room && publishedProgrammeTrack) {
+    try { await room.localParticipant.unpublishTrack(publishedProgrammeTrack, true); }
+    catch (error) { console.warn("Programme track unpublish failed:", error); }
+  }
+  publishedProgrammeTrack = null;
+  if (mixer) await mixer.stop();
+  programmeRemoteInputs.clear();
+  const stopButton = byId("mmStopProgrammeMixer");
+  const startButton = byId("mmStartProgrammeMixer");
+  if (stopButton) stopButton.disabled = true;
+  if (startButton) startButton.disabled = !isJoined || currentRole !== "host";
+  if (byId("mmProgrammeMonitor")) byId("mmProgrammeMonitor").checked = false;
+  mixerStatus("Mixer is OFF.");
+}
+
+
 /* =========================================
    STOP MICROPHONE EFFECTS
 ========================================= */
@@ -2540,6 +3041,160 @@ async function stopMicrophoneEffects() {
   localMicEnabled = false;
   if (byId("mmEffectsStatus")) byId("mmEffectsStatus").textContent = "Microphone is OFF.";
   updateControlButtons();
+}
+
+/* =========================================
+   ONE SHARED KARAOKE VIDEO + AUDIO
+========================================= */
+
+function setSharedKaraokeStatus(message) {
+  const status = byId("mmShareKaraokeStatus");
+  if (status) status.textContent = message;
+}
+
+function updateSharedKaraokeButton() {
+  const button = byId("mmShareKaraokeBtn");
+  if (!button) return;
+  const sharing = sharedKaraokeTracks.length > 0;
+  button.disabled = !isJoined || sharedKaraokeStarting;
+  button.textContent = sharing
+    ? "■ STOP SHARING KARAOKE"
+    : "▶ SHARE KARAOKE WITH EVERYONE";
+}
+
+async function startSharedKaraokeCapture() {
+  if (!room || !isJoined || !isHost || currentRole !== "host" || !IS_HOST_CONTROL_PAGE) {
+    throw new Error("The approved host must enter the live auditorium before sharing karaoke.");
+  }
+  if (sharedKaraokeStarting) return;
+  if (sharedKaraokeTracks.length) return;
+
+  sharedKaraokeStarting = true;
+  updateSharedKaraokeButton();
+  setSharedKaraokeStatus("Opening Chrome's sharing picker...");
+
+  let tracks = [];
+  try {
+    // The host must select THIS Chrome tab and tick Share tab audio.
+    tracks = await room.localParticipant.createScreenTracks({
+      audio: true,
+      selfBrowserSurface: "include",
+      surfaceSwitching: "exclude"
+    });
+
+    const videoTrack = tracks.find(track => track.kind === Track.Kind.Video);
+    const audioTrack = tracks.find(track => track.kind === Track.Kind.Audio);
+    if (!videoTrack || !audioTrack) {
+      throw new Error("Chrome did not provide tab audio. Start again, choose This tab, and tick Share tab audio.");
+    }
+
+    const videoElement = byId("videoPlayer");
+    if (!videoElement || videoElement.offsetWidth < 1 || videoElement.offsetHeight < 1) {
+      throw new Error("Load the YouTube karaoke video first, then start sharing.");
+    }
+    if (!window.CropTarget || typeof videoTrack.mediaStreamTrack?.cropTo !== "function") {
+      throw new Error("This Chrome version cannot crop the karaoke area. Use the latest desktop Chrome and share This tab.");
+    }
+
+    // Crop the shared tab to the YouTube player only, keeping host controls private.
+    try {
+      const cropTarget = await window.CropTarget.fromElement(videoElement);
+      await videoTrack.mediaStreamTrack.cropTo(cropTarget);
+    } catch (cropError) {
+      throw new Error("In Chrome sharing options, choose This tab (not Window or Entire screen), then try again.");
+    }
+
+    const publishedTracks = [];
+    await room.localParticipant.publishTrack(videoTrack, {
+      name: "Melody Magic Shared Karaoke Video",
+      source: Track.Source.ScreenShare
+    });
+    publishedTracks.push(videoTrack);
+    await room.localParticipant.publishTrack(audioTrack, {
+      name: "Melody Magic Shared Karaoke Audio",
+      source: Track.Source.ScreenShareAudio
+    });
+    publishedTracks.push(audioTrack);
+
+    sharedKaraokeTracks = tracks;
+    videoTrack.mediaStreamTrack.addEventListener("ended", () => {
+      if (!sharedKaraokeStopping) {
+        stopSharedKaraokeCapture("Screen sharing was stopped in Chrome.");
+      }
+    }, { once: true });
+
+    setSharedKaraokeStatus("LIVE — everyone is receiving the same karaoke video and tab audio.");
+  } catch (error) {
+    for (const track of tracks) {
+      try { await room?.localParticipant?.unpublishTrack(track); } catch (unpublishError) {}
+      try { track.stop(); } catch (stopError) {}
+    }
+    throw error;
+  } finally {
+    sharedKaraokeStarting = false;
+    updateSharedKaraokeButton();
+  }
+}
+
+async function stopSharedKaraokeCapture(statusMessage = "Karaoke sharing stopped.") {
+  sharedKaraokeStopping = true;
+  const tracks = sharedKaraokeTracks.slice();
+  sharedKaraokeTracks = [];
+  if (room?.localParticipant) {
+    for (const track of tracks) {
+      try { await room.localParticipant.unpublishTrack(track); } catch (error) {}
+    }
+  }
+  for (const track of tracks) {
+    try { track.stop(); } catch (error) {}
+  }
+  setSharedKaraokeStatus(statusMessage);
+  updateSharedKaraokeButton();
+  sharedKaraokeStopping = false;
+}
+
+function wireSharedKaraokeButton() {
+  const soundButton = byId("mmEnableKaraokeSound");
+  if (soundButton && soundButton.dataset.mmWired !== "true") {
+    soundButton.dataset.mmWired = "true";
+    soundButton.addEventListener("click", async () => {
+      const audioBox = byId("mmSharedKaraokeAudio");
+      const audioElements = audioBox ? audioBox.querySelectorAll("audio") : [];
+      if (!audioElements.length) {
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Waiting for the host to start sharing karaoke audio.";
+        return;
+      }
+      try {
+        for (const audio of audioElements) await audio.play();
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Karaoke sound enabled. Enjoy the show!";
+      } catch (error) {
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Sound is still blocked. Check your browser sound permission and tap again.";
+      }
+    });
+  }
+  const button = byId("mmShareKaraokeBtn");
+  if (!button || button.dataset.mmWired === "true") return;
+  button.dataset.mmWired = "true";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      if (sharedKaraokeTracks.length) {
+        await stopSharedKaraokeCapture();
+      } else {
+        await startSharedKaraokeCapture();
+      }
+    } catch (error) {
+      console.error("Shared karaoke error:", error);
+      setSharedKaraokeStatus("Could not share: " + error.message);
+      showMessage(error.message, "error");
+    } finally {
+      updateSharedKaraokeButton();
+    }
+  });
+  updateSharedKaraokeButton();
 }
 
 /* =========================================
@@ -2632,9 +3287,12 @@ function updateControlButtons() {
   const info = byId("mmPermissionInfo");
   if (!mic || !camera) return;
 
-  mic.disabled = !isJoined || !microphoneAllowed;
+  mic.disabled = !isJoined || !microphoneAllowed ||
+    (currentRole === "host" && IS_HOST_CONTROL_PAGE);
   camera.disabled = !isJoined || !cameraAllowed;
-  mic.textContent = localMicEnabled ? "Microphone ON" : "Microphone OFF";
+  mic.textContent = currentRole === "host" && IS_HOST_CONTROL_PAGE
+    ? "Use Professional Mixer"
+    : (localMicEnabled ? "Microphone ON" : "Microphone OFF");
   camera.textContent = localCameraEnabled ? "Camera ON" : "Camera OFF";
 
   if (info) {
@@ -2739,6 +3397,15 @@ function listenToStage() {
     const stage = snapshot.val() || {};
 
     stageSingerUids = normalizeArray(stage.singerUids);
+
+    // Reclassify existing camera tiles when the host changes the main stage.
+    document.querySelectorAll(".mm-video-box[data-participant-identity]").forEach(tile => {
+      const identity = tile.dataset.participantIdentity || "";
+      const isHostTile = tile.id === getTileId(currentShow?.hostUid || "");
+      const selected = stageSingerUids.includes(identity);
+      tile.classList.toggle("mm-main-stage", selected);
+      tile.classList.toggle("mm-waiting-stage", !selected && !isHostTile);
+    });
 
     if (currentRole === "singer" && currentUser) {
       const selected = stageSingerUids.includes(currentUser.uid);
@@ -3159,6 +3826,7 @@ async function leaveAuditorium() {
   leaving = true;
   if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
   try {
+    await stopProfessionalProgrammeMixer();
     if (publishedMicrophoneTrack || audioEffects || rawMicrophoneTrack) {
       await stopMicrophoneEffects();
     } else if (room && localMicEnabled) {
@@ -3280,6 +3948,7 @@ function wirePublicInteractionControls() {
 async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
+  wireSharedKaraokeButton();
   updateReactionButtons();
   updateCommentControls();
 
