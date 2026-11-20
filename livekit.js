@@ -2532,12 +2532,6 @@ async function createVideoTile(participant, isLocal) {
   const isOnMainStage = stageSingerUids.includes(identity);
   tile.classList.toggle("mm-main-stage", isOnMainStage);
   tile.classList.toggle("mm-waiting-stage", !isOnMainStage && !isHostParticipant);
-  // A singer waiting in the queue sees their own camera as a small corner preview.
-  // Other viewers keep that singer in the compact performers gallery.
-  tile.classList.toggle(
-    "mm-local-singer-preview",
-    isLocal && currentRole === "singer" && !isOnMainStage
-  );
 
   if (participant.trackPublications) {
     participant.trackPublications.forEach(publication => {
@@ -3411,10 +3405,6 @@ function listenToStage() {
       const selected = stageSingerUids.includes(identity);
       tile.classList.toggle("mm-main-stage", selected);
       tile.classList.toggle("mm-waiting-stage", !selected && !isHostTile);
-      tile.classList.toggle(
-        "mm-local-singer-preview",
-        currentRole === "singer" && !!currentUser && identity === safeText(currentUser.uid) && !selected
-      );
     });
 
     if (currentRole === "singer" && currentUser) {
