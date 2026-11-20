@@ -3574,7 +3574,36 @@ function renderSingerPermissionControls() {
       changeSingerPermission(item.singerUid, !micOn);
     });
 
-    card.append(name, status, micButton);
+    const linkButton = document.createElement("button");
+    linkButton.type = "button";
+    linkButton.textContent = "Copy Singer Entry Link";
+    linkButton.style.marginLeft = "8px";
+    linkButton.addEventListener("click", async () => {
+      const singerUrl = new URL("live-performance.html", location.href);
+      singerUrl.searchParams.set("showId", showId);
+      singerUrl.searchParams.set("mode", "singer");
+      singerUrl.searchParams.set("registrationId", item.id);
+
+      try {
+        await navigator.clipboard.writeText(singerUrl.toString());
+        linkButton.textContent = "Link Copied";
+        showMessage(
+          "Singer entry link copied. Send it privately to " +
+          (item.singerName || item.name || "the singer") + ".",
+          "success"
+        );
+        setTimeout(() => {
+          linkButton.textContent = "Copy Singer Entry Link";
+        }, 2500);
+      } catch (error) {
+        showMessage(
+          "Could not copy automatically. Please use the browser's secure clipboard permission.",
+          "error"
+        );
+      }
+    });
+
+    card.append(name, status, micButton, linkButton);
     container.appendChild(card);
   });
 }
