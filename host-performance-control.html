@@ -8,29 +8,29 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:16px;background:#080808;color:#fff;font-family:Arial,sans-serif}
-.container{max-width:1100px;margin:auto}
+body{margin:0;padding:8px;background:#080808;color:#fff;font-family:Arial,sans-serif}
+.container{max-width:940px;margin:auto}
 h2{text-align:center;color:#f5c542}
 h3{color:#f5c542}
-.card{background:#171717;border:1px solid #51401e;border-radius:12px;padding:15px;margin:18px auto}
-button{border:0;border-radius:7px;padding:11px 15px;margin:5px;background:#d4a52f;color:#111;font-weight:bold;cursor:pointer}
+.card{background:#171717;border:1px solid #51401e;border-radius:10px;padding:10px;margin:9px auto}
+button{border:0;border-radius:7px;padding:8px 11px;margin:3px;background:#d4a52f;color:#111;font-weight:bold;cursor:pointer}
 button:disabled{opacity:.45;cursor:not-allowed}
 .green{background:#239b56;color:white}
 .red{background:#b52d2d;color:white}
 .blue{background:#286caa;color:white}
 .gray{background:#555;color:white}
-.small{font-size:13px;color:#bbb;line-height:1.6}
+.small{font-size:12px;color:#bbb;line-height:1.6}
 .center{text-align:center}
 .badge{display:inline-block;background:#443719;color:#f5d47b;border-radius:15px;padding:5px 9px;font-size:12px;margin:3px}
 .performer{background:#0c0c0c;border:1px solid #454545;border-radius:9px;padding:12px;margin:10px 0}
 input[type=text]{width:100%;padding:11px;border-radius:6px;border:1px solid #555;background:#080808;color:white;margin:6px 0}
 #videoPlayer{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden}
 #videoMessage{text-align:center;color:#ddd;padding:18px 8px}
-.volume-box{margin:20px 5px;padding:14px;background:#0b0b0b;border:1px solid #51401e;border-radius:9px}
+.volume-box{margin:8px 2px;padding:8px;background:#0b0b0b;border:1px solid #51401e;border-radius:9px}
 .volume-box input[type=range]{width:100%;accent-color:#d4a52f;margin:15px 0}
 .volume-label{display:flex;justify-content:space-between;align-items:center;gap:10px}
 footer{text-align:center;color:#999;padding:20px}
-hr{border-color:#51401e;margin:18px 0}
+hr{border-color:#51401e;margin:10px 0}
 @media(max-width:600px){
  body{padding:8px}
  .card{padding:12px;margin:12px auto}
@@ -115,11 +115,7 @@ hr{border-color:#51401e;margin:18px 0}
     </div>
 
     <p id="videoStatus" class="small">Host video controls are ready.</p>
-    <hr>
-    <h3>📡 Share Karaoke With Everyone</h3>
-    <p class="small">Connect to the live auditorium, then share this Chrome tab. In the browser picker choose <strong>This tab</strong> and tick <strong>Share tab audio</strong>. Only the karaoke video area will be sent to singers and audience.</p>
-    <button class="green" id="mmShareKaraokeBtn" type="button">▶ SHARE KARAOKE WITH EVERYONE</button>
-    <p id="mmShareKaraokeStatus" class="small">Not sharing yet.</p>
+    <p id="videoStatus" class="small">Host video controls are ready.</p>
   </div>
 </section>
 
