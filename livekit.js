@@ -3346,11 +3346,19 @@ function listenToMyPermissions() {
       return;
     }
 
+    if (controls.blocked === true) {
+      microphoneAllowed = false;
+      cameraAllowed = false;
+      showMessage("The host has blocked your access to this show.", "error");
+      leaveAuditorium();
+      return;
+    }
+
     const selected =
       stageSingerUids.includes(currentUser.uid);
 
     microphoneAllowed = selected && controls.microphoneAllowed === true;
-    cameraAllowed = true;
+    cameraAllowed = controls.cameraAllowed !== false;
     enforceCurrentPermissions();
     autoEnableSingerMicrophone();
     updateControlButtons();
@@ -3384,8 +3392,21 @@ async function enforceCurrentPermissions() {
     await stopMicrophoneEffects();
   }
 
-  // Do not turn off a singer's camera when they are removed from the stage.
-  // Camera access is available to approved singers while they wait.
+  if (!cameraAllowed && localCameraEnabled) {
+    try {
+      await room.localParticipant.setCameraEnabled(false);
+    } catch (error) {
+      console.warn("Could not turn off singer camera:", error);
+    }
+    localCameraEnabled = false;
+  } else if (cameraAllowed && !localCameraEnabled && currentRole === "singer" && isJoined) {
+    try {
+      await room.localParticipant.setCameraEnabled(true);
+      localCameraEnabled = true;
+    } catch (error) {
+      console.warn("Could not turn on singer camera:", error);
+    }
+  }
 
   updateControlButtons();
 }
@@ -3425,7 +3446,7 @@ function listenToStage() {
         microphoneAllowed = false;
       }
       // When selected, microphone permission comes from the singer's own controls listener.
-      cameraAllowed = true;
+      // Camera permission is controlled by participantControls, not stage assignment.
       enforceCurrentPermissions();
       autoEnableSingerMicrophone();
     }
@@ -3558,6 +3579,8 @@ function renderSingerPermissionControls() {
       participantPermissions[item.singerUid] || {};
 
     const micOn = controls.microphoneAllowed === true;
+    const cameraOn = controls.cameraAllowed !== false;
+    const blocked = controls.blocked === true;
     const selected = stageSingerUids.includes(item.singerUid);
 
     const card = document.createElement("div");
@@ -3571,21 +3594,45 @@ function renderSingerPermissionControls() {
     status.className = "mm-permission-status";
 
     status.textContent =
-      (selected ? "On main stage" : "Waiting in queue") +
-      " | Microphone: " + (micOn ? "Allowed" : "OFF") +
-      " | Camera: Available to approved singer";
+      (blocked ? "BLOCKED" : (selected ? "On main stage" : "Waiting in queue")) +
+      " | Microphone: " + (micOn ? "ON" : "OFF") +
+      " | Camera: " + (cameraOn ? "ON" : "OFF");
 
     const micButton = document.createElement("button");
 
-    micButton.textContent = micOn
-      ? "Revoke Microphone"
-      : "Grant Microphone";
-
+    micButton.textContent = micOn ? "Mute Mic" : "Unmute Mic";
+    micButton.disabled = blocked || !selected;
     micButton.addEventListener("click", () => {
-      changeSingerPermission(item.singerUid, !micOn);
+      changeSingerPermission(item.singerUid, !micOn, cameraOn);
     });
 
-    card.append(name, status, micButton);
+    const cameraButton = document.createElement("button");
+    cameraButton.textContent = cameraOn ? "Turn Camera OFF" : "Turn Camera ON";
+    cameraButton.disabled = blocked;
+    cameraButton.addEventListener("click", () => {
+      changeSingerPermission(item.singerUid, micOn, !cameraOn);
+    });
+
+    const blockButton = document.createElement("button");
+    blockButton.textContent = blocked ? "Blocked" : "Block Singer";
+    blockButton.disabled = blocked;
+    blockButton.addEventListener("click", async () => {
+      if (!confirm("Block this singer from the show?")) return;
+      try {
+        await update(ref(db, "participantControls/" + showId + "/" + item.singerUid), {
+          blocked: true,
+          microphoneAllowed: false,
+          cameraAllowed: false,
+          updatedAt: Date.now(),
+          updatedBy: currentUser.uid
+        });
+        showMessage("Singer blocked from this show.", "success");
+      } catch (error) {
+        showMessage("Could not block singer: " + error.message, "error");
+      }
+    });
+
+    card.append(name, status, micButton, cameraButton, blockButton);
     container.appendChild(card);
   });
 }
@@ -3595,17 +3642,9 @@ function renderSingerPermissionControls() {
    HOST: CHANGE SINGER MICROPHONE PERMISSION
 ========================================= */
 
-async function changeSingerPermission(singerUid, microphone) {
+async function changeSingerPermission(singerUid, microphone, camera) {
   if (!isHost || !IS_HOST_CONTROL_PAGE || !isJoined) {
     showMessage("Only the verified host can change permissions.", "error");
-    return;
-  }
-
-  if (!stageSingerUids.includes(singerUid)) {
-    showMessage(
-      "Assign this singer to the main stage first.",
-      "warning"
-    );
     return;
   }
 
@@ -3614,21 +3653,13 @@ async function changeSingerPermission(singerUid, microphone) {
       action: "syncPermissions",
       uid: singerUid,
       microphoneAllowed: microphone === true,
-      cameraAllowed: true
+      cameraAllowed: camera === true
     });
 
-    showMessage(
-      "Singer microphone permission updated.",
-      "success"
-    );
-
+    showMessage("Singer microphone/camera permission updated.", "success");
   } catch (error) {
     console.error("Permission update error:", error);
-
-    showMessage(
-      "Could not update singer permission: " + error.message,
-      "error"
-    );
+    showMessage("Could not update singer permission: " + error.message, "error");
   }
 }
 
