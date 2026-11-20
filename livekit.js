@@ -2055,16 +2055,12 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // Keep participant YouTube players muted. Only the host-control tab
-    // is allowed to produce the karaoke soundtrack; otherwise every device
-    // would play its own YouTube audio/ad independently and drift out of sync.
-    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
-      player.setVolume(sharedVolume);
-      if (sharedVolume === 0) player.mute();
-      else player.unMute();
-    } else {
-      player.mute();
-    }
+    // The host-control page uses its own YouTube player. Singer/audience
+    // pages use this shared, Firebase-synchronised player and must hear it.
+    // Each device plays its own YouTube stream, so ads may still differ.
+    player.setVolume(sharedVolume);
+    if (sharedVolume === 0) player.mute();
+    else player.unMute();
 
     const signature = [
       videoId,
