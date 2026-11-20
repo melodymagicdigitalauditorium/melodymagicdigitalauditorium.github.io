@@ -455,14 +455,11 @@ class ProfessionalProgrammeMixer {
     }
   }
 
-  async captureCurrentTab() {
+  async captureCurrentTab(capturePromise) {
     if (!navigator.mediaDevices?.getDisplayMedia) {
       throw new Error("This browser does not support tab-audio capture. Use desktop Chrome.");
     }
-    this.captureStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 1 },
-      audio: true
-    });
+    this.captureStream = await capturePromise;
     const tabAudio = this.captureStream.getAudioTracks()[0];
     this.captureStream.getVideoTracks().forEach(track => track.stop());
     if (!tabAudio) {
@@ -2776,12 +2773,15 @@ async function startProfessionalProgrammeMixer() {
   mixerStatus("Choose the Melody Magic host-control tab and enable Share tab audio in Chrome.");
 
   try {
+    // Request tab capture synchronously inside the button gesture.
+    const displayCapturePromise = navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 1 },
+      audio: true
+    });
     const mixer = new ProfessionalProgrammeMixer(mixerStatus);
     programmeMixer = mixer;
     await mixer.initialize();
-
-    // getDisplayMedia is called from the host's explicit button action.
-    await mixer.captureCurrentTab();
+    await mixer.captureCurrentTab(displayCapturePromise);
     await mixer.captureHostMicrophone();
 
     // Include singers who were already connected before the mixer started.
@@ -2828,6 +2828,7 @@ async function stopProfessionalProgrammeMixer() {
   }
   publishedProgrammeTrack = null;
   if (mixer) await mixer.stop();
+  programmeRemoteInputs.clear();
   const stopButton = byId("mmStopProgrammeMixer");
   const startButton = byId("mmStartProgrammeMixer");
   if (stopButton) stopButton.disabled = true;
@@ -3484,6 +3485,7 @@ async function leaveAuditorium() {
   leaving = true;
   if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
   try {
+    await stopProfessionalProgrammeMixer();
     if (publishedMicrophoneTrack || audioEffects || rawMicrophoneTrack) {
       await stopMicrophoneEffects();
     } else if (room && localMicEnabled) {
