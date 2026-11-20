@@ -3096,8 +3096,12 @@ async function startSharedKaraokeCapture() {
     }
 
     // Crop the shared tab to the YouTube player only, keeping host controls private.
-    const cropTarget = await window.CropTarget.fromElement(videoElement);
-    await videoTrack.mediaStreamTrack.cropTo(cropTarget);
+    try {
+      const cropTarget = await window.CropTarget.fromElement(videoElement);
+      await videoTrack.mediaStreamTrack.cropTo(cropTarget);
+    } catch (cropError) {
+      throw new Error("In Chrome sharing options, choose This tab (not Window or Entire screen), then try again.");
+    }
 
     const publishedTracks = [];
     await room.localParticipant.publishTrack(videoTrack, {
