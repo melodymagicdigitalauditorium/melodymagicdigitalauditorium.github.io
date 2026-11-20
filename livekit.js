@@ -2478,12 +2478,16 @@ async function createVideoTile(participant, isLocal) {
       ? "HOST — " + (participant.name || "Host")
       : (isLocal ? "You (" + currentRole + ")" : (participant.name || identity));
 
+    tile.dataset.participantIdentity = identity;
     const media = document.createElement("div");
     media.id = tileId + "_media";
 
     tile.append(name, media);
     grid.appendChild(tile);
   }
+
+  tile.classList.toggle("mm-main-stage", stageSingerUids.includes(identity));
+  tile.classList.toggle("mm-waiting-stage", !stageSingerUids.includes(identity) && !isHostParticipant);
 
   if (participant.trackPublications) {
     participant.trackPublications.forEach(publication => {
@@ -3192,6 +3196,15 @@ function listenToStage() {
     const stage = snapshot.val() || {};
 
     stageSingerUids = normalizeArray(stage.singerUids);
+
+    // Reclassify existing camera tiles when the host changes the main stage.
+    document.querySelectorAll(".mm-video-box[data-participant-identity]").forEach(tile => {
+      const identity = tile.dataset.participantIdentity || "";
+      const isHostTile = tile.id === getTileId(currentShow?.hostUid || "");
+      const selected = stageSingerUids.includes(identity);
+      tile.classList.toggle("mm-main-stage", selected);
+      tile.classList.toggle("mm-waiting-stage", !selected && !isHostTile);
+    });
 
     if (currentRole === "singer" && currentUser) {
       const selected = stageSingerUids.includes(currentUser.uid);
