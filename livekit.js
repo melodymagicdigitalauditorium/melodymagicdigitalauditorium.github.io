@@ -79,6 +79,8 @@ let joining = false;
 let leaving = false;
 let singerAutoJoinTimer = null;
 let singerAutoJoinStarted = false;
+let hostReconnectTimer = null;
+let hostReconnectAttempts = 0;
 
 let lastReactionTimes = [];
 
@@ -1014,97 +1016,25 @@ function createPanel() {
     </div>
 
     <div class="mm-section" id="mmAudioEffects" hidden>
-      <h3>🎚️ Auditorium Master Singer Audio Mixer</h3>
-      <div class="mm-note">
-        Host-only master controls. These settings are applied to every singer's
-        microphone before it is published to the auditorium. Changes are shared live.
-        Use headphones when monitoring your own microphone.
-      </div>
+      <h3>🎙️ Host Voice Effects</h3>
+      <p class="mm-note">Adjust your voice for singers and the audience. Changes are shared live.</p>
 
       <div class="mm-effect-control">
-        <label>Master Echo: <strong id="mmEchoValue">0%</strong></label>
+        <label>Echo: <strong id="mmEchoValue">0%</strong></label>
         <input id="mmEcho" type="range" min="0" max="100" value="0">
       </div>
 
       <div class="mm-effect-control">
-        <label>Master Delay Time: <strong id="mmDelayValue">280 ms</strong></label>
+        <label>Delay: <strong id="mmDelayValue">280 ms</strong></label>
         <input id="mmDelay" type="range" min="50" max="1000" value="280">
       </div>
 
       <div class="mm-effect-control">
-        <label>Master Echo Feedback: <strong id="mmFeedbackValue">25%</strong></label>
-        <input id="mmFeedback" type="range" min="0" max="85" value="25">
-      </div>
-
-      <div class="mm-effect-control">
-        <label>Master Reverb: <strong id="mmReverbValue">0%</strong></label>
+        <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
         <input id="mmReverb" type="range" min="0" max="100" value="0">
       </div>
 
-      <div class="mm-effect-control">
-        <label>Master Wet / Dry Mix: <strong id="mmMixValue">0%</strong></label>
-        <input id="mmMix" type="range" min="0" max="100" value="0">
-      </div>
-
-      <div class="mm-effect-control">
-        <label>Singer Microphone Master Volume: <strong id="mmVolumeValue">80%</strong></label>
-        <input id="mmVolume" type="range" min="0" max="100" value="80">
-      </div>
-
-      <div class="mm-effect-control">
-        <label>
-          <input id="mmMonitor" type="checkbox">
-          Monitor my voice through this device
-        </label>
-
-        <label>Monitor Volume: <strong id="mmMonitorValue">35%</strong></label>
-        <input id="mmMonitorVolume" type="range" min="0" max="100" value="35">
-
-        <div class="mm-note">Use headphones to avoid feedback.</div>
-      </div>
-
-      <div id="mmEffectsStatus" class="mm-note">
-        Host microphone effects are ready.
-      </div>
-
-      <div class="mm-section" id="mmProgrammeMixer" hidden style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
-        <h3>🎚️ Professional YouTube + Microphone Mixer</h3>
-        <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. YouTube ads, if shown, are included in the captured audio. Use headphones to prevent feedback.</p>
-        <button type="button" id="mmStartProgrammeMixer">▶ START PROFESSIONAL MIXER</button>
-        <button type="button" id="mmStopProgrammeMixer" disabled>■ STOP MIXER</button>
-        <div id="mmProgrammeMixerStatus" class="mm-note">Mixer is OFF. Join the auditorium before starting.</div>
-        <label>YouTube tab audio: <strong id="mmYoutubeMixValue">100%</strong></label>
-        <input id="mmYoutubeMix" type="range" min="0" max="150" value="100">
-        <div class="mm-effect-control">
-          <label>Karaoke audio alignment (delay YouTube): <strong id="mmProgrammeSyncDelayValue">0 ms</strong></label>
-          <input id="mmProgrammeSyncDelay" type="range" min="0" max="1500" step="10" value="0">
-          <p class="mm-note">Increase this if the singer's incoming voice is late. This delays karaoke audio only; it does not delay the video.</p>
-        </div>
-        <label>Host microphone: <strong id="mmHostMicMixValue">80%</strong></label>
-        <input id="mmHostMicMix" type="range" min="0" max="150" value="80">
-        <label>Singer microphones: <strong id="mmSingerMixValue">100%</strong></label>
-        <input id="mmSingerMix" type="range" min="0" max="150" value="100">
-        <label>Programme master: <strong id="mmProgrammeMasterValue">90%</strong></label>
-        <input id="mmProgrammeMaster" type="range" min="0" max="150" value="90">
-        <div class="mm-effect-control">
-          <label>Programme echo: <strong id="mmProgrammeEchoValue">0%</strong></label>
-          <input id="mmProgrammeEcho" type="range" min="0" max="100" value="0">
-        </div>
-        <div class="mm-effect-control">
-          <label>Echo delay: <strong id="mmProgrammeDelayValue">280 ms</strong></label>
-          <input id="mmProgrammeDelay" type="range" min="50" max="1200" value="280">
-        </div>
-        <div class="mm-effect-control">
-          <label>Echo feedback: <strong id="mmProgrammeFeedbackValue">22%</strong></label>
-          <input id="mmProgrammeFeedback" type="range" min="0" max="85" value="22">
-        </div>
-        <div class="mm-effect-control">
-          <label>Programme reverb: <strong id="mmProgrammeReverbValue">0%</strong></label>
-          <input id="mmProgrammeReverb" type="range" min="0" max="100" value="0">
-        </div>
-        <label><input type="checkbox" id="mmProgrammeMonitor"> Monitor mixed programme audio (headphones only)</label>
-        <p class="mm-note">Audience members receive the programme mix instead of separate singer microphone playback.</p>
-      </div>
+      <div id="mmEffectsStatus" class="mm-note">Host voice effects are ready.</div>
     </div>
 
     <div class="mm-section" id="mmReactionSection">
@@ -2236,8 +2166,26 @@ function listenToShowLifecycle() {
    JOIN AUDITORIUM
 ========================================= */
 
+function scheduleHostReconnect(reason = "Connection lost") {
+  if (leaving || currentRole !== "host" || !isHost || hostReconnectTimer) return;
+  hostReconnectAttempts += 1;
+  const delay = Math.min(30000, 2000 * Math.pow(2, Math.min(hostReconnectAttempts - 1, 4)));
+  showMessage(reason + " Reconnecting automatically in " + Math.ceil(delay / 1000) + " seconds...", "warning");
+  if (byId("mmLiveStatus")) byId("mmLiveStatus").dataset.connection = "reconnecting";
+  hostReconnectTimer = setTimeout(() => {
+    hostReconnectTimer = null;
+    if (!leaving && !isJoined && !joining && currentRole === "host") {
+      joinAuditorium();
+    }
+  }, delay);
+}
+
 async function joinAuditorium() {
   if (joining || isJoined) return;
+  if (hostReconnectTimer) {
+    clearTimeout(hostReconnectTimer);
+    hostReconnectTimer = null;
+  }
   if (requestedMode === "singer" && !isShowLive()) {
     showMessage("The host has not started this show yet.");
     setSingerVisibleStatus("Waiting for host", "You will be notified here when the host starts the show.");
@@ -2287,6 +2235,7 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    hostReconnectAttempts = 0;
     updateSharedKaraokeButton();
     listenToSharedAudioSettings();
 
@@ -2351,11 +2300,12 @@ async function joinAuditorium() {
       singerAutoJoinTimer = setTimeout(() => { if (!isJoined && !joining && !leaving) joinAuditorium(); }, 8000);
     }
     if (room) {
-      try { await room.disconnect(); } catch (disconnectError) {
+      const failedRoom = room;
+      try { await failedRoom.disconnect(); } catch (disconnectError) {
         console.warn("Room cleanup error:", disconnectError);
       }
+      if (room === failedRoom) room = null;
     }
-    room = null;
     isJoined = false;
     localMicEnabled = false;
     localCameraEnabled = false;
@@ -2367,6 +2317,9 @@ async function joinAuditorium() {
     setButtonState("mmJoinBtn", isJoined, isJoined ? "Connected" : "Enter Live Auditorium");
     const singerStatus = byId("singerConnectionStatus");
     if (requestedMode === "singer" && singerStatus) singerStatus.textContent = isJoined ? "LIVE" : "Connecting...";
+    if (!isJoined && !leaving && currentRole === "host" && isHost) {
+      scheduleHostReconnect("Host connection could not be completed.");
+    }
   }
 }
 
@@ -2376,6 +2329,21 @@ async function joinAuditorium() {
 
 function registerRoomEvents() {
   if (!room) return;
+  const registeredRoom = room;
+
+  room.on(RoomEvent.Reconnecting, () => {
+    if (room !== registeredRoom || leaving) return;
+    showMessage("Connection interrupted. Reconnecting to the live auditorium...", "warning");
+    if (byId("mmLiveStatus")) byId("mmLiveStatus").dataset.connection = "reconnecting";
+  });
+
+  room.on(RoomEvent.Reconnected, () => {
+    if (room !== registeredRoom || leaving) return;
+    hostReconnectAttempts = 0;
+    showMessage("Connection restored. You are back in the live auditorium.", "success");
+    if (byId("mmLiveStatus")) byId("mmLiveStatus").dataset.connection = "connected";
+    updateAudienceCount();
+  });
 
   room.on(
     RoomEvent.TrackSubscribed,
@@ -2433,25 +2401,31 @@ function registerRoomEvents() {
     }
   );
 
-  room.on(RoomEvent.Disconnected, () => {
-    if (!leaving) {
-      isJoined = false;
-      localMicEnabled = false;
-      localCameraEnabled = false;
+  room.on(RoomEvent.Disconnected, async () => {
+    if (leaving || room !== registeredRoom) return;
 
-      microphoneAllowed = false;
-      cameraAllowed = false;
+    isJoined = false;
+    localMicEnabled = false;
+    localCameraEnabled = false;
+    microphoneAllowed = false;
+    cameraAllowed = false;
 
-      stopMicrophoneEffects();
-      stopProfessionalProgrammeMixer();
-      stopSharedKaraokeCapture("Disconnected from the live auditorium.");
+    // Release old local media and Firebase listeners before obtaining a fresh token.
+    await stopMicrophoneEffects();
+    await stopProfessionalProgrammeMixer();
+    await stopSharedKaraokeCapture("Karaoke sharing paused. Reconnect, then share again.");
+    stopFirebaseListeners();
+    room = null;
 
-      showMessage("Disconnected from the auditorium.", "warning");
+    resetButtons();
+    updateReactionButtons();
+    updateCommentControls();
+    updateAudienceCount();
 
-      resetButtons();
-      updateReactionButtons();
-      updateCommentControls();
-      updateAudienceCount();
+    if (currentRole === "host" && isHost) {
+      scheduleHostReconnect("Your host connection was interrupted.");
+    } else {
+      showMessage("Disconnected from the auditorium. Please re-enter.", "warning");
     }
   });
 
@@ -3825,6 +3799,9 @@ async function leaveAuditorium() {
   if (leaving) return;
   leaving = true;
   if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
+  if (hostReconnectTimer) clearTimeout(hostReconnectTimer);
+  hostReconnectTimer = null;
+  hostReconnectAttempts = 0;
   try {
     await stopProfessionalProgrammeMixer();
     if (publishedMicrophoneTrack || audioEffects || rawMicrophoneTrack) {
