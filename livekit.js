@@ -115,6 +115,7 @@ let sharedKaraokeStopping = false;
 
 let liveComments = [];
 let liveQueue = [];
+let activePerformanceData = {};
 
 
 /* =========================================
@@ -670,6 +671,7 @@ function listenForCurrentSingerRegistration(){
   if(!found)return;
   singerRegistration=found;
   requestedMode="singer";
+  updateActivePerformerKaraokeLayout();
   if(!showLifecycleListener)listenToShowLifecycle();
   setSingerVisibleStatus("Approved singer","You will join this same auditorium automatically when the host starts the show.");
   if(isShowLive()&&!isJoined&&!joining){
@@ -1799,6 +1801,36 @@ function listenToQueue() {
   onValue(queueRef, queueListener);
 }
 
+function updateActivePerformerKaraokeLayout() {
+  const performance = activePerformanceData || {};
+  const myUid = safeText(currentUser?.uid);
+  const myRegistrationId = safeText(singerRegistration?.id || registrationId);
+  const activeRegistrationId = safeText(
+    performance.currentPerformerId || performance.registrationId
+  );
+  const isMyPerformance =
+    (requestedMode === "singer" || currentRole === "singer") &&
+    safeText(performance.status).toLowerCase() === "performing" &&
+    (
+      (!!myUid && !!performance.singerUid && performance.singerUid === myUid) ||
+      (!!myRegistrationId && !!activeRegistrationId && activeRegistrationId === myRegistrationId)
+    );
+
+  document.body.classList.toggle("mm-active-performer", isMyPerformance);
+  const heading = document.querySelector("#mmSharedKaraokeVideo")?.closest(".card")?.querySelector("h2");
+  if (heading) heading.textContent = isMyPerformance
+    ? "🎵 Karaoke — MAIN PERFORMANCE SCREEN"
+    : "🎵 Karaoke — Mini Player";
+}
+
+function listenToActivePerformerLayout() {
+  if (!showId) return;
+  onValue(ref(db, "livePerformance/" + showId), snapshot => {
+    activePerformanceData = snapshot.val() || {};
+    updateActivePerformerKaraokeLayout();
+  });
+}
+
 function listenToCurrentPerformance() {
   if (!showId) return;
   const performanceRef = ref(db, "livePerformance/" + showId);
@@ -2262,6 +2294,7 @@ async function joinAuditorium() {
 
     const tokenData = await getAccessToken();
     currentRole = safeText(tokenData.role).toLowerCase();
+    updateActivePerformerKaraokeLayout();
 
     if (!["host", "singer", "audience"].includes(currentRole)) {
       throw new Error("Invalid auditorium role returned by server.");
@@ -4021,6 +4054,7 @@ async function initializeShow() {
     }
 
     listenToStage();
+    listenToActivePerformerLayout();
     if (!isHost) listenForCurrentSingerRegistration();
     if (requestedMode === "singer") {
       listenToShowLifecycle();
