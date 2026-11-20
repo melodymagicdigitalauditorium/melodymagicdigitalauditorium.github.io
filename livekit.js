@@ -395,6 +395,13 @@ class ProfessionalProgrammeMixer {
     this.hostMicStream = null;
     this.outputTrack = null;
     this.monitorGain = null;
+    this.delaySend = null;
+    this.delay = null;
+    this.delayFeedback = null;
+    this.echoWet = null;
+    this.reverbSend = null;
+    this.reverb = null;
+    this.reverbWet = null;
   }
 
   async initialize() {
@@ -410,6 +417,42 @@ class ProfessionalProgrammeMixer {
     this.monitorGain.gain.value = 0;
     this.master.connect(this.monitorGain);
     this.monitorGain.connect(this.context.destination);
+
+    // Shared programme-bus echo and reverb sends. Each channel feeds the
+    // dry master plus these effects, so the audience receives one mixed track.
+    this.delaySend = this.context.createGain();
+    this.delaySend.gain.value = 0;
+    this.delay = this.context.createDelay(1.5);
+    this.delay.delayTime.value = 0.28;
+    this.delayFeedback = this.context.createGain();
+    this.delayFeedback.gain.value = 0.22;
+    this.echoWet = this.context.createGain();
+    this.echoWet.gain.value = 0;
+    this.delaySend.connect(this.delay);
+    this.delay.connect(this.echoWet);
+    this.delay.connect(this.delayFeedback);
+    this.delayFeedback.connect(this.delay);
+    this.echoWet.connect(this.master);
+
+    this.reverbSend = this.context.createGain();
+    this.reverbSend.gain.value = 0;
+    this.reverb = this.context.createConvolver();
+    const impulseLength = Math.floor(this.context.sampleRate * 1.7);
+    const impulse = this.context.createBuffer(2, impulseLength, this.context.sampleRate);
+    for (let channel = 0; channel < 2; channel++) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < impulseLength; i++) {
+        const decay = Math.pow(1 - i / impulseLength, 2.8);
+        data[i] = (Math.random() * 2 - 1) * decay;
+      }
+    }
+    this.reverb.buffer = impulse;
+    this.reverbWet = this.context.createGain();
+    this.reverbWet.gain.value = 0;
+    this.reverbSend.connect(this.reverb);
+    this.reverb.connect(this.reverbWet);
+    this.reverbWet.connect(this.master);
+
     this.outputTrack = this.destination.stream.getAudioTracks()[0];
     if (!this.outputTrack) throw new Error("The mixer could not create an output audio track.");
   }
@@ -422,6 +465,8 @@ class ProfessionalProgrammeMixer {
     gain.gain.value = Math.max(0, Math.min(2, Number(initialVolume)));
     source.connect(gain);
     gain.connect(this.master);
+    gain.connect(this.delaySend);
+    gain.connect(this.reverbSend);
     this.inputs.set(key, { source, gain, track });
     return true;
   }
@@ -486,6 +531,32 @@ class ProfessionalProgrammeMixer {
     const mic = this.hostMicStream.getAudioTracks()[0];
     if (!mic) throw new Error("No host microphone was found.");
     this.addInput("host-mic", mic, 0.8);
+  }
+
+  setEcho(value) {
+    if (!this.delaySend || !this.echoWet || !this.context) return;
+    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    this.delaySend.gain.setTargetAtTime(amount * 0.65, this.context.currentTime, 0.04);
+    this.echoWet.gain.setTargetAtTime(amount * 0.8, this.context.currentTime, 0.04);
+  }
+
+  setDelayTime(value) {
+    if (!this.delay || !this.context) return;
+    const seconds = Math.max(0.05, Math.min(1.2, Number(value) / 1000));
+    this.delay.delayTime.setTargetAtTime(seconds, this.context.currentTime, 0.04);
+  }
+
+  setEchoFeedback(value) {
+    if (!this.delayFeedback || !this.context) return;
+    const amount = Math.max(0, Math.min(85, Number(value))) / 100;
+    this.delayFeedback.gain.setTargetAtTime(amount, this.context.currentTime, 0.04);
+  }
+
+  setReverb(value) {
+    if (!this.reverbSend || !this.reverbWet || !this.context) return;
+    const amount = Math.max(0, Math.min(100, Number(value))) / 100;
+    this.reverbSend.gain.setTargetAtTime(amount * 0.45, this.context.currentTime, 0.04);
+    this.reverbWet.gain.setTargetAtTime(amount * 0.75, this.context.currentTime, 0.04);
   }
 
   setMonitoring(enabled, volume = 25) {
@@ -971,6 +1042,22 @@ function createPanel() {
         <input id="mmSingerMix" type="range" min="0" max="150" value="100">
         <label>Programme master: <strong id="mmProgrammeMasterValue">90%</strong></label>
         <input id="mmProgrammeMaster" type="range" min="0" max="150" value="90">
+        <div class="mm-effect-control">
+          <label>Programme echo: <strong id="mmProgrammeEchoValue">0%</strong></label>
+          <input id="mmProgrammeEcho" type="range" min="0" max="100" value="0">
+        </div>
+        <div class="mm-effect-control">
+          <label>Echo delay: <strong id="mmProgrammeDelayValue">280 ms</strong></label>
+          <input id="mmProgrammeDelay" type="range" min="50" max="1200" value="280">
+        </div>
+        <div class="mm-effect-control">
+          <label>Echo feedback: <strong id="mmProgrammeFeedbackValue">22%</strong></label>
+          <input id="mmProgrammeFeedback" type="range" min="0" max="85" value="22">
+        </div>
+        <div class="mm-effect-control">
+          <label>Programme reverb: <strong id="mmProgrammeReverbValue">0%</strong></label>
+          <input id="mmProgrammeReverb" type="range" min="0" max="100" value="0">
+        </div>
         <label><input type="checkbox" id="mmProgrammeMonitor"> Monitor mixed programme audio (headphones only)</label>
         <p class="mm-note">Audience members receive the programme mix instead of separate singer microphone playback.</p>
       </div>
@@ -1112,6 +1199,19 @@ function createPanel() {
   });
   byId("mmProgrammeMonitor")?.addEventListener("change", event => {
     programmeMixer?.setMonitoring(event.target.checked, 20);
+  });
+  [
+    ["mmProgrammeEcho","mmProgrammeEchoValue",value => programmeMixer?.setEcho(value),"%"],
+    ["mmProgrammeDelay","mmProgrammeDelayValue",value => programmeMixer?.setDelayTime(value), " ms"],
+    ["mmProgrammeFeedback","mmProgrammeFeedbackValue",value => programmeMixer?.setEchoFeedback(value),"%"],
+    ["mmProgrammeReverb","mmProgrammeReverbValue",value => programmeMixer?.setReverb(value),"%"]
+  ].forEach(([inputId,labelId,apply,suffix]) => {
+    byId(inputId)?.addEventListener("input", event => {
+      const value = Number(event.target.value);
+      const label = byId(labelId);
+      if (label) label.textContent = value + suffix;
+      apply(value);
+    });
   });
 
   byId("mmSetStageBtn")?.addEventListener(
