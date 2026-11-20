@@ -138,7 +138,7 @@ footer{text-align:center;color:#999;padding:20px}
 
 <script type="module">
 
-import {auth,db} from "./firebase-host.js";
+import {auth,db,connectAuditorium} from "./firebase.js";
 
 import {
  onAuthStateChanged
@@ -160,6 +160,8 @@ let registrationId=null;
 let registrationListener=null;
 let registrationData=null;
 let authCheckRunning=false;
+let showLifecycleListener=null;
+let autoEnterStarted=false;
 
 /* HELPERS */
 
@@ -169,6 +171,30 @@ function message(id,text){
 
 function normalStatus(value){
  return String(value||"Pending").trim().toLowerCase();
+}
+
+function normalizeMobile(value){
+ const digits=String(value||"").replace(/\\D/g,"");
+ return digits.length>10?digits.slice(-10):digits;
+}
+
+function maybeAutoEnterShow(){
+ if(autoEnterStarted||!registrationData||!currentShow)return;
+ if(!isApprovedAndPaid(registrationData))return;
+ const live=String(currentShow.liveStatus||"").toLowerCase()==="live"||currentShow.isLive===true;
+ if(!live)return;
+ autoEnterStarted=true;
+ message("approvalStatus","✅ Show is LIVE. Connecting you to the auditorium...");
+ window.location.href="live-performance.html?showId="+encodeURIComponent(showId);
+}
+
+function listenForShowLifecycle(){
+ if(!showId)return;
+ if(showLifecycleListener)showLifecycleListener();
+ showLifecycleListener=onValue(ref(db,"shows/"+showId),snap=>{
+  if(snap.exists())currentShow=snap.val();
+  maybeAutoEnterShow();
+ });
 }
 
 function esc(v){
@@ -311,6 +337,8 @@ function renderRegistration(data){
    'Your registration has been received successfully.';
 
  }
+
+ maybeAutoEnterShow();
 }
 
 /* FIND EXISTING REGISTRATION */
@@ -431,6 +459,16 @@ $("registrationForm").addEventListener("submit",async e=>{
  btn.textContent="Submitting...";
 
  try{
+
+  const mobileKey=normalizeMobile($("mobile").value);
+  if(mobileKey.length<10)throw new Error("Please enter a valid 10-digit mobile number.");
+  const allRegistrations=await get(ref(db,"showRegistrations/"+showId));
+  const duplicate=Object.entries(allRegistrations.val()||{}).find(([id,item])=>
+   normalizeMobile(item&&item.mobile)===mobileKey && normalStatus(item&&item.status)!=="rejected"
+  );
+  if(duplicate && duplicate[1].singerUid!==currentUser.uid){
+   throw new Error("This mobile number already has an entry for this show.");
+  }
 
   const existing=await findExistingRegistration();
 
@@ -566,6 +604,9 @@ $("retryBtn").onclick=()=>{
 
 /* AUTHENTICATION */
 
+await connectAuditorium();
+listenForShowLifecycle();
+
 onAuthStateChanged(auth,async user=>{
 
  currentUser=user;
@@ -620,7 +661,10 @@ onAuthStateChanged(auth,async user=>{
 
 });
 
-window.addEventListener("beforeunload",cleanup);
+window.addEventListener("beforeunload",()=>{
+ cleanup();
+ if(showLifecycleListener)showLifecycleListener();
+});
 
 </script>
 </body>
