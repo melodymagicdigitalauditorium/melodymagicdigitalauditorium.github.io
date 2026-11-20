@@ -2055,12 +2055,16 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // Each connected device plays the same host-controlled YouTube video
-    // locally. Firebase playback state keeps players aligned; this avoids
-    // requiring a desktop tab-audio mixer to hear the karaoke track.
-    player.setVolume(sharedVolume);
-    if (sharedVolume === 0) player.mute();
-    else player.unMute();
+    // Keep participant YouTube players muted. Only the host-control tab
+    // is allowed to produce the karaoke soundtrack; otherwise every device
+    // would play its own YouTube audio/ad independently and drift out of sync.
+    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
+      player.setVolume(sharedVolume);
+      if (sharedVolume === 0) player.mute();
+      else player.unMute();
+    } else {
+      player.mute();
+    }
 
     const signature = [
       videoId,
