@@ -469,7 +469,8 @@ class ProfessionalProgrammeMixer {
     }
     this.addInput("youtube", tabAudio, 1);
     tabAudio.addEventListener("ended", () => {
-      this.onStatus("Tab audio capture ended. Restart the mixer to continue.");
+      this.onStatus("Tab audio capture ended. Stopping the programme mixer.");
+      stopProfessionalProgrammeMixer().catch(error => console.warn("Mixer auto-stop:", error));
     }, { once: true });
   }
 
@@ -958,7 +959,7 @@ function createPanel() {
 
       <div class="mm-section" id="mmProgrammeMixer" style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
         <h3>🎚️ Professional YouTube + Microphone Mixer</h3>
-        <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. Use headphones to prevent feedback.</p>
+        <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. YouTube ads, if shown, are included in the captured audio. Use headphones to prevent feedback.</p>
         <button type="button" id="mmStartProgrammeMixer">▶ START PROFESSIONAL MIXER</button>
         <button type="button" id="mmStopProgrammeMixer" disabled>■ STOP MIXER</button>
         <div id="mmProgrammeMixerStatus" class="mm-note">Mixer is OFF. Join the auditorium before starting.</div>
