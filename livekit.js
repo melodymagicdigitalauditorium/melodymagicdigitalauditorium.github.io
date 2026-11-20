@@ -461,13 +461,16 @@ class ProfessionalProgrammeMixer {
     if (!this.context || !track || track.kind !== "audio" || track.readyState === "ended") return false;
     this.removeInput(key);
     const source = this.context.createMediaStreamSource(new MediaStream([track]));
+    const alignmentDelay = this.context.createDelay(2.5);
+    alignmentDelay.delayTime.value = 0;
     const gain = this.context.createGain();
     gain.gain.value = Math.max(0, Math.min(2, Number(initialVolume)));
-    source.connect(gain);
+    source.connect(alignmentDelay);
+    alignmentDelay.connect(gain);
     gain.connect(this.master);
     gain.connect(this.delaySend);
     gain.connect(this.reverbSend);
-    this.inputs.set(key, { source, gain, track });
+    this.inputs.set(key, { source, alignmentDelay, gain, track });
     return true;
   }
 
@@ -487,6 +490,14 @@ class ProfessionalProgrammeMixer {
         this.context.currentTime,
         0.025
       );
+    }
+  }
+
+  setInputDelay(key, milliseconds) {
+    const input = this.inputs.get(key);
+    if (input?.alignmentDelay && this.context) {
+      const seconds = Math.max(0, Math.min(2.5, Number(milliseconds) / 1000));
+      input.alignmentDelay.delayTime.setTargetAtTime(seconds, this.context.currentTime, 0.04);
     }
   }
 
@@ -1036,6 +1047,11 @@ function createPanel() {
         <div id="mmProgrammeMixerStatus" class="mm-note">Mixer is OFF. Join the auditorium before starting.</div>
         <label>YouTube tab audio: <strong id="mmYoutubeMixValue">100%</strong></label>
         <input id="mmYoutubeMix" type="range" min="0" max="150" value="100">
+        <div class="mm-effect-control">
+          <label>Karaoke audio alignment (delay YouTube): <strong id="mmProgrammeSyncDelayValue">0 ms</strong></label>
+          <input id="mmProgrammeSyncDelay" type="range" min="0" max="1500" step="10" value="0">
+          <p class="mm-note">Increase this if the singer's incoming voice is late. This delays karaoke audio only; it does not delay the video.</p>
+        </div>
         <label>Host microphone: <strong id="mmHostMicMixValue">80%</strong></label>
         <input id="mmHostMicMix" type="range" min="0" max="150" value="80">
         <label>Singer microphones: <strong id="mmSingerMixValue">100%</strong></label>
@@ -1197,6 +1213,7 @@ function createPanel() {
   ["mmYoutubeMix","mmHostMicMix","mmSingerMix","mmProgrammeMaster"].forEach(id => {
     byId(id)?.addEventListener("input", updateProfessionalMixerVolumes);
   });
+  byId("mmProgrammeSyncDelay")?.addEventListener("input", updateProfessionalMixerVolumes);
   byId("mmProgrammeMonitor")?.addEventListener("change", event => {
     programmeMixer?.setMonitoring(event.target.checked, 20);
   });
@@ -2830,6 +2847,11 @@ function updateProfessionalMixerVolumes() {
       programmeMixer.setVolume(key, value);
     }
   });
+  const syncDelay = Number(byId("mmProgrammeSyncDelay")?.value ?? 0);
+  const syncLabel = byId("mmProgrammeSyncDelayValue");
+  if (syncLabel) syncLabel.textContent = syncDelay + " ms";
+  programmeMixer?.setInputDelay("youtube", syncDelay);
+
   const master = Number(byId("mmProgrammeMaster")?.value ?? 90);
   const masterLabel = byId("mmProgrammeMasterValue");
   if (masterLabel) masterLabel.textContent = master + "%";
