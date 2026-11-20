@@ -3962,7 +3962,6 @@ function wirePublicInteractionControls() {
 async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
-  wireSharedKaraokeButton();
   updateReactionButtons();
   updateCommentControls();
 
