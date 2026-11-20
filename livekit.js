@@ -478,6 +478,7 @@ class ProfessionalProgrammeMixer {
     const input = this.inputs.get(key);
     if (!input) return;
     try { input.source.disconnect(); } catch (error) {}
+    try { input.alignmentDelay?.disconnect(); } catch (error) {}
     try { input.gain.disconnect(); } catch (error) {}
     this.inputs.delete(key);
   }
