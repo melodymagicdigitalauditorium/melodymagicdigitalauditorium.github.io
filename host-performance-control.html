@@ -656,10 +656,8 @@ async function playForEveryone(){
       Number($("karaokeVolume").value)
     );
 
-    youtubePlayer.seekTo(0,true);
-    youtubePlayer.playVideo();
-
-    videoMessage("Play command sent to everyone.");
+    // The Firebase playback listener starts the host player at the same scheduled time as singers and audience.
+    videoMessage("Synchronized play command sent to everyone.");
 
   }catch(error){
 
@@ -744,11 +742,10 @@ async function resumeForEveryone(){
         Number($("karaokeVolume").value)
       );
 
-      youtubePlayer.seekTo(position,true);
-      youtubePlayer.playVideo();
+      // The Firebase playback listener resumes the host at the same scheduled time as all participants.
     }
 
-    videoMessage("Resume command sent to everyone.");
+    videoMessage("Synchronized resume command sent to everyone.");
 
   }catch(error){
 
