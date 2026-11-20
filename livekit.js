@@ -84,6 +84,10 @@ let singerAutoJoinStarted = false;
 let lastReactionTimes = [];
 
 let audioEffects = null;
+let programmeMixer = null;
+let publishedProgrammeTrack = null;
+let programmeMixerStarting = false;
+const programmeRemoteInputs = new Map();
 let rawMicrophoneTrack = null;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
@@ -369,6 +373,146 @@ class VirtualAudioEffects {
     this.reverbGain = null;
     this.outputGain = null;
     this.monitorGain = null;
+  }
+}
+
+
+
+/* =========================================
+   DESKTOP HOST PROGRAMME MIXER
+   Captures the host's Chrome tab audio and mixes it
+   with the host microphone and active singer tracks.
+========================================= */
+
+class ProfessionalProgrammeMixer {
+  constructor(onStatus = () => {}) {
+    this.onStatus = onStatus;
+    this.context = null;
+    this.destination = null;
+    this.master = null;
+    this.inputs = new Map();
+    this.captureStream = null;
+    this.hostMicStream = null;
+    this.outputTrack = null;
+    this.monitorGain = null;
+  }
+
+  async initialize() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser.");
+    this.context = new AudioContextClass();
+    if (this.context.state === "suspended") await this.context.resume();
+    this.destination = this.context.createMediaStreamDestination();
+    this.master = this.context.createGain();
+    this.master.gain.value = 0.9;
+    this.master.connect(this.destination);
+    this.monitorGain = this.context.createGain();
+    this.monitorGain.gain.value = 0;
+    this.master.connect(this.monitorGain);
+    this.monitorGain.connect(this.context.destination);
+    this.outputTrack = this.destination.stream.getAudioTracks()[0];
+    if (!this.outputTrack) throw new Error("The mixer could not create an output audio track.");
+  }
+
+  addInput(key, track, initialVolume = 1) {
+    if (!this.context || !track || track.kind !== "audio" || track.readyState === "ended") return false;
+    this.removeInput(key);
+    const source = this.context.createMediaStreamSource(new MediaStream([track]));
+    const gain = this.context.createGain();
+    gain.gain.value = Math.max(0, Math.min(2, Number(initialVolume)));
+    source.connect(gain);
+    gain.connect(this.master);
+    this.inputs.set(key, { source, gain, track });
+    return true;
+  }
+
+  removeInput(key) {
+    const input = this.inputs.get(key);
+    if (!input) return;
+    try { input.source.disconnect(); } catch (error) {}
+    try { input.gain.disconnect(); } catch (error) {}
+    this.inputs.delete(key);
+  }
+
+  setVolume(key, value) {
+    const input = this.inputs.get(key);
+    if (input && this.context) {
+      input.gain.gain.setTargetAtTime(
+        Math.max(0, Math.min(2, Number(value) / 100)),
+        this.context.currentTime,
+        0.025
+      );
+    }
+  }
+
+  setMasterVolume(value) {
+    if (this.master && this.context) {
+      this.master.gain.setTargetAtTime(
+        Math.max(0, Math.min(1.5, Number(value) / 100)),
+        this.context.currentTime,
+        0.025
+      );
+    }
+  }
+
+  async captureCurrentTab() {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      throw new Error("This browser does not support tab-audio capture. Use desktop Chrome.");
+    }
+    this.captureStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 1 },
+      audio: true
+    });
+    const tabAudio = this.captureStream.getAudioTracks()[0];
+    this.captureStream.getVideoTracks().forEach(track => track.stop());
+    if (!tabAudio) {
+      this.captureStream.getTracks().forEach(track => track.stop());
+      this.captureStream = null;
+      throw new Error("Chrome did not provide tab audio. Select the Melody Magic tab and enable Share tab audio.");
+    }
+    this.addInput("youtube", tabAudio, 1);
+    tabAudio.addEventListener("ended", () => {
+      this.onStatus("Tab audio capture ended. Restart the mixer to continue.");
+    }, { once: true });
+  }
+
+  async captureHostMicrophone() {
+    this.hostMicStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      },
+      video: false
+    });
+    const mic = this.hostMicStream.getAudioTracks()[0];
+    if (!mic) throw new Error("No host microphone was found.");
+    this.addInput("host-mic", mic, 0.8);
+  }
+
+  setMonitoring(enabled, volume = 25) {
+    if (!this.monitorGain || !this.context) return;
+    this.monitorGain.gain.setTargetAtTime(
+      enabled ? Math.max(0, Math.min(0.5, Number(volume) / 100)) : 0,
+      this.context.currentTime,
+      0.03
+    );
+  }
+
+  async stop() {
+    for (const key of [...this.inputs.keys()]) this.removeInput(key);
+    this.captureStream?.getTracks().forEach(track => { try { track.stop(); } catch (error) {} });
+    this.hostMicStream?.getTracks().forEach(track => { try { track.stop(); } catch (error) {} });
+    if (this.outputTrack) {
+      try { this.outputTrack.stop(); } catch (error) {}
+    }
+    if (this.context && this.context.state !== "closed") {
+      try { await this.context.close(); } catch (error) {}
+    }
+    this.captureStream = null;
+    this.hostMicStream = null;
+    this.outputTrack = null;
+    this.context = null;
   }
 }
 
@@ -814,6 +958,24 @@ function createPanel() {
       <div id="mmEffectsStatus" class="mm-note">
         Host microphone effects are ready.
       </div>
+
+      <div class="mm-section" id="mmProgrammeMixer" style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
+        <h3>🎚️ Professional YouTube + Microphone Mixer</h3>
+        <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. Use headphones to prevent feedback.</p>
+        <button type="button" id="mmStartProgrammeMixer">▶ START PROFESSIONAL MIXER</button>
+        <button type="button" id="mmStopProgrammeMixer" disabled>■ STOP MIXER</button>
+        <div id="mmProgrammeMixerStatus" class="mm-note">Mixer is OFF. Join the auditorium before starting.</div>
+        <label>YouTube tab audio: <strong id="mmYoutubeMixValue">100%</strong></label>
+        <input id="mmYoutubeMix" type="range" min="0" max="150" value="100">
+        <label>Host microphone: <strong id="mmHostMicMixValue">80%</strong></label>
+        <input id="mmHostMicMix" type="range" min="0" max="150" value="80">
+        <label>Singer microphones: <strong id="mmSingerMixValue">100%</strong></label>
+        <input id="mmSingerMix" type="range" min="0" max="150" value="100">
+        <label>Programme master: <strong id="mmProgrammeMasterValue">90%</strong></label>
+        <input id="mmProgrammeMaster" type="range" min="0" max="150" value="90">
+        <label><input type="checkbox" id="mmProgrammeMonitor"> Monitor mixed programme audio (headphones only)</label>
+        <p class="mm-note">Audience members receive the programme mix instead of separate singer microphone playback.</p>
+      </div>
     </div>
 
     <div class="mm-section" id="mmReactionSection">
@@ -944,6 +1106,15 @@ function createPanel() {
 
   byId("mmMicBtn").addEventListener("click", toggleMicrophone);
   byId("mmCameraBtn").addEventListener("click", toggleCamera);
+
+  byId("mmStartProgrammeMixer")?.addEventListener("click", startProfessionalProgrammeMixer);
+  byId("mmStopProgrammeMixer")?.addEventListener("click", stopProfessionalProgrammeMixer);
+  ["mmYoutubeMix","mmHostMicMix","mmSingerMix","mmProgrammeMaster"].forEach(id => {
+    byId(id)?.addEventListener("input", updateProfessionalMixerVolumes);
+  });
+  byId("mmProgrammeMonitor")?.addEventListener("change", event => {
+    programmeMixer?.setMonitoring(event.target.checked, 20);
+  });
 
   byId("mmSetStageBtn")?.addEventListener(
     "click",
@@ -1744,12 +1915,15 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // Apply the host's shared volume even when playback itself has not changed.
-    player.setVolume(sharedVolume);
-    if (sharedVolume === 0) {
-      player.mute();
+    // Only the host-control tab produces karaoke audio. Other devices keep
+    // the shared video visible but mute their local YouTube audio to avoid
+    // hearing a second, unsynchronised soundtrack.
+    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
+      player.setVolume(sharedVolume);
+      if (sharedVolume === 0) player.mute();
+      else player.unMute();
     } else {
-      player.unMute();
+      player.mute();
     }
 
     const signature = [
@@ -2057,6 +2231,10 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
+      if (track.kind === Track.Kind.Audio && currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
+        addRemoteSingerToProgrammeMixer(track, participant);
+        return;
+      }
       await attachRemoteTrack(track, participant);
     }
   );
@@ -2064,6 +2242,7 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackUnsubscribed,
     track => {
+      removeRemoteSingerFromProgrammeMixer(track);
       detachTrackElements(track);
     }
   );
@@ -2106,6 +2285,7 @@ function registerRoomEvents() {
       cameraAllowed = false;
 
       stopMicrophoneEffects();
+      stopProfessionalProgrammeMixer();
 
       showMessage("Disconnected from the auditorium.", "warning");
 
@@ -2218,6 +2398,13 @@ function attachLocalTrack(track) {
 function attachTrackToTile(track, targetId) {
   const target = byId(targetId);
   if (!target || !track) return;
+
+  if (track.kind === Track.Kind.Audio) {
+    // The host mixes remote singer microphones; audience and singers hear
+    // only the host's single programme track, never the original mic tracks.
+    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) return;
+    if (track.name !== "Melody Magic Programme Audio") return;
+  }
 
   const attached = track.attach();
 
@@ -2515,6 +2702,141 @@ async function startMicrophoneEffects() {
 }
 
 
+
+/* =========================================
+   PROFESSIONAL PROGRAMME MIXER CONTROL
+========================================= */
+
+function mixerStatus(message) {
+  const el = byId("mmProgrammeMixerStatus");
+  if (el) el.textContent = message;
+}
+
+function updateProfessionalMixerVolumes() {
+  const controls = [
+    ["mmYoutubeMix","mmYoutubeMixValue","youtube"],
+    ["mmHostMicMix","mmHostMicMixValue","host-mic"],
+    ["mmSingerMix","mmSingerMixValue","singers"]
+  ];
+  controls.forEach(([inputId,labelId,key]) => {
+    const value = Number(byId(inputId)?.value ?? 100);
+    const label = byId(labelId);
+    if (label) label.textContent = value + "%";
+    if (!programmeMixer) return;
+    if (key === "singers") {
+      programmeRemoteInputs.forEach((inputKey) => programmeMixer.setVolume(inputKey, value));
+    } else {
+      programmeMixer.setVolume(key, value);
+    }
+  });
+  const master = Number(byId("mmProgrammeMaster")?.value ?? 90);
+  const masterLabel = byId("mmProgrammeMasterValue");
+  if (masterLabel) masterLabel.textContent = master + "%";
+  programmeMixer?.setMasterVolume(master);
+}
+
+function addRemoteSingerToProgrammeMixer(track, participant) {
+  if (!track || track.kind !== Track.Kind.Audio || track.name === "Melody Magic Programme Audio") return;
+  const mediaTrack = track.mediaStreamTrack;
+  if (!mediaTrack) return;
+  const key = "singer:" + safeText(participant?.identity) + ":" + safeText(mediaTrack.id);
+  programmeRemoteInputs.set(mediaTrack.id, key);
+  if (programmeMixer) {
+    programmeMixer.addInput(key, mediaTrack, Number(byId("mmSingerMix")?.value ?? 100) / 100);
+    updateProfessionalMixerVolumes();
+  }
+}
+
+function removeRemoteSingerFromProgrammeMixer(track) {
+  const mediaTrack = track?.mediaStreamTrack;
+  if (!mediaTrack) return;
+  const key = programmeRemoteInputs.get(mediaTrack.id);
+  if (key && programmeMixer) programmeMixer.removeInput(key);
+  programmeRemoteInputs.delete(mediaTrack.id);
+}
+
+async function startProfessionalProgrammeMixer() {
+  if (programmeMixerStarting || programmeMixer) return;
+  if (!isJoined || currentRole !== "host" || !isHost || !IS_HOST_CONTROL_PAGE) {
+    mixerStatus("Only the approved host can start the programme mixer from the host control room.");
+    return;
+  }
+  if (!microphoneAllowed) {
+    mixerStatus("Host microphone permission is required. Ask the auditorium server to grant microphone access.");
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || !navigator.mediaDevices?.getDisplayMedia) {
+    mixerStatus("This feature requires desktop Chrome with tab-audio capture support.");
+    return;
+  }
+
+  programmeMixerStarting = true;
+  const startButton = byId("mmStartProgrammeMixer");
+  if (startButton) startButton.disabled = true;
+  mixerStatus("Choose the Melody Magic host-control tab and enable Share tab audio in Chrome.");
+
+  try {
+    const mixer = new ProfessionalProgrammeMixer(mixerStatus);
+    programmeMixer = mixer;
+    await mixer.initialize();
+
+    // getDisplayMedia is called from the host's explicit button action.
+    await mixer.captureCurrentTab();
+    await mixer.captureHostMicrophone();
+
+    // Include singers who were already connected before the mixer started.
+    if (room) {
+      for (const participant of room.remoteParticipants.values()) {
+        for (const publication of participant.trackPublications.values()) {
+          if (publication.track && publication.track.kind === Track.Kind.Audio) {
+            addRemoteSingerToProgrammeMixer(publication.track, participant);
+          }
+        }
+      }
+    }
+
+    updateProfessionalMixerVolumes();
+    const output = mixer.outputTrack;
+    await room.localParticipant.publishTrack(output, {
+      name: "Melody Magic Programme Audio",
+      source: Track.Source.Microphone
+    });
+    publishedProgrammeTrack = output;
+
+    const stopButton = byId("mmStopProgrammeMixer");
+    if (stopButton) stopButton.disabled = false;
+    if (startButton) startButton.disabled = true;
+    mixerStatus("LIVE — YouTube tab, host microphone and connected singer microphones are mixed into one programme audio track.");
+    showMessage("Professional programme mixer is live.", "success");
+  } catch (error) {
+    console.error("Professional mixer start failed:", error);
+    await stopProfessionalProgrammeMixer();
+    mixerStatus("Mixer could not start: " + error.message);
+    showMessage("Professional mixer error: " + error.message, "error");
+  } finally {
+    programmeMixerStarting = false;
+    if (!programmeMixer && startButton) startButton.disabled = false;
+  }
+}
+
+async function stopProfessionalProgrammeMixer() {
+  const mixer = programmeMixer;
+  programmeMixer = null;
+  if (room && publishedProgrammeTrack) {
+    try { await room.localParticipant.unpublishTrack(publishedProgrammeTrack, true); }
+    catch (error) { console.warn("Programme track unpublish failed:", error); }
+  }
+  publishedProgrammeTrack = null;
+  if (mixer) await mixer.stop();
+  const stopButton = byId("mmStopProgrammeMixer");
+  const startButton = byId("mmStartProgrammeMixer");
+  if (stopButton) stopButton.disabled = true;
+  if (startButton) startButton.disabled = !isJoined || currentRole !== "host";
+  if (byId("mmProgrammeMonitor")) byId("mmProgrammeMonitor").checked = false;
+  mixerStatus("Mixer is OFF.");
+}
+
+
 /* =========================================
    STOP MICROPHONE EFFECTS
 ========================================= */
@@ -2632,9 +2954,12 @@ function updateControlButtons() {
   const info = byId("mmPermissionInfo");
   if (!mic || !camera) return;
 
-  mic.disabled = !isJoined || !microphoneAllowed;
+  mic.disabled = !isJoined || !microphoneAllowed ||
+    (currentRole === "host" && IS_HOST_CONTROL_PAGE);
   camera.disabled = !isJoined || !cameraAllowed;
-  mic.textContent = localMicEnabled ? "Microphone ON" : "Microphone OFF";
+  mic.textContent = currentRole === "host" && IS_HOST_CONTROL_PAGE
+    ? "Use Professional Mixer"
+    : (localMicEnabled ? "Microphone ON" : "Microphone OFF");
   camera.textContent = localCameraEnabled ? "Camera ON" : "Camera OFF";
 
   if (info) {
