@@ -12,6 +12,15 @@ main{max-width:1400px;margin:auto;padding:10px;display:grid;grid-template-column
 @media(max-width:850px){main{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:1fr 1fr;gap:8px}#mmLiveKitPanel{grid-template-columns:1fr}#mmCommentsList,#mmCommentInput,#mmSendCommentBtn,#mmCommentHint,#mmReactionSection{grid-column:1}#mmCommentsList{max-height:24vh!important}#mmVideoGrid video{max-height:45vh!important;min-height:180px!important}}
 @media(max-width:520px){header h1{font-size:16px}main{padding:6px;gap:6px}.sidebar{grid-template-columns:1fr}.card{padding:8px}#mmVideoGrid video{min-height:160px!important}}
 
+/* Stage hierarchy: selected performer is the large tile, waiting singers are compact */
+#mmVideoGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:start;gap:8px!important}
+#mmVideoGrid .mm-main-stage{grid-column:1/-1!important;min-height:0!important;border:2px solid var(--gold)!important}
+#mmVideoGrid .mm-main-stage video{width:100%!important;min-height:260px!important;max-height:65vh!important;object-fit:contain!important}
+#mmVideoGrid .mm-waiting-stage{min-height:90px!important;opacity:.9}
+#mmVideoGrid .mm-waiting-stage video{width:100%!important;min-height:90px!important;max-height:170px!important;object-fit:cover!important}
+#mmVideoGrid .mm-video-name{font-size:12px!important;padding:5px!important}
+@media(max-width:600px){#mmVideoGrid{grid-template-columns:1fr!important}#mmVideoGrid .mm-main-stage{grid-column:1!important}#mmVideoGrid .mm-main-stage video{min-height:180px!important;max-height:45vh!important}#mmVideoGrid .mm-waiting-stage video{min-height:100px!important;max-height:150px!important}}
+
 /* Shared karaoke player: compact audience view, larger singer view */
 #karaokeCard{display:flex;flex-direction:column;gap:6px}
 #mmPlaybackStatus{font-size:11px;color:var(--muted);min-height:16px}
