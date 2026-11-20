@@ -115,7 +115,6 @@ hr{border-color:#51401e;margin:10px 0}
     </div>
 
     <p id="videoStatus" class="small">Host video controls are ready.</p>
-    <p id="videoStatus" class="small">Host video controls are ready.</p>
   </div>
 </section>
 
@@ -942,6 +941,25 @@ function renderQueue(){
       </p>
     `;
 
+    const actions=document.createElement("div");
+    actions.style.display="flex";
+    actions.style.flexWrap="wrap";
+    actions.style.gap="6px";
+    actions.style.marginTop="8px";
+
+    const removeButton=document.createElement("button");
+    removeButton.className="gray";
+    removeButton.textContent="REMOVE FROM QUEUE";
+    removeButton.addEventListener("click",()=>removeQueueSinger(id,person));
+    actions.appendChild(removeButton);
+
+    const blockButton=document.createElement("button");
+    blockButton.className="red";
+    blockButton.textContent="BLOCK SINGER";
+    blockButton.addEventListener("click",()=>blockQueueSinger(id,person));
+    actions.appendChild(blockButton);
+
+    card.appendChild(actions);
     container.appendChild(card);
   });
 
@@ -1059,6 +1077,56 @@ async function clearPublicPerformer(){
 
     updatedAt:Date.now()
   });
+}
+
+async function removeQueueSinger(id,person){
+  if(!isHost||actionRunning)return;
+  if(!confirm("Remove "+(person.name||person.singerName||"this singer")+" from the queue?"))return;
+  try{
+    if(person.status==="Playing"){
+      await clearLiveStage();
+      await clearPublicPerformer();
+    }
+    await update(ref(db,"performanceQueue/"+showId+"/"+id),{
+      status:"Removed",
+      updatedAt:Date.now(),
+      removedBy:currentUser.uid
+    });
+    message("Singer removed from the queue.");
+  }catch(error){
+    message("Could not remove singer: "+error.message);
+  }
+}
+
+async function blockQueueSinger(id,person){
+  if(!isHost||actionRunning)return;
+  const uid=person.singerUid||person.uid||"";
+  if(!uid){
+    message("This queue entry has no linked singer account, so it cannot be blocked from live access.");
+    return;
+  }
+  if(!confirm("Block "+(person.name||person.singerName||"this singer")+" from this show?"))return;
+  try{
+    if(person.status==="Playing"){
+      await clearLiveStage();
+      await clearPublicPerformer();
+    }
+    await update(ref(db,"participantControls/"+showId+"/"+uid),{
+      blocked:true,
+      microphoneAllowed:false,
+      cameraAllowed:false,
+      updatedAt:Date.now(),
+      updatedBy:currentUser.uid
+    });
+    await update(ref(db,"performanceQueue/"+showId+"/"+id),{
+      status:"Blocked",
+      updatedAt:Date.now(),
+      blockedBy:currentUser.uid
+    });
+    message("Singer blocked from this show.");
+  }catch(error){
+    message("Could not block singer: "+error.message);
+  }
 }
 
 async function startNextPerformer(){
