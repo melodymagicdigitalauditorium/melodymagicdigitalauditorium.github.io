@@ -35,10 +35,9 @@ const showId = params.get("showId");
 const registrationId = params.get("registrationId");
 const requestedMode = (params.get("mode") || "audience").toLowerCase();
 
-const IS_HOST_CONTROL_PAGE = [
-  "host-performance-control.html",
-  "live-stage.html"
-].some(page => location.pathname.toLowerCase().endsWith(page));
+// All live features stay inside the existing host-performance-control auditorium.
+const IS_HOST_CONTROL_PAGE =
+  location.pathname.toLowerCase().endsWith("host-performance-control.html");
 
 const REACTION_TOPIC = "mm-reactions";
 
@@ -781,6 +780,31 @@ function createPanel() {
         background:#000;
       }
 
+      /* Main-stage singer is prominent; waiting singers stay compact. */
+      #mmLiveKitPanel .mm-video-box.mm-main-stage {
+        grid-column:1 / -1;
+        border-color:#d7ad4c;
+        box-shadow:0 0 0 1px rgba(215,173,76,.25);
+      }
+      #mmLiveKitPanel .mm-video-box.mm-main-stage video {
+        min-height:300px;
+        max-height:68vh;
+        object-fit:contain;
+      }
+      #mmLiveKitPanel .mm-video-box.mm-waiting-stage {
+        min-height:110px;
+      }
+      #mmLiveKitPanel .mm-video-box.mm-waiting-stage video {
+        min-height:100px;
+        max-height:170px;
+      }
+      @media(max-width:600px) {
+        #mmLiveKitPanel .mm-video-box.mm-main-stage video {
+          min-height:210px;
+          max-height:48vh;
+        }
+      }
+
       #mmLiveKitPanel .mm-video-box audio {
         width:100%;
       }
@@ -1040,7 +1064,7 @@ function createPanel() {
         Host microphone effects are ready.
       </div>
 
-      <div class="mm-section" id="mmProgrammeMixer" style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
+      <div class="mm-section" id="mmProgrammeMixer" hidden style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
         <h3>🎚️ Professional YouTube + Microphone Mixer</h3>
         <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. YouTube ads, if shown, are included in the captured audio. Use headphones to prevent feedback.</p>
         <button type="button" id="mmStartProgrammeMixer">▶ START PROFESSIONAL MIXER</button>
