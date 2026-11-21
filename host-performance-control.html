@@ -79,10 +79,8 @@ hr{border-color:#51401e;margin:10px 0}
 </section>
 
 <section class="card" id="karaokeSection">
-  <h3>🎵 Karaoke Performance</h3>
-
-  <div id="videoMessage">Waiting for the host to select a karaoke video.</div>
-  <div id="videoPlayer" style="display:none"></div>
+  <h3>🎵 Send Karaoke Video to Singer</h3>
+  <p class="small">The assigned singer opens and plays the video on their own stage. The host can pause or stop it if needed.</p>
 
   <div id="karaokeControls" style="display:none">
     <hr>
@@ -95,28 +93,9 @@ hr{border-color:#51401e;margin:10px 0}
     <label class="small" for="youtubeInput">YouTube video URL or video ID</label>
     <input id="youtubeInput" type="text" placeholder="Paste YouTube URL here">
 
-    <button class="blue" id="loadVideoBtn">LOAD VIDEO</button>
     <button class="green" id="sendVideoToSingerBtn">📨 SEND VIDEO TO ASSIGNED SINGER</button>
-    <button class="green" id="playVideoBtn">▶ PLAY FOR EVERYONE</button>
-    <button class="blue" id="pauseVideoBtn">⏸ PAUSE EVERYONE</button>
-    <button class="green" id="resumeVideoBtn">▶ RESUME EVERYONE</button>
-    <button class="red" id="stopVideoBtn">■ STOP VIDEO</button>
-
-    <div class="volume-box">
-      <div class="volume-label">
-        <label for="karaokeVolume">🎚️ <strong>Karaoke Track Volume</strong></label>
-        <strong id="volumeValue">100%</strong>
-      </div>
-
-      <input type="range" id="karaokeVolume" min="0" max="100" value="100" step="1">
-
-      <div class="volume-label small">
-        <span>0% Mute</span>
-        <span>100% Maximum</span>
-      </div>
-
-      <p class="small">Controls the common karaoke screen volume for the host, singers and audience.</p>
-    </div>
+    <button class="blue" id="pauseVideoBtn">⏸ PAUSE SINGER VIDEO</button>
+    <button class="red" id="stopVideoBtn">■ STOP SINGER VIDEO</button>
 
     <p id="videoStatus" class="small">Host video controls are ready.</p>
   </div>
@@ -364,7 +343,7 @@ async function publishKaraokeVolume(){
   }
 }
 
-$("karaokeVolume").addEventListener("input",publishKaraokeVolume);
+
 
 function expectedPosition(data){
   if(!data)return 0;
@@ -670,43 +649,19 @@ async function playForEveryone(){
 }
 
 async function pauseForEveryone(){
-
-  if(!isHost||!currentUser||!currentVideoId)return;
-
+  if(!isHost||!currentUser)return;
   try{
-
-    let position=0;
-
-    if(playerReady&&youtubePlayer){
-      position=youtubePlayer.getCurrentTime()||0;
-    }
-
-    const data={
-      videoId:currentVideoId,
-      state:"paused",
-      basePosition:position,
-      startedAt:0,
-      syncPosition:position,
-      syncAt:0,
-      volume:Number($("karaokeVolume").value),
-      updatedAt:Date.now(),
-      updatedBy:currentUser.uid
-    };
-
-    await update(ref(db,"karaokePlayback/"+showId),data);
-
-    playbackData=data;
-
-    if(youtubePlayer)
-      youtubePlayer.pauseVideo();
-
-    videoMessage("Pause command sent to everyone.");
-
+    const stageSnap=await get(ref(db,"liveStage/"+showId));
+    const singerUids=(stageSnap.val()?.singerUids||[]).filter(Boolean);
+    if(!singerUids.length){videoMessage("Assign a singer to the main stage first.");return;}
+    const commandAt=Date.now();
+    await Promise.all(singerUids.map(uid=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+      command:"pause",commandAt,commandedBy:currentUser.uid
+    })));
+    videoMessage("Pause command sent to the assigned singer.");
   }catch(error){
-
     console.error(error);
-
-    videoMessage("Pause failed: "+error.message);
+    videoMessage("Could not pause singer video: "+error.message);
   }
 }
 
@@ -758,34 +713,19 @@ async function resumeForEveryone(){
 }
 
 async function stopForEveryone(){
-
-  if(!isHost||!currentUser||!currentVideoId)return;
-
+  if(!isHost||!currentUser)return;
   try{
-
-    const data={
-      videoId:currentVideoId,
-      state:"stopped",
-      basePosition:0,
-      startedAt:0,
-      updatedAt:Date.now(),
-      updatedBy:currentUser.uid
-    };
-
-    await update(ref(db,"karaokePlayback/"+showId),data);
-
-    playbackData=data;
-
-    if(youtubePlayer)
-      youtubePlayer.stopVideo();
-
-    videoMessage("Video stopped for everyone.");
-
+    const stageSnap=await get(ref(db,"liveStage/"+showId));
+    const singerUids=(stageSnap.val()?.singerUids||[]).filter(Boolean);
+    if(!singerUids.length){videoMessage("Assign a singer to the main stage first.");return;}
+    const commandAt=Date.now();
+    await Promise.all(singerUids.map(uid=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+      command:"stop",commandAt,commandedBy:currentUser.uid
+    })));
+    videoMessage("Stop command sent to the assigned singer.");
   }catch(error){
-
     console.error(error);
-
-    videoMessage("Stop failed: "+error.message);
+    videoMessage("Could not stop singer video: "+error.message);
   }
 }
 
@@ -1280,11 +1220,8 @@ $("hostYouTubeSearchBtn").addEventListener("click",()=>{
 $("hostYouTubeSearch").addEventListener("keydown",event=>{
   if(event.key==="Enter")$("hostYouTubeSearchBtn").click();
 });
-$("loadVideoBtn").addEventListener("click",loadSelectedVideo);
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
-$("playVideoBtn").addEventListener("click",playForEveryone);
 $("pauseVideoBtn").addEventListener("click",pauseForEveryone);
-$("resumeVideoBtn").addEventListener("click",resumeForEveryone);
 $("stopVideoBtn").addEventListener("click",stopForEveryone);
 
 
@@ -1297,7 +1234,7 @@ async function sendVideoToAssignedSinger(){
     const stage=stageSnap.val()||{};
     const singerUids=Array.isArray(stage.singerUids)?stage.singerUids.filter(Boolean):[];
     if(!singerUids.length){videoMessage("Assign a singer to the main stage first.");return;}
-    const payload={videoId, sentAt:Date.now(), sentBy:currentUser.uid};
+    const payload={videoId, sentAt:Date.now(), sentBy:currentUser.uid, command:"", commandAt:0};
     await Promise.all(singerUids.map(uid=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),payload)));
     videoMessage("Video sent to "+singerUids.length+" assigned singer(s). They can open it on their singer page.");
   }catch(error){
@@ -1402,8 +1339,6 @@ async function initializeForUser(user){
     }
 
     startPerformanceListener();
-    startPlaybackListener();
-    startDriftCorrection();
 
   }catch(error){
 
