@@ -670,7 +670,7 @@ function showSingerMobileEntry(message = "") {
 }
 
 async function activateSingerMobileRegistration(value) {
-  const mobile = String(value || "").replace(/\\D/g, "");
+  const mobile = String(value || "").replace(/\D/g, "");
   if (!/^\\d{10}$/.test(mobile)) {
     throw new Error("Please enter a valid 10-digit mobile number.");
   }
@@ -1776,8 +1776,8 @@ function updateActivePerformerKaraokeLayout() {
   const activeName = normalizeIdentity(
     performance.currentPerformerName || performance.singerName || performance.name
   );
-  const myMobile = safeText(singerRegistration?.mobile).replace(/\\D/g, "").slice(-10);
-  const activeMobile = safeText(performance.mobile || performance.singerMobile).replace(/\\D/g, "").slice(-10);
+  const myMobile = safeText(singerRegistration?.mobile).replace(/\D/g, "").slice(-10);
+  const activeMobile = safeText(performance.mobile || performance.singerMobile).replace(/\D/g, "").slice(-10);
   const isSinger = requestedMode === "singer" || currentRole === "singer" || !!singerRegistration;
   const isPerforming = safeText(performance.status || performance.performanceStatus).toLowerCase() === "performing";
   const identityMatches =
