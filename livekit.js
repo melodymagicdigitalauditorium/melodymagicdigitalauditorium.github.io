@@ -1451,7 +1451,9 @@ async function getAccessToken() {
     return workerRequest({
       action: "joinSinger",
       mobile: singerMobile,
-      ...(registrationId ? { registrationId } : {}),
+      ...((singerRegistration?.registrationId || registrationId)
+        ? { registrationId: singerRegistration?.registrationId || registrationId }
+        : {}),
       name: currentUser.displayName || singerRegistration?.singerName || "Singer"
     });
   }
