@@ -3577,14 +3577,13 @@ function updateControlButtons() {
 function listenToMyPermissions() {
   if (!currentUser || !showId) return;
 
-  const permissionRef = currentRole === "singer" && singerMobile
-    ? query(
-        ref(db, "participantControls/" + showId),
-        orderByChild("mobile"),
-        equalTo(singerMobile),
-        limitToFirst(1)
-      )
-    : ref(db, "participantControls/" + showId + "/" + getSingerParticipantUid());
+  // Read permissions by the exact LiveKit singer identity.
+  // A mobile-number query can return a stale/other registration record and
+  // prevent camera/microphone changes from reaching the correct singer.
+  const permissionRef = ref(
+    db,
+    "participantControls/" + showId + "/" + getSingerParticipantUid()
+  );
 
   if (permissionListener) {
     off(permissionRef, "value", permissionListener);
