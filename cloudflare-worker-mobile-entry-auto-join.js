@@ -868,7 +868,7 @@ async function getSingerRegistration(
 }
 
 function normalizeMobile(value) {
-  return String(value || "").replace(/\\D/g, "").slice(-10);
+  return String(value || "").replace(/\D/g, "").slice(-10);
 }
 
 
