@@ -1788,7 +1788,7 @@ function updateKaraokePlayerAccess() {
     try { youtubePlayer.mute(); } catch (error) {}
   }
   const button = byId("mmSingerKaraokeAudioBtn");
-  if (button) button.hidden = !isCurrentSingerAssignedToStage();
+  if (button) button.hidden = !(isCurrentSingerAssignedToStage() && microphoneAllowed);
 }
 
 function updateActivePerformerKaraokeLayout() {
