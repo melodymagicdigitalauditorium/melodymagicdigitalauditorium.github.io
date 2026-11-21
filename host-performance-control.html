@@ -648,15 +648,33 @@ async function playForEveryone(){
   }
 }
 
+async function getStageSingerRecords(){
+  const [stageSnap, registrationsSnap] = await Promise.all([
+    get(ref(db,"liveStage/"+showId)),
+    get(ref(db,"showRegistrations/"+showId))
+  ]);
+  const stage = stageSnap.val() || {};
+  const rawUids = stage.singerUids || [];
+  const singerUids = (Array.isArray(rawUids) ? rawUids : Object.values(rawUids)).filter(Boolean);
+  const registrations = registrationsSnap.val() || {};
+
+  return singerUids.map(uid => {
+    const registration = Object.values(registrations).find(item =>
+      item && item.singerUid === uid
+    );
+    const mobile = String(registration?.mobile || "").replace(/\\D/g,"").slice(-10);
+    return { uid, mobile };
+  }).filter(item => item.mobile.length === 10);
+}
+
 async function pauseForEveryone(){
   if(!isHost||!currentUser)return;
   try{
-    const stageSnap=await get(ref(db,"liveStage/"+showId));
-    const singerUids=(stageSnap.val()?.singerUids||[]).filter(Boolean);
-    if(!singerUids.length){videoMessage("Assign a singer to the main stage first.");return;}
+    const singers=await getStageSingerRecords();
+    if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
     const commandAt=Date.now();
-    await Promise.all(singerUids.map(uid=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      command:"pause",commandAt,commandedBy:currentUser.uid
+    await Promise.all(singers.map(({uid,mobile})=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+      mobile,command:"pause",commandAt,commandedBy:currentUser.uid
     })));
     videoMessage("Pause command sent to the assigned singer.");
   }catch(error){
@@ -715,12 +733,11 @@ async function resumeForEveryone(){
 async function stopForEveryone(){
   if(!isHost||!currentUser)return;
   try{
-    const stageSnap=await get(ref(db,"liveStage/"+showId));
-    const singerUids=(stageSnap.val()?.singerUids||[]).filter(Boolean);
-    if(!singerUids.length){videoMessage("Assign a singer to the main stage first.");return;}
+    const singers=await getStageSingerRecords();
+    if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
     const commandAt=Date.now();
-    await Promise.all(singerUids.map(uid=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      command:"stop",commandAt,commandedBy:currentUser.uid
+    await Promise.all(singers.map(({uid,mobile})=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+      mobile,command:"stop",commandAt,commandedBy:currentUser.uid
     })));
     videoMessage("Stop command sent to the assigned singer.");
   }catch(error){
@@ -1230,13 +1247,12 @@ async function sendVideoToAssignedSinger(){
   const videoId=getYouTubeVideoId($("youtubeInput").value);
   if(!videoId){videoMessage("Paste a valid YouTube video link first.");return;}
   try{
-    const stageSnap=await get(ref(db,"liveStage/"+showId));
-    const stage=stageSnap.val()||{};
-    const singerUids=Array.isArray(stage.singerUids)?stage.singerUids.filter(Boolean):[];
-    if(!singerUids.length){videoMessage("Assign a singer to the main stage first.");return;}
-    const payload={videoId, sentAt:Date.now(), sentBy:currentUser.uid, command:"", commandAt:0};
-    await Promise.all(singerUids.map(uid=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),payload)));
-    videoMessage("Video sent to "+singerUids.length+" assigned singer(s). They can open it on their singer page.");
+    const singers=await getStageSingerRecords();
+    if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
+    await Promise.all(singers.map(({uid,mobile})=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+      videoId,mobile,sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
+    })));
+    videoMessage("Video sent to "+singers.length+" assigned singer(s). They can open it on their singer page.");
   }catch(error){
     console.error("Send singer video error:",error);
     videoMessage("Could not send video: "+error.message);
