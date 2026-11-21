@@ -1,5 +1,5 @@
 
-const WORKER_VERSION = "melody-magic-mobile-entry-auto-join-2026-11-20";
+const WORKER_VERSION = "melody-magic-mobile-entry-auto-join-2026-11-21";
 
 const FIREBASE_PROJECT_ID = "melody-magic-auditorium";
 
@@ -109,18 +109,67 @@ export default {
 
 
       /* =====================================
+         CHECK SINGER MOBILE REGISTRATION
+      ===================================== */
+
+      if (action === "checkSingerRegistration") {
+        const mobile = normalizeMobile(body.mobile || "");
+
+        if (!/^\\d{10}$/.test(mobile)) {
+          return json({ error: "Enter your registered 10-digit mobile number." }, 400, corsHeaders);
+        }
+
+        const registration = await getSingerRegistration(
+          showId,
+          user.uid,
+          idToken,
+          "",
+          mobile
+        );
+
+        if (!registration) {
+          return json({
+            error: "No registration was found for this mobile number in this show.",
+            workerVersion: WORKER_VERSION,
+            action
+          }, 404, corsHeaders);
+        }
+
+        if (!isSingerApproved(registration.status)) {
+          return json({
+            error: "Your registration is not approved yet. Please wait for host approval.",
+            registrationStatus: registration.status || "Pending",
+            workerVersion: WORKER_VERSION,
+            action
+          }, 403, corsHeaders);
+        }
+
+        return json({
+          success: true,
+          action,
+          workerVersion: WORKER_VERSION,
+          registrationId: registration.registrationId,
+          singerUid: registration.singerUid,
+          singerName: registration.singerName || registration.name || "Singer",
+          status: registration.status
+        }, 200, corsHeaders);
+      }
+
+      /* =====================================
          SINGER ENTRY
       ===================================== */
 
       if (action === "joinSinger") {
         const requestedRegistrationId =
           String(body.registrationId || "").trim();
+        const requestedMobile = normalizeMobile(body.mobile || "");
 
         const registration = await getSingerRegistration(
           showId,
           user.uid,
           idToken,
-          requestedRegistrationId
+          requestedRegistrationId,
+          requestedMobile
         );
 
         if (
@@ -145,16 +194,17 @@ export default {
           }, 403, corsHeaders);
         }
 
+        const participantUid = registration.singerUid || user.uid;
         const stage = await readDB(`liveStage/${showId}`, idToken);
 
         const selected = isSingerSelected(
           stage,
-          user.uid,
+          participantUid,
           registration
         );
 
         const controls = await readDB(
-          `participantControls/${showId}/${user.uid}`,
+          `participantControls/${showId}/${participantUid}`,
           idToken
         ) || {};
 
@@ -165,7 +215,7 @@ export default {
           controls.microphoneAllowed === true;
 
         const token = await createLiveKitToken(env, {
-          uid: user.uid,
+          uid: participantUid,
           showId,
           name:
             registration.singerName ||
@@ -183,6 +233,7 @@ export default {
           action: "joinSinger",
           workerVersion: WORKER_VERSION,
           authenticatedUid: user.uid,
+          singerUid: participantUid,
           registrationConfirmed: true,
           singerStageStatus: selected ? "selected" : "waiting",
           registrationId: registration.registrationId,
@@ -768,13 +819,17 @@ async function getSingerRegistration(
   showId,
   uid,
   idToken,
-  requestedRegistrationId = ""
+  requestedRegistrationId = "",
+  requestedMobile = ""
 ) {
   const path = databasePath(`showRegistrations/${showId}`);
+  const useMobile = Boolean(requestedMobile);
+  const orderField = useMobile ? "mobile" : "singerUid";
+  const orderValue = useMobile ? requestedMobile : uid;
 
   const query =
-    `orderBy=${encodeURIComponent(JSON.stringify("singerUid"))}` +
-    `&equalTo=${encodeURIComponent(JSON.stringify(uid))}` +
+    `orderBy=${encodeURIComponent(JSON.stringify(orderField))}` +
+    `&equalTo=${encodeURIComponent(JSON.stringify(orderValue))}` +
     `&auth=${encodeURIComponent(idToken)}`;
 
   const response = await fetch(
@@ -789,31 +844,19 @@ async function getSingerRegistration(
 
   const records = await response.json();
 
-  if (!records || typeof records !== "object") {
-    return null;
-  }
+  if (!records || typeof records !== "object") return null;
 
   const matches = Object.entries(records)
-    .map(([id, value]) => ({
-      ...(value || {}),
-      registrationId: id
-    }))
+    .map(([id, value]) => ({ ...(value || {}), registrationId: id }))
     .filter(record => {
-      const correctSinger = record.singerUid === uid;
-
+      const correctSinger = useMobile
+        ? normalizeMobile(record.mobile) === requestedMobile
+        : record.singerUid === uid;
       const correctRegistration =
         !requestedRegistrationId ||
         record.registrationId === requestedRegistrationId;
-
-      const correctShow =
-        !record.showId ||
-        record.showId === showId;
-
-      return (
-        correctSinger &&
-        correctRegistration &&
-        correctShow
-      );
+      const correctShow = !record.showId || record.showId === showId;
+      return correctSinger && correctRegistration && correctShow;
     })
     .sort((a, b) =>
       Number(b.createdAt || b.submittedAt || 0) -
@@ -821,6 +864,10 @@ async function getSingerRegistration(
     );
 
   return matches[0] || null;
+}
+
+function normalizeMobile(value) {
+  return String(value || "").replace(/\\D/g, "").slice(-10);
 }
 
 
