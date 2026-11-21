@@ -3548,17 +3548,25 @@ function updateControlButtons() {
 function listenToMyPermissions() {
   if (!currentUser || !showId) return;
 
-  const permissionRef = ref(
-    db,
-    "participantControls/" + showId + "/" + getSingerParticipantUid()
-  );
+  const permissionRef = currentRole === "singer" && singerMobile
+    ? query(
+        ref(db, "participantControls/" + showId),
+        orderByChild("mobile"),
+        equalTo(singerMobile),
+        limitToFirst(1)
+      )
+    : ref(db, "participantControls/" + showId + "/" + getSingerParticipantUid());
 
   if (permissionListener) {
     off(permissionRef, "value", permissionListener);
   }
 
   permissionListener = snapshot => {
-    const controls = snapshot.val() || {};
+    let controls = snapshot.val() || {};
+    if (currentRole === "singer" && singerMobile) {
+      controls = {};
+      snapshot.forEach(child => { controls = child.val() || {}; });
+    }
 
     if (currentRole !== "singer") {
       microphoneAllowed = false;
