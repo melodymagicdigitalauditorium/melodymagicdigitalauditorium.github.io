@@ -655,6 +655,12 @@ function isApproved(value) {
   );
 }
 
+function getSingerParticipantUid() {
+  return requestedMode === "singer" && singerRegistration?.singerUid
+    ? singerRegistration.singerUid
+    : currentUser?.uid;
+}
+
 function showSingerMobileEntry(message = "") {
   const panel = byId("mmSingerMobileEntry");
   const messageNode = byId("mmSingerMobileMessage");
@@ -1742,7 +1748,7 @@ function listenToQueue() {
 }
 
 function isCurrentSingerAssignedToStage() {
-  return currentRole === "singer" && !!currentUser && stageSingerUids.includes(currentUser.uid);
+  return currentRole === "singer" && !!currentUser && stageSingerUids.includes(getSingerParticipantUid());
 }
 
 function updateKaraokePlayerAccess() {
@@ -2064,7 +2070,7 @@ async function applyPlayback(data) {
   const videoId = safeText(data.videoId).trim();
   const state = safeText(data.state).toLowerCase();
 
-  const canView = isHost || (requestedMode === "singer" && !!currentUser && stageSingerUids.includes(currentUser.uid));
+  const canView = isHost || (requestedMode === "singer" && !!currentUser && stageSingerUids.includes(getSingerParticipantUid()));
   if (!canView) {
     updateKaraokePlayerAccess();
     return;
@@ -2186,7 +2192,7 @@ function getSingerYouTubeVideoId(value) {
 
 function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer") return;
-  const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + currentUser.uid);
+  const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + getSingerParticipantUid());
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
   singerKaraokeListener = snapshot => {
@@ -3534,7 +3540,7 @@ function listenToMyPermissions() {
 
   const permissionRef = ref(
     db,
-    "participantControls/" + showId + "/" + currentUser.uid
+    "participantControls/" + showId + "/" + getSingerParticipantUid()
   );
 
   if (permissionListener) {
@@ -3560,7 +3566,7 @@ function listenToMyPermissions() {
     }
 
     const selected =
-      stageSingerUids.includes(currentUser.uid);
+      stageSingerUids.includes(getSingerParticipantUid());
 
     microphoneAllowed = selected && controls.microphoneAllowed === true;
     cameraAllowed = controls.cameraAllowed !== false;
@@ -3654,7 +3660,7 @@ function listenToStage() {
     updateKaraokePlayerAccess();
 
     if (currentRole === "singer" && currentUser) {
-      const selected = stageSingerUids.includes(currentUser.uid);
+      const selected = stageSingerUids.includes(getSingerParticipantUid());
 
       if (!selected) {
         microphoneAllowed = false;
@@ -3996,7 +4002,7 @@ async function selectMainSingers() {
 function stopFirebaseListeners() {
   if (permissionListener && currentUser && showId) {
     off(
-      ref(db, "participantControls/" + showId + "/" + currentUser.uid),
+      ref(db, "participantControls/" + showId + "/" + getSingerParticipantUid()),
       "value",
       permissionListener
     );
