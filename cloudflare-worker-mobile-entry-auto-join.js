@@ -830,6 +830,7 @@ async function getSingerRegistration(
   const query =
     `orderBy=${encodeURIComponent(JSON.stringify(orderField))}` +
     `&equalTo=${encodeURIComponent(JSON.stringify(orderValue))}` +
+    (useMobile ? `&limitToFirst=5` : "") +
     `&auth=${encodeURIComponent(idToken)}`;
 
   const response = await fetch(
