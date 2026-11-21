@@ -714,6 +714,22 @@ async function activateSingerMobileRegistration(value) {
   }
 }
 
+window.MelodyMagicSingerEntry = async function () {
+  const input = byId("mmSingerMobileInput");
+  const message = byId("mmSingerMobileMessage");
+  const button = byId("mmSingerMobileContinue");
+  if (button) { button.disabled = true; button.textContent = "CHECKING..."; }
+  if (message) message.textContent = "Checking registration...";
+  try {
+    await activateSingerMobileRegistration(input?.value || "");
+  } catch (error) {
+    if (message) message.textContent = error?.message || "Registration check failed.";
+    setSingerVisibleStatus("Registration check failed", error?.message || "Please try again.");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "CONTINUE TO LIVE STAGE"; }
+  }
+};
+
 function wireSingerMobileEntry() {
   const button = byId("mmSingerMobileContinue");
   const input = byId("mmSingerMobileInput");
