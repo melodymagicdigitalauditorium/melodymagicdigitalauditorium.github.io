@@ -203,10 +203,18 @@ export default {
           registration
         );
 
-        const controls = await readDB(
-          `participantControls/${showId}/${participantUid}`,
-          idToken
-        ) || {};
+        const controls = requestedMobile
+          ? await readDBQuery(
+              `participantControls/${showId}`,
+              "mobile",
+              requestedMobile,
+              idToken,
+              1
+            ) || {}
+          : await readDB(
+              `participantControls/${showId}/${participantUid}`,
+              idToken
+            ) || {};
 
         const cameraAllowed = true;
 
@@ -438,6 +446,7 @@ export default {
           {
             microphoneAllowed,
             cameraAllowed,
+            mobile: normalizeMobile(registration.mobile || ""),
             updatedAt: Date.now(),
             updatedBy: user.uid
           },
@@ -789,6 +798,22 @@ async function readDB(path, idToken) {
   return response.json();
 }
 
+
+async function readDBQuery(path, orderField, orderValue, idToken, limit = 1) {
+  const queryString =
+    `orderBy=${encodeURIComponent(JSON.stringify(orderField))}` +
+    `&equalTo=${encodeURIComponent(JSON.stringify(orderValue))}` +
+    `&limitToFirst=${Number(limit)}` +
+    `&auth=${encodeURIComponent(idToken)}`;
+  const response = await fetch(
+    `${FIREBASE_DATABASE_URL}/${databasePath(path)}.json?${queryString}`
+  );
+  if (!response.ok) throw new Error(`Firebase query failed (${response.status})`);
+  const records = await response.json();
+  if (!records || typeof records !== "object") return {};
+  const first = Object.values(records)[0];
+  return first && typeof first === "object" ? first : {};
+}
 
 async function writeDB(path, value, idToken) {
   const url =
