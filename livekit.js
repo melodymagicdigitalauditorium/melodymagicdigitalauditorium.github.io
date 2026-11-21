@@ -4279,6 +4279,12 @@ async function initializeShow() {
     return;
   }
 
+  // Show the singer's mobile entry immediately. Do not make the
+  // entry form wait for Firebase authentication or show loading.
+  if (requestedMode === "singer") {
+    showSingerMobileEntry("Preparing singer entry...");
+  }
+
   try {
     await waitForAuth();
     await loadShow();
