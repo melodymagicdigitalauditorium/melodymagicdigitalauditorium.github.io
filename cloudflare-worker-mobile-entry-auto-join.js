@@ -164,7 +164,7 @@ export default {
           String(body.registrationId || "").trim();
         const requestedMobile = normalizeMobile(body.mobile || "");
 
-        if (!/^\\d{10}$/.test(requestedMobile)) {
+        if (!/^\d{10}$/.test(requestedMobile)) {
           return json({
             error: "Enter the same registered 10-digit mobile number.",
             workerVersion: WORKER_VERSION,
