@@ -73,6 +73,7 @@ let controlsListener = null;
 let commentsListener = null;
 let queueListener = null;
 let playbackListener = null;
+let singerKaraokeListener = null;
 let showLifecycleListener = null;
 let showLifecycleTimer = null;
 let showLifecycleState = "Scheduled";
@@ -2190,6 +2191,120 @@ async function applyPlayback(data) {
   }
 }
 
+
+function getSingerYouTubeVideoId(value) {
+  const input = String(value || "").trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+  try {
+    const url = new URL(input);
+    if (url.hostname === "youtu.be" || url.hostname.endsWith(".youtu.be")) {
+      return url.pathname.split("/").filter(Boolean)[0] || "";
+    }
+    if (url.hostname === "youtube.com" || url.hostname.endsWith(".youtube.com")) {
+      const v = url.searchParams.get("v");
+      if (v) return v;
+      const parts = url.pathname.split("/").filter(Boolean);
+      const index = parts.findIndex(part => ["embed", "shorts", "live"].includes(part));
+      if (index >= 0) return parts[index + 1] || "";
+    }
+  } catch (error) {}
+  return "";
+}
+
+function wireSingerKaraokeTools() {
+  const searchInput = byId("mmSingerYouTubeSearch");
+  const searchButton = byId("mmSingerSearchBtn");
+  const videoInput = byId("mmSingerVideoUrl");
+  const loadButton = byId("mmSingerLoadVideoBtn");
+  if (searchButton && searchInput && searchButton.dataset.mmWired !== "true") {
+    searchButton.dataset.mmWired = "true";
+    const searchYouTube = () => {
+      const query = safeText(searchInput.value).trim();
+      if (!query) { searchInput.focus(); return; }
+      window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query + " karaoke"), "_blank", "noopener");
+    };
+    searchButton.addEventListener("click", searchYouTube);
+    searchInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") searchYouTube();
+    });
+  }
+  if (loadButton && videoInput && loadButton.dataset.mmWired !== "true") {
+    loadButton.dataset.mmWired = "true";
+    loadButton.addEventListener("click", async () => {
+      const videoId = getSingerYouTubeVideoId(videoInput.value);
+      const status = byId("mmPlaybackStatus");
+      if (!videoId) {
+        if (status) status.textContent = "Paste a valid YouTube video link or video ID.";
+        return;
+      }
+      loadButton.disabled = true;
+      try {
+        const player = await createYouTubePlayer(videoId);
+        if (!player) throw new Error("YouTube player is not ready.");
+        lastYoutubeVideoId = videoId;
+        lastPlaybackSignature = "";
+        player.loadVideoById(videoId);
+        player.setVolume(100);
+        player.unMute();
+        if (status) status.textContent = "Your karaoke video is loaded on your stage.";
+      } catch (error) {
+        if (status) status.textContent = "Could not load video: " + error.message;
+      } finally {
+        loadButton.disabled = false;
+      }
+    });
+  }
+}
+
+function listenToSingerKaraokeVideo() {
+  if (!showId || !currentUser || requestedMode !== "singer") return;
+  const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + currentUser.uid);
+  if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
+  singerKaraokeListener = snapshot => {
+    const data = snapshot.val() || {};
+    const videoId = safeText(data.videoId).trim();
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return;
+    const notice = byId("mmSingerSentVideo");
+    if (!notice) return;
+    notice.replaceChildren();
+    const label = document.createElement("strong");
+    label.textContent = "🎵 The host sent you a karaoke video. ";
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.textContent = "OPEN VIDEO ON MY STAGE";
+    openButton.style.cssText = "padding:9px 11px;margin:6px;border-radius:7px;border:1px solid #b58a35;background:#292319;color:#fff";
+    openButton.addEventListener("click", async () => {
+      openButton.disabled = true;
+      try {
+        const player = await createYouTubePlayer(videoId);
+        if (!player) throw new Error("YouTube player is not ready.");
+        lastYoutubeVideoId = videoId;
+        lastPlaybackSignature = "";
+        player.loadVideoById(videoId);
+        player.setVolume(100);
+        player.unMute();
+        const input = byId("mmSingerVideoUrl");
+        if (input) input.value = "https://www.youtube.com/watch?v=" + videoId;
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Host's karaoke video opened on your singer stage.";
+      } catch (error) {
+        const status = byId("mmPlaybackStatus");
+        if (status) status.textContent = "Could not open host video: " + error.message;
+      } finally {
+        openButton.disabled = false;
+      }
+    });
+    notice.append(label, openButton);
+    const videoNotice = byId("mmSingerVideoNotice");
+    if (videoNotice) videoNotice.textContent = "New karaoke video received from the host.";
+  };
+  onValue(singerVideoRef, singerKaraokeListener, error => {
+    console.error("Singer karaoke video listener error:", error);
+    const status = byId("mmSingerVideoNotice");
+    if (status) status.textContent = "Could not receive host video: " + error.message;
+  });
+}
+
 function listenToKaraokePlayback() {
   if (!showId) return;
 
@@ -4131,6 +4246,7 @@ async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
   wireSingerKaraokeAudioButton();
+  wireSingerKaraokeTools();
   updateReactionButtons();
   updateCommentControls();
 
@@ -4151,7 +4267,7 @@ async function initializeShow() {
     // Start the shared karaoke listener as soon as Firebase is ready.
     // It must not depend on the LiveKit camera/microphone connection:
     // a singer should still receive the host's video if LiveKit is delayed.
-    if (requestedMode === "singer" || requestedMode === "audience") {
+    if (requestedMode === "audience") {
       listenToKaraokePlayback();
     }
 
@@ -4162,6 +4278,7 @@ async function initializeShow() {
       singerRegistration = await findCurrentSingerRegistration();
       if (singerRegistration) requestedMode = "singer";
     }
+    if (requestedMode === "singer") listenToSingerKaraokeVideo();
 
     if (byId("mmHostControls")) {
       byId("mmHostControls").hidden = true;
