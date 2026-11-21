@@ -113,6 +113,9 @@ let playbackSyncTimer = null;
 let sharedKaraokeTracks = [];
 let sharedKaraokeStarting = false;
 let sharedKaraokeStopping = false;
+let singerKaraokeCaptureStream = null;
+let singerKaraokeAudioContext = null;
+let singerKaraokeMixTrack = null;
 
 let liveComments = [];
 let liveQueue = [];
@@ -1771,6 +1774,23 @@ function listenToQueue() {
   onValue(queueRef, queueListener);
 }
 
+function isCurrentSingerAssignedToStage() {
+  return currentRole === "singer" && !!currentUser && stageSingerUids.includes(currentUser.uid);
+}
+
+function updateKaraokePlayerAccess() {
+  const card = byId("mmYoutubePlayer")?.closest(".card, .mm-card");
+  const canView = isHost || isCurrentSingerAssignedToStage();
+  if (card) card.style.display = canView ? "" : "none";
+  if (!canView && youtubePlayer) {
+    try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {}
+  } else if (canView && youtubePlayer && currentRole === "host") {
+    try { youtubePlayer.mute(); } catch (error) {}
+  }
+  const button = byId("mmSingerKaraokeAudioBtn");
+  if (button) button.hidden = !(isCurrentSingerAssignedToStage() && microphoneAllowed);
+}
+
 function updateActivePerformerKaraokeLayout() {
   const performance = activePerformanceData || {};
   const myUid = safeText(currentUser?.uid);
@@ -1792,9 +1812,10 @@ function updateActivePerformerKaraokeLayout() {
     (!!myRegistrationId && !!activeRegistrationId && activeRegistrationId === myRegistrationId) ||
     (!!myName && !!activeName && activeName === myName) ||
     (!!myMobile && !!activeMobile && activeMobile === myMobile);
-  const isMyPerformance = isSinger && isPerforming && identityMatches;
+  const isMyPerformance = isSinger && (stageSingerUids.includes(myUid) || (isPerforming && identityMatches));
 
   document.body.classList.toggle("mm-active-performer", isMyPerformance);
+  updateKaraokePlayerAccess();
   const karaokeCard = document.querySelector("#mmYoutubePlayer")?.closest(".card");
   const heading = karaokeCard?.querySelector("h2");
   if (heading) heading.textContent = isMyPerformance
@@ -2069,6 +2090,12 @@ async function applyPlayback(data) {
   const videoId = safeText(data.videoId).trim();
   const state = safeText(data.state).toLowerCase();
 
+  const canView = isHost || (requestedMode === "singer" && !!currentUser && stageSingerUids.includes(currentUser.uid));
+  if (!canView) {
+    updateKaraokePlayerAccess();
+    return;
+  }
+
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     if (statusElement) {
       statusElement.textContent =
@@ -2086,12 +2113,16 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // The host-control page uses its own YouTube player. Singer/audience
-    // pages use this shared, Firebase-synchronised player and must hear it.
-    // Each device plays its own YouTube stream, so ads may still differ.
-    player.setVolume(sharedVolume);
-    if (sharedVolume === 0) player.mute();
-    else player.unMute();
+    // Host gets a silent visual preview only. Only the assigned singer hears
+    // local YouTube playback; everyone else receives the singer-published mix.
+    if (currentRole === "host" || isHost) {
+      player.setVolume(0);
+      player.mute();
+    } else {
+      player.setVolume(sharedVolume);
+      if (sharedVolume === 0) player.mute();
+      else player.unMute();
+    }
 
     const signature = [
       videoId,
@@ -2809,6 +2840,74 @@ function hostCanUseAudioEffects() {
   );
 }
 
+async function startSingerKaraokeAudio() {
+  if (!isCurrentSingerAssignedToStage() || !microphoneAllowed || !room || !isJoined) {
+    throw new Error("Wait until the host assigns you to the main stage and grants microphone permission.");
+  }
+  if (publishedMicrophoneTrack) return;
+  if (!navigator.mediaDevices?.getDisplayMedia || !navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Use desktop Chrome and allow tab audio sharing.");
+  }
+
+  let displayStream = null;
+  let micStream = null;
+  let context = null;
+  try {
+    // Chrome requires the singer to select This Tab and enable Share tab audio.
+    displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    const tabAudio = displayStream.getAudioTracks()[0];
+    if (!tabAudio) throw new Error("No tab audio was shared. Select This Tab and tick Share tab audio.");
+    displayStream.getVideoTracks().forEach(track => track.stop());
+
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      video: false
+    });
+    const micTrack = micStream.getAudioTracks()[0];
+    if (!micTrack) throw new Error("No microphone was found.");
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser.");
+    context = new AudioContextClass();
+    await context.resume();
+    const destination = context.createMediaStreamDestination();
+    const karaokeSource = context.createMediaStreamSource(new MediaStream([tabAudio]));
+    const micSource = context.createMediaStreamSource(new MediaStream([micTrack]));
+    const karaokeGain = context.createGain();
+    const micGain = context.createGain();
+    karaokeGain.gain.value = 0.85;
+    micGain.gain.value = 1;
+    karaokeSource.connect(karaokeGain).connect(destination);
+    micSource.connect(micGain).connect(destination);
+
+    const mixedTrack = destination.stream.getAudioTracks()[0];
+    await room.localParticipant.publishTrack(mixedTrack, {
+      name: "Melody Magic Singer Microphone + Karaoke Mix",
+      source: Track.Source.Microphone
+    });
+
+    singerKaraokeCaptureStream = new MediaStream([tabAudio, micTrack]);
+    singerKaraokeAudioContext = context;
+    singerKaraokeMixTrack = mixedTrack;
+    rawMicrophoneTrack = micTrack;
+    publishedMicrophoneTrack = mixedTrack;
+    processedMicrophoneTrack = mixedTrack;
+    localMicEnabled = true;
+    tabAudio.addEventListener("ended", () => {
+      if (localMicEnabled && currentRole === "singer") stopMicrophoneEffects();
+    }, { once: true });
+    updateControlButtons();
+    const button = byId("mmSingerKaraokeAudioBtn");
+    if (button) button.textContent = "■ Stop microphone + karaoke audio";
+    showMessage("Your microphone and karaoke audio are now live for the host, audience and queue.", "success");
+  } catch (error) {
+    if (context) { try { await context.close(); } catch (e) {} }
+    if (displayStream) displayStream.getTracks().forEach(track => track.stop());
+    if (micStream) micStream.getTracks().forEach(track => track.stop());
+    throw error;
+  }
+}
+
 async function startMicrophoneEffects() {
   if (!hostCanUseAudioEffects()) {
     throw new Error("Microphone processing is not currently permitted.");
@@ -3041,6 +3140,15 @@ async function stopMicrophoneEffects() {
   }
   publishedMicrophoneTrack = null;
   processedMicrophoneTrack = null;
+  if (singerKaraokeCaptureStream) {
+    singerKaraokeCaptureStream.getTracks().forEach(track => { try { track.stop(); } catch (error) {} });
+    singerKaraokeCaptureStream = null;
+  }
+  if (singerKaraokeAudioContext) {
+    try { await singerKaraokeAudioContext.close(); } catch (error) {}
+    singerKaraokeAudioContext = null;
+  }
+  singerKaraokeMixTrack = null;
   if (audioEffects) {
     audioEffects.stop();
     audioEffects = null;
@@ -3228,7 +3336,9 @@ async function toggleMicrophone() {
       return;
     }
 
-    if (currentRole === "host" || currentRole === "singer") {
+    if (currentRole === "singer") {
+      await startSingerKaraokeAudio();
+    } else if (currentRole === "host") {
       await startMicrophoneEffects();
     }
 
@@ -3373,15 +3483,12 @@ function listenToMyPermissions() {
 ========================================= */
 
 async function autoEnableSingerMicrophone() {
-  if (currentRole !== "singer" || !room || !isJoined || !microphoneAllowed || localMicEnabled) return;
-  try {
-    await startMicrophoneEffects();
-    showMessage("Main stage assigned. Host master audio effects are ON.", "success");
-    updateControlButtons();
-  } catch (error) {
-    localMicEnabled = false;
-    showMessage("Stage assigned, but microphone permission is needed in browser settings: " + error.message, "warning");
-    updateControlButtons();
+  if (currentRole !== "singer") return;
+  updateKaraokePlayerAccess();
+  if (isCurrentSingerAssignedToStage() && microphoneAllowed && !localMicEnabled) {
+    const button = byId("mmSingerKaraokeAudioBtn");
+    if (button) button.hidden = false;
+    showMessage("You are on the main stage. Press START MIC + KARAOKE AUDIO and share this Chrome tab with audio.");
   }
 }
 
@@ -3438,6 +3545,9 @@ function listenToStage() {
       tile.classList.toggle("mm-main-stage", selected);
       tile.classList.toggle("mm-waiting-stage", !selected && !isHostTile);
     });
+
+    updateActivePerformerKaraokeLayout();
+    updateKaraokePlayerAccess();
 
     if (currentRole === "singer" && currentUser) {
       const selected = stageSingerUids.includes(currentUser.uid);
@@ -3987,6 +4097,32 @@ function wirePublicInteractionControls() {
   updateReactionButtons();
 }
 
+function wireSingerKaraokeAudioButton() {
+  const button = byId("mmSingerKaraokeAudioBtn");
+  if (!button || button.dataset.mmWired === "true") return;
+  button.dataset.mmWired = "true";
+  button.hidden = true;
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      if (localMicEnabled) {
+        await stopMicrophoneEffects();
+        button.textContent = "🎤 START MIC + KARAOKE AUDIO";
+        showMessage("Singer microphone and karaoke audio stopped.");
+      } else {
+        button.textContent = "Starting audio...";
+        await startSingerKaraokeAudio();
+      }
+    } catch (error) {
+      button.textContent = "🎤 START MIC + KARAOKE AUDIO";
+      showMessage("Could not start singer audio: " + error.message, "error");
+    } finally {
+      button.disabled = false;
+      updateKaraokePlayerAccess();
+    }
+  });
+}
+
 /* =========================================
    INITIALIZE
 ========================================= */
@@ -3994,6 +4130,7 @@ function wirePublicInteractionControls() {
 async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
+  wireSingerKaraokeAudioButton();
   updateReactionButtons();
   updateCommentControls();
 
@@ -4019,6 +4156,7 @@ async function initializeShow() {
     }
 
     isHost = await verifyHost();
+    if (isHost) listenToKaraokePlayback();
 
     if (!isHost) {
       singerRegistration = await findCurrentSingerRegistration();
