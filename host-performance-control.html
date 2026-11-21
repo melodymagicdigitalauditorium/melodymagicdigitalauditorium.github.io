@@ -89,6 +89,9 @@ hr{border-color:#51401e;margin:10px 0}
     <h3>👑 Host Karaoke Controls</h3>
     <p class="small">Only the approved host can select and control the karaoke video.</p>
 
+    <label class="small" for="hostYouTubeSearch">Search YouTube karaoke songs</label>
+    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><input id="hostYouTubeSearch" type="text" placeholder="Search song / movie / singer" style="flex:1;min-width:180px"><button class="blue" id="hostYouTubeSearchBtn" type="button">SEARCH YOUTUBE</button></div>
+    <p class="small">Search here, open a karaoke video on YouTube, then copy its link and paste it below to send to the assigned singer.</p>
     <label class="small" for="youtubeInput">YouTube video URL or video ID</label>
     <input id="youtubeInput" type="text" placeholder="Paste YouTube URL here">
 
@@ -1269,6 +1272,14 @@ $("startBtn").addEventListener("click",startNextPerformer);
 $("finishBtn").addEventListener("click",finishCurrent);
 $("nextBtn").addEventListener("click",finishAndNext);
 
+$("hostYouTubeSearchBtn").addEventListener("click",()=>{
+  const query=$("hostYouTubeSearch").value.trim();
+  if(!query){$("hostYouTubeSearch").focus();return;}
+  window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(query+" karaoke"),"_blank","noopener");
+});
+$("hostYouTubeSearch").addEventListener("keydown",event=>{
+  if(event.key==="Enter")$("hostYouTubeSearchBtn").click();
+});
 $("loadVideoBtn").addEventListener("click",loadSelectedVideo);
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
 $("playVideoBtn").addEventListener("click",playForEveryone);
