@@ -681,12 +681,11 @@ async function activateSingerMobileRegistration(value) {
   }
 
   const result = await workerRequest({
-    action: "joinSinger",
+    action: "checkSingerRegistration",
     mobile,
     ...(registrationId ? { registrationId } : {}),
     name: currentUser?.displayName || "Singer"
   });
-  preauthorizedSingerToken = result;
 
   singerMobile = mobile;
   singerRegistration = {
@@ -694,7 +693,7 @@ async function activateSingerMobileRegistration(value) {
     registrationId: result.registrationId,
     singerUid: result.singerUid,
     singerName: result.singerName,
-    status: result.status,
+    status: result.status || result.registrationStatus,
     mobile
   };
   requestedMode = "singer";
