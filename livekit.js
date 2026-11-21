@@ -3891,15 +3891,16 @@ function renderSingerPermissionControls() {
     blockButton.addEventListener("click", async () => {
       if (!confirm("Block this singer from the show?")) return;
       try {
-        await update(ref(db, "participantControls/" + showId + "/" + item.singerUid), {
-          blocked: true,
+        await workerRequest({
+          action: "syncPermissions",
+          uid: item.singerUid,
           microphoneAllowed: false,
           cameraAllowed: false,
-          updatedAt: Date.now(),
-          updatedBy: currentUser.uid
+          blocked: true
         });
         showMessage("Singer blocked from this show.", "success");
       } catch (error) {
+        console.error("Block singer error:", error);
         showMessage("Could not block singer: " + error.message, "error");
       }
     });
