@@ -2692,6 +2692,7 @@ function attachTrackToTile(track, targetId) {
     if (!target.contains(element)) {
       target.appendChild(element);
     }
+    updateParticipantGalleryVisibility();
 
     const playResult = element.play?.();
 
@@ -2717,6 +2718,7 @@ function detachTrackElements(track) {
       : [elements];
 
     list.forEach(element => element?.remove());
+    updateParticipantGalleryVisibility();
 
   } catch (error) {
     console.warn("Track detach error:", error);
@@ -2734,7 +2736,8 @@ function updateParticipantGalleryVisibility() {
     const grid = byId(id);
     if (!grid) return;
     const section = grid.closest(".mm-section, .card");
-    if (section) section.hidden = grid.children.length === 0;
+    const hasCamera = !!grid.querySelector(".mm-video-box video");
+    if (section) section.hidden = !hasCamera;
   });
 }
 
