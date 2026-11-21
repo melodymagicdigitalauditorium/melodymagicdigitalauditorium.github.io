@@ -662,7 +662,7 @@ async function getStageSingerRecords(){
     const registration = Object.values(registrations).find(item =>
       item && item.singerUid === uid
     );
-    const mobile = String(registration?.mobile || "").replace(/\\D/g,"").slice(-10);
+    const mobile = String(registration?.mobile || "").replace(/\D/g,"").slice(-10);
     return { uid, mobile };
   }).filter(item => item.mobile.length === 10);
 }
