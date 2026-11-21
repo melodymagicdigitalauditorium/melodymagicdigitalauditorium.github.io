@@ -2985,8 +2985,49 @@ async function startSingerKaraokeAudio() {
     throw new Error("Wait until the host assigns you to the main stage and grants microphone permission.");
   }
   if (publishedMicrophoneTrack) return;
-  if (!navigator.mediaDevices?.getDisplayMedia || !navigator.mediaDevices?.getUserMedia) {
-    throw new Error("Use desktop Chrome and allow tab audio sharing.");
+
+  // Mobile browsers cannot reliably share tab audio. Publish the singer's
+  // microphone directly on phones; desktop can still send mic + tab audio.
+  const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobileBrowser || !navigator.mediaDevices?.getDisplayMedia) {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Microphone access is not supported by this browser.");
+    }
+    let mobileMicStream = null;
+    try {
+      mobileMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        video: false
+      });
+      const micTrack = mobileMicStream.getAudioTracks()[0];
+      if (!micTrack) throw new Error("No microphone was found.");
+      audioEffects = new VirtualAudioEffects();
+      const processedMicTrack = await audioEffects.start(micTrack);
+      applySharedAudioSettingsToEffects();
+      await room.localParticipant.publishTrack(processedMicTrack, {
+        name: "Melody Magic Singer Mobile Microphone",
+        source: Track.Source.Microphone
+      });
+      singerKaraokeCaptureStream = new MediaStream([micTrack]);
+      singerKaraokeAudioContext = null;
+      singerKaraokeMixTrack = processedMicTrack;
+      rawMicrophoneTrack = micTrack;
+      processedMicrophoneTrack = processedMicTrack;
+      publishedMicrophoneTrack = processedMicTrack;
+      localMicEnabled = true;
+      updateControlButtons();
+      const button = byId("mmSingerKaraokeAudioBtn");
+      if (button) button.textContent = "■ Stop singer microphone";
+      showMessage("Your phone microphone is live. Karaoke audio is supplied separately.", "success");
+      return;
+    } catch (error) {
+      if (audioEffects) { audioEffects.stop(); audioEffects = null; }
+      if (mobileMicStream) mobileMicStream.getTracks().forEach(track => track.stop());
+      throw error;
+    }
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Microphone access is not supported by this browser.");
   }
   let displayStream = null;
   let micStream = null;
@@ -3590,11 +3631,9 @@ function listenToMyPermissions() {
   }
 
   permissionListener = snapshot => {
-    let controls = snapshot.val() || {};
-    if (currentRole === "singer" && singerMobile) {
-      controls = {};
-      snapshot.forEach(child => { controls = child.val() || {}; });
-    }
+    // This reference already points to this singer's exact UID record.
+    // Do not iterate its fields as though it were a list of singers.
+    const controls = snapshot.val() || {};
 
     if (currentRole !== "singer") {
       microphoneAllowed = false;
