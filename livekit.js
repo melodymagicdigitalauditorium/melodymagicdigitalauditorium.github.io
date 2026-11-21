@@ -39,6 +39,7 @@ const showId = params.get("showId");
 const registrationId = params.get("registrationId");
 let requestedMode = (params.get("mode") || (location.pathname.toLowerCase().endsWith("live-performance.html") ? "singer" : "audience")).toLowerCase();
 let singerMobile = "";
+let preauthorizedSingerToken = null;
 
 // All live features stay inside the existing host-performance-control auditorium.
 const IS_HOST_CONTROL_PAGE =
@@ -680,9 +681,12 @@ async function activateSingerMobileRegistration(value) {
   }
 
   const result = await workerRequest({
-    action: "checkSingerRegistration",
-    mobile
+    action: "joinSinger",
+    mobile,
+    ...(registrationId ? { registrationId } : {}),
+    name: currentUser?.displayName || "Singer"
   });
+  preauthorizedSingerToken = result;
 
   singerMobile = mobile;
   singerRegistration = {
@@ -1440,6 +1444,11 @@ async function workerRequest(data) {
 async function getAccessToken() {
   // The worker checks the entered mobile against the approved show registration.
   if (requestedMode === "singer") {
+    if (preauthorizedSingerToken) {
+      const token = preauthorizedSingerToken;
+      preauthorizedSingerToken = null;
+      return token;
+    }
     return workerRequest({
       action: "joinSinger",
       mobile: singerMobile,
