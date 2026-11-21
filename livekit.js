@@ -1055,75 +1055,21 @@ function createPanel() {
     </div>
 
     <div class="mm-section" id="mmAudioEffects" hidden>
-      <h3>🎚️ Auditorium Master Singer Audio Mixer</h3>
-      <div class="mm-note">
-        Host-only master controls. These settings are applied to every singer's
-        microphone before it is published to the auditorium. Changes are shared live.
-        Use headphones when monitoring your own microphone.
-      </div>
-
+      <h3>🎙️ Main-stage Microphone Effects</h3>
+      <p class="mm-note">Echo, delay and reverb are shared live and applied to every main-stage singer microphone, including duet singers.</p>
       <div class="mm-effect-control">
-        <label>Master Echo: <strong id="mmEchoValue">0%</strong></label>
+        <label>Echo: <strong id="mmEchoValue">0%</strong></label>
         <input id="mmEcho" type="range" min="0" max="100" value="0">
       </div>
-
       <div class="mm-effect-control">
-        <label>Master Delay Time: <strong id="mmDelayValue">280 ms</strong></label>
+        <label>Delay: <strong id="mmDelayValue">280 ms</strong></label>
         <input id="mmDelay" type="range" min="50" max="1000" value="280">
       </div>
-
       <div class="mm-effect-control">
-        <label>Master Reverb: <strong id="mmReverbValue">0%</strong></label>
+        <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
         <input id="mmReverb" type="range" min="0" max="100" value="0">
       </div>
-
-      <div class="mm-effect-control">
-        <label>Singer Microphone Master Volume: <strong id="mmVolumeValue">80%</strong></label>
-        <input id="mmVolume" type="range" min="0" max="100" value="80">
-      </div>
-
-      <div id="mmEffectsStatus" class="mm-note">
-        Host microphone effects are ready.
-      </div>
-
-      <div class="mm-section" id="mmProgrammeMixer" hidden style="border:1px solid #b58b2c;border-radius:10px;padding:14px;margin-top:14px">
-        <h3>🎚️ Professional YouTube + Microphone Mixer</h3>
-        <p class="mm-note">Desktop Chrome only. Select this host-control tab in Chrome's share picker and turn on “Share tab audio”. YouTube ads, if shown, are included in the captured audio. Use headphones to prevent feedback.</p>
-        <button type="button" id="mmStartProgrammeMixer">▶ START PROFESSIONAL MIXER</button>
-        <button type="button" id="mmStopProgrammeMixer" disabled>■ STOP MIXER</button>
-        <div id="mmProgrammeMixerStatus" class="mm-note">Mixer is OFF. Join the auditorium before starting.</div>
-        <label>YouTube tab audio: <strong id="mmYoutubeMixValue">100%</strong></label>
-        <input id="mmYoutubeMix" type="range" min="0" max="150" value="100">
-        <div class="mm-effect-control">
-          <label>Karaoke audio alignment (delay YouTube): <strong id="mmProgrammeSyncDelayValue">0 ms</strong></label>
-          <input id="mmProgrammeSyncDelay" type="range" min="0" max="1500" step="10" value="0">
-          <p class="mm-note">Increase this if the singer's incoming voice is late. This delays karaoke audio only; it does not delay the video.</p>
-        </div>
-        <label>Host microphone: <strong id="mmHostMicMixValue">80%</strong></label>
-        <input id="mmHostMicMix" type="range" min="0" max="150" value="80">
-        <label>Singer microphones: <strong id="mmSingerMixValue">100%</strong></label>
-        <input id="mmSingerMix" type="range" min="0" max="150" value="100">
-        <label>Programme master: <strong id="mmProgrammeMasterValue">90%</strong></label>
-        <input id="mmProgrammeMaster" type="range" min="0" max="150" value="90">
-        <div class="mm-effect-control">
-          <label>Programme echo: <strong id="mmProgrammeEchoValue">0%</strong></label>
-          <input id="mmProgrammeEcho" type="range" min="0" max="100" value="0">
-        </div>
-        <div class="mm-effect-control">
-          <label>Echo delay: <strong id="mmProgrammeDelayValue">280 ms</strong></label>
-          <input id="mmProgrammeDelay" type="range" min="50" max="1200" value="280">
-        </div>
-        <div class="mm-effect-control">
-          <label>Echo feedback: <strong id="mmProgrammeFeedbackValue">22%</strong></label>
-          <input id="mmProgrammeFeedback" type="range" min="0" max="85" value="22">
-        </div>
-        <div class="mm-effect-control">
-          <label>Programme reverb: <strong id="mmProgrammeReverbValue">0%</strong></label>
-          <input id="mmProgrammeReverb" type="range" min="0" max="100" value="0">
-        </div>
-        <label><input type="checkbox" id="mmProgrammeMonitor"> Monitor mixed programme audio (headphones only)</label>
-        <p class="mm-note">Audience members receive the programme mix instead of separate singer microphone playback.</p>
-      </div>
+      <div id="mmEffectsStatus" class="mm-note">Microphone effects are ready.</div>
     </div>
 
     <div class="mm-section" id="mmReactionSection">
@@ -1191,7 +1137,7 @@ function createPanel() {
           Connected participants: <strong id="mmAudienceCount">0</strong>
         </div>
         <div class="mm-note">
-          Count includes connected host, singers and audience members.
+          Only connected audience viewers are counted. Host and main-stage singers are excluded.
         </div>
       </div>
 
@@ -1255,28 +1201,7 @@ function createPanel() {
   byId("mmMicBtn").addEventListener("click", toggleMicrophone);
   byId("mmCameraBtn").addEventListener("click", toggleCamera);
 
-  byId("mmStartProgrammeMixer")?.addEventListener("click", startProfessionalProgrammeMixer);
-  byId("mmStopProgrammeMixer")?.addEventListener("click", stopProfessionalProgrammeMixer);
-  ["mmYoutubeMix","mmHostMicMix","mmSingerMix","mmProgrammeMaster"].forEach(id => {
-    byId(id)?.addEventListener("input", updateProfessionalMixerVolumes);
-  });
-  byId("mmProgrammeSyncDelay")?.addEventListener("input", updateProfessionalMixerVolumes);
-  byId("mmProgrammeMonitor")?.addEventListener("change", event => {
-    programmeMixer?.setMonitoring(event.target.checked, 20);
-  });
-  [
-    ["mmProgrammeEcho","mmProgrammeEchoValue",value => programmeMixer?.setEcho(value),"%"],
-    ["mmProgrammeDelay","mmProgrammeDelayValue",value => programmeMixer?.setDelayTime(value), " ms"],
-    ["mmProgrammeFeedback","mmProgrammeFeedbackValue",value => programmeMixer?.setEchoFeedback(value),"%"],
-    ["mmProgrammeReverb","mmProgrammeReverbValue",value => programmeMixer?.setReverb(value),"%"]
-  ].forEach(([inputId,labelId,apply,suffix]) => {
-    byId(inputId)?.addEventListener("input", event => {
-      const value = Number(event.target.value);
-      const label = byId(labelId);
-      if (label) label.textContent = value + suffix;
-      apply(value);
-    });
-  });
+  // Simple host controls only: echo, delay and reverb.
 
   byId("mmSetStageBtn")?.addEventListener(
     "click",
@@ -1298,7 +1223,7 @@ function createPanel() {
   });
 
   if (IS_HOST_CONTROL_PAGE && byId("mmAudioEffects")) {
-    ["mmEcho", "mmDelay", "mmReverb", "mmVolume"].forEach(id => {
+    ["mmEcho", "mmDelay", "mmReverb"].forEach(id => {
       byId(id).addEventListener("input", () => {
         updateAudioControlLabels();
         applySharedAudioSettingsToEffects();
@@ -1914,11 +1839,17 @@ function updateAudienceCount() {
   if (!countElement) return;
 
   let count = 0;
-
   if (room && isJoined) {
-    count = 1 + room.remoteParticipants.size;
+    for (const participant of room.remoteParticipants.values()) {
+      const identity = safeText(participant.identity);
+      let role = "";
+      try { role = safeText(JSON.parse(participant.metadata || "{}").role).toLowerCase(); } catch (error) {}
+      const isHostParticipant = identity === safeText(currentShow?.hostUid);
+      const isStageSinger = stageSingerUids.includes(identity);
+      const isSingerParticipant = role === "singer" || role === "host";
+      if (!isHostParticipant && !isStageSinger && !isSingerParticipant) count++;
+    }
   }
-
   countElement.textContent = String(count);
 }
 
@@ -2215,10 +2146,27 @@ function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer") return;
   const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + currentUser.uid);
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
+  let lastSingerCommandAt = 0;
   singerKaraokeListener = snapshot => {
     const data = snapshot.val() || {};
     const videoId = safeText(data.videoId).trim();
     if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return;
+    const commandAt = Number(data.commandAt || 0);
+    if (commandAt > lastSingerCommandAt) {
+      lastSingerCommandAt = commandAt;
+      if (youtubePlayer && lastYoutubeVideoId === videoId) {
+        const command = safeText(data.command).toLowerCase();
+        if (command === "pause") {
+          try { youtubePlayer.pauseVideo(); } catch (error) {}
+          const playbackStatus = byId("mmPlaybackStatus");
+          if (playbackStatus) playbackStatus.textContent = "The host paused your karaoke video.";
+        } else if (command === "stop") {
+          try { youtubePlayer.stopVideo(); } catch (error) {}
+          const playbackStatus = byId("mmPlaybackStatus");
+          if (playbackStatus) playbackStatus.textContent = "The host stopped your karaoke video.";
+        }
+      }
+    }
     const notice = byId("mmSingerSentVideo");
     if (!notice) return;
     notice.replaceChildren();
@@ -2386,8 +2334,8 @@ async function joinAuditorium() {
       throw new Error("Audience access was not confirmed.");
     }
 
-    microphoneAllowed = currentRole === "host" && tokenData.microphoneAllowed === true;
-    cameraAllowed = currentRole === "host" && tokenData.cameraAllowed === true;
+    microphoneAllowed = currentRole === "host" ? true : false;
+    cameraAllowed = currentRole === "host" ? true : false;
     if (currentRole === "singer") {
       microphoneAllowed = tokenData.microphoneAllowed === true;
       cameraAllowed = tokenData.cameraAllowed === true;
@@ -2398,7 +2346,7 @@ async function joinAuditorium() {
     }
 
     const performer = currentRole === "host" || currentRole === "singer";
-    if (byId("mmMyControls")) byId("mmMyControls").hidden = !performer;
+    if (byId("mmMyControls")) byId("mmMyControls").hidden = currentRole !== "singer";
     const hostEffects = currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE;
     if (byId("mmAudioEffects")) byId("mmAudioEffects").hidden = !hostEffects;
     if (byId("mmHostControls")) byId("mmHostControls").hidden = true;
@@ -2444,6 +2392,20 @@ async function joinAuditorium() {
       await loadHostRegistrations();
       listenToParticipantControls();
       listenToStage();
+      try {
+        await room.localParticipant.setCameraEnabled(true);
+        localCameraEnabled = true;
+      } catch (cameraError) {
+        localCameraEnabled = false;
+        showMessage("Host connected, but camera permission is needed: " + cameraError.message, "warning");
+      }
+      try {
+        await startMicrophoneEffects();
+      } catch (micError) {
+        localMicEnabled = false;
+        showMessage("Host connected, but microphone could not start: " + micError.message, "warning");
+      }
+      updateControlButtons();
     } else {
       if (byId("mmHostControls")) byId("mmHostControls").hidden = true;
       if (byId("mmAudioEffects")) byId("mmAudioEffects").hidden = true;
@@ -2459,6 +2421,7 @@ async function joinAuditorium() {
     // independently of LiveKit connection success.
     updateControlButtons();
     updateAudienceCount();
+    updateParticipantGalleryVisibility();
 
   } catch (error) {
     console.error("Join error:", error);
@@ -2638,6 +2601,7 @@ async function createVideoTile(participant, isLocal) {
     tile.append(name, media);
     grid.appendChild(tile);
   }
+  updateParticipantGalleryVisibility();
 
   const isOnMainStage = stageSingerUids.includes(identity);
   tile.classList.toggle("mm-main-stage", isOnMainStage);
@@ -2745,6 +2709,16 @@ function detachTrackElements(track) {
 function removeParticipantTile(identity) {
   const tile = byId(getTileId(identity));
   if (tile) tile.remove();
+  updateParticipantGalleryVisibility();
+}
+
+function updateParticipantGalleryVisibility() {
+  ["mmHostVideoGrid", "mmVideoGrid"].forEach(id => {
+    const grid = byId(id);
+    if (!grid) return;
+    const section = grid.closest(".mm-section, .card");
+    if (section) section.hidden = grid.children.length === 0;
+  });
 }
 
 
@@ -2758,10 +2732,10 @@ function normalizeSharedAudioSettings(value = {}) {
   return {
     echo: Math.max(0, Math.min(100, Number(value.echo ?? 0))),
     delay: Math.max(50, Math.min(1000, Number(value.delay ?? 280))),
-    feedback: Math.max(0, Math.min(85, Number(value.feedback ?? 25))),
+    feedback: 25,
     reverb: Math.max(0, Math.min(100, Number(value.reverb ?? 0))),
-    mix: Math.max(0, Math.min(100, Number(value.mix ?? 0))),
-    volume: Math.max(0, Math.min(100, Number(value.volume ?? 80)))
+    mix: 0,
+    volume: 80
   };
 }
 
@@ -2769,10 +2743,7 @@ function updateAudioControlLabels() {
   const values = {
     mmEchoValue: [byId("mmEcho")?.value, "%"],
     mmDelayValue: [byId("mmDelay")?.value, " ms"],
-    mmFeedbackValue: [byId("mmFeedback")?.value, "%"],
-    mmReverbValue: [byId("mmReverb")?.value, "%"],
-    mmMixValue: [byId("mmMix")?.value, "%"],
-    mmVolumeValue: [byId("mmVolume")?.value, "%"]
+    mmReverbValue: [byId("mmReverb")?.value, "%"]
   };
 
   Object.entries(values).forEach(([id, pair]) => {
@@ -2787,10 +2758,7 @@ function readAudioSettingsFromControls() {
   return normalizeSharedAudioSettings({
     echo: byId("mmEcho")?.value,
     delay: byId("mmDelay")?.value,
-    feedback: byId("mmFeedback")?.value,
-    reverb: byId("mmReverb")?.value,
-    mix: byId("mmMix")?.value,
-    volume: byId("mmVolume")?.value
+    reverb: byId("mmReverb")?.value
   });
 }
 
@@ -2810,10 +2778,7 @@ function displaySharedAudioSettings() {
   const pairs = [
     ["mmEcho", sharedAudioSettings.echo],
     ["mmDelay", sharedAudioSettings.delay],
-    ["mmFeedback", sharedAudioSettings.feedback],
-    ["mmReverb", sharedAudioSettings.reverb],
-    ["mmMix", sharedAudioSettings.mix],
-    ["mmVolume", sharedAudioSettings.volume]
+    ["mmReverb", sharedAudioSettings.reverb]
   ];
 
   pairs.forEach(([id, value]) => {
@@ -2916,17 +2881,14 @@ async function startSingerKaraokeAudio() {
   if (!navigator.mediaDevices?.getDisplayMedia || !navigator.mediaDevices?.getUserMedia) {
     throw new Error("Use desktop Chrome and allow tab audio sharing.");
   }
-
   let displayStream = null;
   let micStream = null;
-  let context = null;
+  let mixContext = null;
   try {
-    // Chrome requires the singer to select This Tab and enable Share tab audio.
     displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
     const tabAudio = displayStream.getAudioTracks()[0];
     if (!tabAudio) throw new Error("No tab audio was shared. Select This Tab and tick Share tab audio.");
     displayStream.getVideoTracks().forEach(track => track.stop());
-
     micStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       video: false
@@ -2934,32 +2896,34 @@ async function startSingerKaraokeAudio() {
     const micTrack = micStream.getAudioTracks()[0];
     if (!micTrack) throw new Error("No microphone was found.");
 
+    audioEffects = new VirtualAudioEffects();
+    const processedMicTrack = await audioEffects.start(micTrack);
+    applySharedAudioSettingsToEffects();
+
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser.");
-    context = new AudioContextClass();
-    await context.resume();
-    const destination = context.createMediaStreamDestination();
-    const karaokeSource = context.createMediaStreamSource(new MediaStream([tabAudio]));
-    const micSource = context.createMediaStreamSource(new MediaStream([micTrack]));
-    const karaokeGain = context.createGain();
-    const micGain = context.createGain();
+    mixContext = new AudioContextClass();
+    await mixContext.resume();
+    const destination = mixContext.createMediaStreamDestination();
+    const karaokeSource = mixContext.createMediaStreamSource(new MediaStream([tabAudio]));
+    const micSource = mixContext.createMediaStreamSource(new MediaStream([processedMicTrack]));
+    const karaokeGain = mixContext.createGain();
+    const micGain = mixContext.createGain();
     karaokeGain.gain.value = 0.85;
     micGain.gain.value = 1;
     karaokeSource.connect(karaokeGain).connect(destination);
     micSource.connect(micGain).connect(destination);
-
     const mixedTrack = destination.stream.getAudioTracks()[0];
     await room.localParticipant.publishTrack(mixedTrack, {
       name: "Melody Magic Singer Microphone + Karaoke Mix",
       source: Track.Source.Microphone
     });
-
     singerKaraokeCaptureStream = new MediaStream([tabAudio, micTrack]);
-    singerKaraokeAudioContext = context;
+    singerKaraokeAudioContext = mixContext;
     singerKaraokeMixTrack = mixedTrack;
     rawMicrophoneTrack = micTrack;
+    processedMicrophoneTrack = processedMicTrack;
     publishedMicrophoneTrack = mixedTrack;
-    processedMicrophoneTrack = mixedTrack;
     localMicEnabled = true;
     tabAudio.addEventListener("ended", () => {
       if (localMicEnabled && currentRole === "singer") stopMicrophoneEffects();
@@ -2967,9 +2931,10 @@ async function startSingerKaraokeAudio() {
     updateControlButtons();
     const button = byId("mmSingerKaraokeAudioBtn");
     if (button) button.textContent = "■ Stop microphone + karaoke audio";
-    showMessage("Your microphone and karaoke audio are now live for the host, audience and queue.", "success");
+    showMessage("Your microphone and karaoke audio are live with the host's shared effects.", "success");
   } catch (error) {
-    if (context) { try { await context.close(); } catch (e) {} }
+    if (mixContext) { try { await mixContext.close(); } catch (e) {} }
+    if (audioEffects) { audioEffects.stop(); audioEffects = null; }
     if (displayStream) displayStream.getTracks().forEach(track => track.stop());
     if (micStream) micStream.getTracks().forEach(track => track.stop());
     throw error;
@@ -4240,10 +4205,17 @@ async function initializeShow() {
     if (isHost) {
       byId("mmRoleInfo").textContent =
         IS_HOST_CONTROL_PAGE
-          ? "Host verified. Enter the auditorium to manage the stage and audio."
+          ? "Host verified. Connecting directly to your live auditorium..."
           : "Host account detected. Host controls are available only in the Host Control Room.";
 
-      showMessage("Host verified. Enter the auditorium when ready.");
+      if (IS_HOST_CONTROL_PAGE) {
+        const joinRow = byId("mmJoinBtn")?.parentElement;
+        if (joinRow) joinRow.hidden = true;
+        showMessage("Host verified. Connecting directly to the auditorium...");
+        joinAuditorium();
+      } else {
+        showMessage("Host controls are available in the Host Control Room.");
+      }
 
     } else if (requestedMode === "singer") {
       byId("mmRoleInfo").textContent =
