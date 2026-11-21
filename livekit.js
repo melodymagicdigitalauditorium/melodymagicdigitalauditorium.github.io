@@ -2211,51 +2211,6 @@ function getSingerYouTubeVideoId(value) {
   return "";
 }
 
-function wireSingerKaraokeTools() {
-  const searchInput = byId("mmSingerYouTubeSearch");
-  const searchButton = byId("mmSingerSearchBtn");
-  const videoInput = byId("mmSingerVideoUrl");
-  const loadButton = byId("mmSingerLoadVideoBtn");
-  if (searchButton && searchInput && searchButton.dataset.mmWired !== "true") {
-    searchButton.dataset.mmWired = "true";
-    const searchYouTube = () => {
-      const query = safeText(searchInput.value).trim();
-      if (!query) { searchInput.focus(); return; }
-      window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query + " karaoke"), "_blank", "noopener");
-    };
-    searchButton.addEventListener("click", searchYouTube);
-    searchInput.addEventListener("keydown", event => {
-      if (event.key === "Enter") searchYouTube();
-    });
-  }
-  if (loadButton && videoInput && loadButton.dataset.mmWired !== "true") {
-    loadButton.dataset.mmWired = "true";
-    loadButton.addEventListener("click", async () => {
-      const videoId = getSingerYouTubeVideoId(videoInput.value);
-      const status = byId("mmPlaybackStatus");
-      if (!videoId) {
-        if (status) status.textContent = "Paste a valid YouTube video link or video ID.";
-        return;
-      }
-      loadButton.disabled = true;
-      try {
-        const player = await createYouTubePlayer(videoId);
-        if (!player) throw new Error("YouTube player is not ready.");
-        lastYoutubeVideoId = videoId;
-        lastPlaybackSignature = "";
-        player.loadVideoById(videoId);
-        player.setVolume(100);
-        player.unMute();
-        if (status) status.textContent = "Your karaoke video is loaded on your stage.";
-      } catch (error) {
-        if (status) status.textContent = "Could not load video: " + error.message;
-      } finally {
-        loadButton.disabled = false;
-      }
-    });
-  }
-}
-
 function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer") return;
   const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + currentUser.uid);
@@ -2283,8 +2238,6 @@ function listenToSingerKaraokeVideo() {
         player.loadVideoById(videoId);
         player.setVolume(100);
         player.unMute();
-        const input = byId("mmSingerVideoUrl");
-        if (input) input.value = "https://www.youtube.com/watch?v=" + videoId;
         const status = byId("mmPlaybackStatus");
         if (status) status.textContent = "Host's karaoke video opened on your singer stage.";
       } catch (error) {
