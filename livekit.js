@@ -2576,6 +2576,22 @@ async function createVideoTile(participant, isLocal) {
         !!currentShow?.hostUid &&
         identity === safeText(currentShow.hostUid)));
 
+  const metadataRole = (() => {
+    try { return safeText(JSON.parse(participant.metadata || "{}").role).toLowerCase(); }
+    catch (error) { return ""; }
+  })();
+  const isRegisteredSinger = Object.values(registrations || {}).some(item =>
+    safeText(item?.singerUid) === identity
+  );
+  const isSingerParticipant =
+    (isLocal && currentRole === "singer") ||
+    stageSingerUids.includes(identity) ||
+    isRegisteredSinger ||
+    metadataRole === "singer";
+
+  // Never put audience viewers in the performers gallery.
+  if (!isHostParticipant && !isSingerParticipant) return;
+
   const grid = byId(isHostParticipant ? "mmHostVideoGrid" : "mmVideoGrid");
   if (!grid) return;
 
@@ -3571,6 +3587,15 @@ function listenToStage() {
 
     stageSingerUids = normalizeArray(stage.singerUids);
 
+    // Add newly assigned singers that were already connected before stage assignment.
+    if (room) {
+      for (const participant of room.remoteParticipants.values()) {
+        if (stageSingerUids.includes(safeText(participant.identity))) {
+          createVideoTile(participant, false);
+        }
+      }
+    }
+
     // Reclassify existing camera tiles when the host changes the main stage.
     document.querySelectorAll(".mm-video-box[data-participant-identity]").forEach(tile => {
       const identity = tile.dataset.participantIdentity || "";
@@ -3622,6 +3647,11 @@ async function loadHostRegistrations() {
     registrations = snapshot.val() || {};
     populateSingerSelectors();
     renderSingerPermissionControls();
+    if (room) {
+      for (const participant of room.remoteParticipants.values()) {
+        createVideoTile(participant, false);
+      }
+    }
   };
 
   onValue(registrationsRef, registrationListener);
