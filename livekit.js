@@ -721,6 +721,9 @@ window.MelodyMagicSingerEntry = async function () {
   if (button) { button.disabled = true; button.textContent = "CHECKING..."; }
   if (message) message.textContent = "Checking registration...";
   try {
+    if (message) message.textContent = "Signing in securely...";
+    await waitForAuth();
+    if (message) message.textContent = "Checking registration...";
     await activateSingerMobileRegistration(input?.value || "");
   } catch (error) {
     if (message) message.textContent = error?.message || "Registration check failed.";
