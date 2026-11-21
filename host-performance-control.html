@@ -279,9 +279,10 @@ async function createYouTubePlayer(){
             $("videoPlayer").style.display="block";
             $("videoMessage").style.display="none";
 
-            youtubePlayer.setVolume(
-              Number($("karaokeVolume").value)
-            );
+            // Host preview is visual only. The host hears karaoke only
+            // through the active singer's LiveKit-published audio mix.
+            youtubePlayer.setVolume(0);
+            youtubePlayer.mute();
 
             videoMessage("YouTube player connected.");
 
@@ -324,12 +325,10 @@ function setKaraokeVolume(value){
 
   try{
 
-    youtubePlayer.setVolume(volume);
-
-    if(volume===0)
-      youtubePlayer.mute();
-    else
-      youtubePlayer.unMute();
+    // Keep the host's local YouTube preview silent. This slider still
+    // publishes the desired volume for the active singer's local player.
+    youtubePlayer.setVolume(0);
+    youtubePlayer.mute();
 
   }catch(error){
     console.error("Volume error:",error);
