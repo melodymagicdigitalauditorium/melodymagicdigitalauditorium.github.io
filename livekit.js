@@ -12,7 +12,11 @@ import {
   set,
   push,
   onValue,
-  off
+  off,
+  query,
+  orderByChild,
+  equalTo,
+  limitToFirst
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 import {
@@ -671,7 +675,7 @@ function showSingerMobileEntry(message = "") {
 
 async function activateSingerMobileRegistration(value) {
   const mobile = String(value || "").replace(/\D/g, "");
-  if (!/^\\d{10}$/.test(mobile)) {
+  if (!/^\d{10}$/.test(mobile)) {
     throw new Error("Please enter a valid 10-digit mobile number.");
   }
 
@@ -2191,12 +2195,18 @@ function getSingerYouTubeVideoId(value) {
 }
 
 function listenToSingerKaraokeVideo() {
-  if (!showId || !currentUser || requestedMode !== "singer") return;
-  const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + getSingerParticipantUid());
+  if (!showId || !currentUser || requestedMode !== "singer" || !singerMobile) return;
+  const singerVideoRef = query(
+    ref(db, "singerKaraoke/" + showId),
+    orderByChild("mobile"),
+    equalTo(singerMobile),
+    limitToFirst(1)
+  );
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
   singerKaraokeListener = snapshot => {
-    const data = snapshot.val() || {};
+    let data = {};
+    snapshot.forEach(child => { data = child.val() || {}; });
     const videoId = safeText(data.videoId).trim();
     if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return;
     const commandAt = Number(data.commandAt || 0);
