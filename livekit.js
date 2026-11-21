@@ -2576,21 +2576,22 @@ async function createVideoTile(participant, isLocal) {
         !!currentShow?.hostUid &&
         identity === safeText(currentShow.hostUid)));
 
-  const metadataRole = (() => {
-    try { return safeText(JSON.parse(participant.metadata || "{}").role).toLowerCase(); }
-    catch (error) { return ""; }
-  })();
-  const isRegisteredSinger = Object.values(registrations || {}).some(item =>
-    safeText(item?.singerUid) === identity
+  // A remote singer is visible to the host only when they have an
+  // approved registration for THIS show and have actually connected
+  // to this show's LiveKit room. Approval alone never creates a tile.
+  const isRegisteredForThisShow = Object.values(registrations || {}).some(item =>
+    safeText(item?.singerUid) === identity && isApproved(item?.status)
   );
   const isSingerParticipant =
     (isLocal && currentRole === "singer") ||
-    stageSingerUids.includes(identity) ||
-    isRegisteredSinger ||
-    metadataRole === "singer";
+    (!isLocal && isRegisteredForThisShow);
 
-  // Never put audience viewers in the performers gallery.
-  if (!isHostParticipant && !isSingerParticipant) return;
+  // Never show audience, unapproved singers, or singers registered
+  // only for another show in the performers gallery.
+  if (!isHostParticipant && !isSingerParticipant) {
+    removeParticipantTile(identity);
+    return;
+  }
 
   const grid = byId(isHostParticipant ? "mmHostVideoGrid" : "mmVideoGrid");
   if (!grid) return;
