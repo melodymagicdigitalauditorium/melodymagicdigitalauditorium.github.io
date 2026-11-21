@@ -1,5 +1,5 @@
 
-const WORKER_VERSION = "melody-magic-mobile-entry-mobile-registration-fix-2026-11-21";
+const WORKER_VERSION = "melody-magic-livekit-permission-sync-fix-2026-11-21";
 
 const FIREBASE_PROJECT_ID = "melody-magic-auditorium";
 
@@ -977,6 +977,62 @@ function isSingerSelected(stage, uid, registration) {
     singerUids.includes(uid) ||
     registrationIds.includes(registration.registrationId)
   );
+}
+
+
+/* =========================================
+   UPDATE LIVEKIT PARTICIPANT PERMISSIONS
+========================================= */
+
+async function updateLiveKitParticipant(env, roomName, identity, permission) {
+  const baseUrl = String(env.LIVEKIT_URL || "")
+    .replace(/^wss:/i, "https:")
+    .replace(/^ws:/i, "http:")
+    .replace(/\\/$/, "");
+
+  if (!baseUrl) throw new Error("LiveKit URL is not configured.");
+
+  const now = Math.floor(Date.now() / 1000);
+  const adminToken = await signJWT({
+    iss: env.LIVEKIT_API_KEY,
+    sub: env.LIVEKIT_API_KEY,
+    nbf: now,
+    iat: now,
+    exp: now + 300,
+    video: {
+      room: roomName,
+      roomAdmin: true,
+      roomJoin: true,
+      canPublish: true,
+      canSubscribe: true
+    }
+  }, env.LIVEKIT_API_SECRET);
+
+  const response = await fetch(
+    baseUrl + "/twirp/livekit.RoomService/UpdateParticipant",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + adminToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        room: roomName,
+        identity,
+        permission
+      })
+    }
+  );
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    if (/participant.*not found|not.*in.*room/i.test(responseText)) {
+      return { offline: true };
+    }
+    throw new Error("LiveKit permission update failed (" + response.status + "): " + responseText.slice(0, 300));
+  }
+
+  return { offline: false, result: responseText };
 }
 
 
