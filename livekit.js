@@ -98,7 +98,7 @@ let sharedAudioSettings = {
   delay: 280,
   feedback: 25,
   reverb: 0,
-  mix: 0,
+  mix: 50,
   volume: 80
 };
 let audioSettingsListener = null;
@@ -1846,8 +1846,9 @@ function updateAudienceCount() {
       try { role = safeText(JSON.parse(participant.metadata || "{}").role).toLowerCase(); } catch (error) {}
       const isHostParticipant = identity === safeText(currentShow?.hostUid);
       const isStageSinger = stageSingerUids.includes(identity);
+      const isRegisteredSinger = Object.values(registrations || {}).some(item => safeText(item?.singerUid) === identity);
       const isSingerParticipant = role === "singer" || role === "host";
-      if (!isHostParticipant && !isStageSinger && !isSingerParticipant) count++;
+      if (!isHostParticipant && !isStageSinger && !isRegisteredSinger && !isSingerParticipant) count++;
     }
   }
   countElement.textContent = String(count);
