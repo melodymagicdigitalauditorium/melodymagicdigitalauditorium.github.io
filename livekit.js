@@ -4354,10 +4354,20 @@ async function initializeShow() {
   } catch (error) {
     console.error("Initialization error:", error);
 
-    showMessage(
-      error.message || "Unable to initialize auditorium.",
-      "error"
-    );
+    const errorMessage = error?.message || "Unable to initialize auditorium.";
+
+    showMessage(errorMessage, "error");
+
+    if (requestedMode === "singer") {
+      setSingerVisibleStatus(
+        "Connection setup failed",
+        errorMessage + " Please refresh the page and try again."
+      );
+      const mobilePanel = byId("mmSingerMobileEntry");
+      if (mobilePanel && !singerRegistration) {
+        showSingerMobileEntry(errorMessage);
+      }
+    }
 
     setButtonState("mmJoinBtn", true);
   }
