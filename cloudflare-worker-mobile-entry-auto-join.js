@@ -1,5 +1,5 @@
 
-const WORKER_VERSION = "melody-magic-livekit-permission-sync-fix-2026-11-21";
+const WORKER_VERSION = "melody-magic-permission-buttons-fix-2026-11-21";
 
 const FIREBASE_PROJECT_ID = "melody-magic-auditorium";
 
@@ -458,9 +458,11 @@ export default {
           registration
         );
 
-        const cameraAllowed = true;
+        const blocked = body.blocked === true;
+        const cameraAllowed = !blocked && body.cameraAllowed !== false;
 
         const microphoneAllowed =
+          !blocked &&
           selected &&
           body.microphoneAllowed === true;
 
@@ -469,6 +471,7 @@ export default {
           {
             microphoneAllowed,
             cameraAllowed,
+            blocked,
             mobile: normalizeMobile(registration.mobile || ""),
             updatedAt: Date.now(),
             updatedBy: user.uid
@@ -476,18 +479,19 @@ export default {
           idToken
         );
 
+        const publishSources = [];
+        if (cameraAllowed) publishSources.push("camera");
+        if (microphoneAllowed) publishSources.push("microphone");
+
         const updateResult = await updateLiveKitParticipant(
           env,
           showId,
           targetUid,
           {
-            canPublish: true,
+            canPublish: publishSources.length > 0,
             canSubscribe: true,
             canPublishData: true,
-            canPublishSources: [
-              "camera",
-              ...(microphoneAllowed ? ["microphone"] : [])
-            ]
+            canPublishSources: publishSources
           }
         );
 
