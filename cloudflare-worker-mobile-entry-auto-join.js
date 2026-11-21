@@ -1,5 +1,5 @@
 
-const WORKER_VERSION = "melody-magic-mobile-entry-auto-join-2026-11-21";
+const WORKER_VERSION = "melody-magic-mobile-entry-mobile-registration-fix-2026-11-21";
 
 const FIREBASE_PROJECT_ID = "melody-magic-auditorium";
 
@@ -164,6 +164,22 @@ export default {
           String(body.registrationId || "").trim();
         const requestedMobile = normalizeMobile(body.mobile || "");
 
+        if (!/^\\d{10}$/.test(requestedMobile)) {
+          return json({
+            error: "Enter the same registered 10-digit mobile number.",
+            workerVersion: WORKER_VERSION,
+            action
+          }, 400, corsHeaders);
+        }
+
+        if (!requestedRegistrationId) {
+          return json({
+            error: "Singer registration ID is missing. Please reopen your show entry link.",
+            workerVersion: WORKER_VERSION,
+            action
+          }, 400, corsHeaders);
+        }
+
         const registration = await getSingerRegistration(
           showId,
           user.uid,
@@ -203,18 +219,18 @@ export default {
           registration
         );
 
-        const controls = requestedMobile
-          ? await readDBQuery(
-              `participantControls/${showId}`,
-              "mobile",
-              requestedMobile,
-              idToken,
-              1
-            ) || {}
-          : await readDB(
-              `participantControls/${showId}/${participantUid}`,
-              idToken
-            ) || {};
+        const controls = await readDB(
+          `participantControls/${showId}/${participantUid}`,
+          idToken
+        ) || {};
+
+        if (controls.blocked === true) {
+          return json({
+            error: "You are blocked from this show. Please contact the host.",
+            workerVersion: WORKER_VERSION,
+            action
+          }, 403, corsHeaders);
+        }
 
         const cameraAllowed = true;
 
@@ -245,6 +261,13 @@ export default {
           registrationConfirmed: true,
           singerStageStatus: selected ? "selected" : "waiting",
           registrationId: registration.registrationId,
+          singerName:
+            registration.singerName ||
+            registration.name ||
+            body.name ||
+            "Singer",
+          registrationStatus: registration.status,
+          mobile: requestedMobile,
           microphoneAllowed,
           cameraAllowed,
           canPublishAudio: microphoneAllowed,
