@@ -4264,20 +4264,16 @@ async function initializeShow() {
     await waitForAuth();
     await loadShow();
 
-    // Start the shared karaoke listener as soon as Firebase is ready.
-    // It must not depend on the LiveKit camera/microphone connection:
-    // a singer should still receive the host's video if LiveKit is delayed.
-    if (requestedMode === "audience") {
-      listenToKaraokePlayback();
-    }
-
     isHost = await verifyHost();
-    if (isHost) listenToKaraokePlayback();
 
     if (!isHost) {
       singerRegistration = await findCurrentSingerRegistration();
       if (singerRegistration) requestedMode = "singer";
     }
+
+    // Singers receive their private host-sent video only. Audience members
+    // continue to receive the public/shared karaoke playback listener.
+    if (isHost || requestedMode === "audience") listenToKaraokePlayback();
     if (requestedMode === "singer") listenToSingerKaraokeVideo();
 
     if (byId("mmHostControls")) {
