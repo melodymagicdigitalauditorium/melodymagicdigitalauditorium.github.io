@@ -115,7 +115,7 @@ export default {
       if (action === "checkSingerRegistration") {
         const mobile = normalizeMobile(body.mobile || "");
 
-        if (!/^\\d{10}$/.test(mobile)) {
+        if (!/^\d{10}$/.test(mobile)) {
           return json({ error: "Enter your registered 10-digit mobile number." }, 400, corsHeaders);
         }
 
