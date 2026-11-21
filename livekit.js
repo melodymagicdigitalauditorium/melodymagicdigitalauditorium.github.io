@@ -33,7 +33,8 @@ const params = new URLSearchParams(location.search);
 
 const showId = params.get("showId");
 const registrationId = params.get("registrationId");
-let requestedMode = (params.get("mode") || "audience").toLowerCase();
+let requestedMode = (params.get("mode") || (location.pathname.toLowerCase().endsWith("live-performance.html") ? "singer" : "audience")).toLowerCase();
+let singerMobile = "";
 
 // All live features stay inside the existing host-performance-control auditorium.
 const IS_HOST_CONTROL_PAGE =
@@ -654,37 +655,77 @@ function isApproved(value) {
   );
 }
 
-async function findCurrentSingerRegistration(){
- if(!currentUser||!showId)return null;
- const snapshot=await get(ref(db,"showRegistrations/"+showId));
- if(!snapshot.exists())return null;
- return Object.entries(snapshot.val()||{})
-  .map(([id,item])=>({id,...(item||{})}))
-  .filter(item=>item.singerUid===currentUser.uid&&isApproved(item.status))
-  .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0))[0]||null;
+function showSingerMobileEntry(message = "") {
+  const panel = byId("mmSingerMobileEntry");
+  const messageNode = byId("mmSingerMobileMessage");
+  if (panel) panel.hidden = false;
+  if (messageNode) messageNode.textContent = message;
+  setSingerVisibleStatus("Mobile number required", "Enter the mobile number used for this show's singer registration.");
 }
 
-function listenForCurrentSingerRegistration(){
- if(!currentUser||!showId||isHost)return;
- const registrationsRef=ref(db,"showRegistrations/"+showId);
- if(singerRegistrationListener)off(registrationsRef,"value",singerRegistrationListener);
- singerRegistrationListener=snapshot=>{
-  const found=Object.entries(snapshot.val()||{})
-   .map(([id,item])=>({id,...(item||{})}))
-   .filter(item=>item.singerUid===currentUser.uid&&isApproved(item.status))
-   .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0))[0]||null;
-  if(!found)return;
-  singerRegistration=found;
-  requestedMode="singer";
-  updateActivePerformerKaraokeLayout();
-  if(!showLifecycleListener)listenToShowLifecycle();
-  setSingerVisibleStatus("Approved singer","You will join this same auditorium automatically when the host starts the show.");
-  if(isShowLive()&&!isJoined&&!joining){
-   singerAutoJoinStarted=true;
-   joinAuditorium();
+async function activateSingerMobileRegistration(value) {
+  const mobile = String(value || "").replace(/\\D/g, "");
+  if (!/^\\d{10}$/.test(mobile)) {
+    throw new Error("Please enter a valid 10-digit mobile number.");
   }
- };
- onValue(registrationsRef,singerRegistrationListener);
+
+  const result = await workerRequest({
+    action: "checkSingerRegistration",
+    mobile
+  });
+
+  singerMobile = mobile;
+  singerRegistration = {
+    id: result.registrationId,
+    registrationId: result.registrationId,
+    singerUid: result.singerUid,
+    singerName: result.singerName,
+    status: result.status,
+    mobile
+  };
+  requestedMode = "singer";
+
+  try { localStorage.setItem("mmSingerMobile:" + showId, mobile); } catch (error) {}
+
+  const panel = byId("mmSingerMobileEntry");
+  if (panel) panel.hidden = true;
+
+  listenToSingerKaraokeVideo();
+  if (!showLifecycleListener) listenToShowLifecycle();
+
+  setSingerVisibleStatus(
+    "Approved singer",
+    "Your registration is approved. You will join automatically when the host starts this show."
+  );
+
+  if (isShowLive() && !isJoined && !joining) {
+    singerAutoJoinStarted = true;
+    joinAuditorium();
+  }
+}
+
+function wireSingerMobileEntry() {
+  const button = byId("mmSingerMobileContinue");
+  const input = byId("mmSingerMobileInput");
+  if (!button || button.dataset.mmWired === "true") return;
+  button.dataset.mmWired = "true";
+
+  button.addEventListener("click", async () => {
+    const message = byId("mmSingerMobileMessage");
+    button.disabled = true;
+    button.textContent = "CHECKING...";
+    if (message) message.textContent = "";
+
+    try {
+      await activateSingerMobileRegistration(input?.value || "");
+    } catch (error) {
+      if (message) message.textContent = error.message || "Could not verify this number.";
+      setSingerVisibleStatus("Registration check failed", error.message || "Please try again.");
+    } finally {
+      button.disabled = false;
+      button.textContent = "CONTINUE TO LIVE STAGE";
+    }
+  });
 }
 
 function normalizeArray(value) {
@@ -1368,11 +1409,11 @@ async function workerRequest(data) {
 ========================================= */
 
 async function getAccessToken() {
-  // Approved singers are detected from the signed-in anonymous Firebase session.
-  // No OTP, singer-specific URL, or registration ID is required.
+  // The worker checks the entered mobile against the approved show registration.
   if (requestedMode === "singer") {
     return workerRequest({
       action: "joinSinger",
+      mobile: singerMobile,
       ...(registrationId ? { registrationId } : {}),
       name: currentUser.displayName || singerRegistration?.singerName || "Singer"
     });
@@ -4200,6 +4241,7 @@ async function initializeShow() {
   wirePublicInteractionControls();
   wireSingerKaraokeAudioButton();
   wireSingerKaraokeTools();
+  wireSingerMobileEntry();
   updateReactionButtons();
   updateCommentControls();
 
@@ -4219,9 +4261,19 @@ async function initializeShow() {
 
     isHost = await verifyHost();
 
-    if (!isHost) {
-      singerRegistration = await findCurrentSingerRegistration();
-      if (singerRegistration) requestedMode = "singer";
+    if (!isHost && requestedMode === "singer") {
+      let savedMobile = "";
+      try { savedMobile = localStorage.getItem("mmSingerMobile:" + showId) || ""; } catch (error) {}
+      if (savedMobile) {
+        try {
+          await activateSingerMobileRegistration(savedMobile);
+        } catch (error) {
+          try { localStorage.removeItem("mmSingerMobile:" + showId); } catch (removeError) {}
+          showSingerMobileEntry(error.message || "Please enter your registered mobile number.");
+        }
+      } else {
+        showSingerMobileEntry();
+      }
     }
 
     // Singers receive their private host-sent video only. Audience members
@@ -4267,8 +4319,7 @@ async function initializeShow() {
 
     listenToStage();
     listenToActivePerformerLayout();
-    if (!isHost) listenForCurrentSingerRegistration();
-    if (requestedMode === "singer") {
+    if (requestedMode === "singer" && singerRegistration) {
       listenToShowLifecycle();
       setSingerVisibleStatus(
         "Waiting for host",
