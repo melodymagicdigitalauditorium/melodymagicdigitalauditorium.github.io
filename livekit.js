@@ -1421,6 +1421,18 @@ async function workerRequest(data) {
     throw new Error("The token server returned an invalid response.");
   }
 
+  if (["joinHost", "joinSinger", "joinAudience"].includes(data.action)) {
+    console.info("[Melody Magic] LiveKit identity diagnostic:", {
+      action: data.action,
+      workerVersion: result.workerVersion || "missing",
+      role: result.role || "missing",
+      authenticatedUid: result.authenticatedUid || "missing",
+      participantIdentity: result.participantIdentity || "missing",
+      singerUid: result.singerUid || "not-applicable",
+      showId: showId || "missing"
+    });
+  }
+
   if (!response.ok || result.error) {
     throw new Error(
       result.error ||
@@ -2606,7 +2618,14 @@ function registerRoomEvents() {
     }
   );
 
-  room.on(RoomEvent.Disconnected, () => {
+  room.on(RoomEvent.Disconnected, reason => {
+    console.error("[Melody Magic] LiveKit disconnected:", {
+      reason: reason || "no reason supplied",
+      mode: requestedMode,
+      role: currentRole,
+      identity: room?.localParticipant?.identity || "unknown",
+      showId: showId || "missing"
+    });
     if (!leaving) {
       isJoined = false;
       localMicEnabled = false;
