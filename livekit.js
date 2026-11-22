@@ -666,6 +666,11 @@ function getSingerParticipantUid() {
     : currentUser?.uid;
 }
 
+function getHostParticipantUid() {
+  const hostUid = safeText(currentShow?.hostUid);
+  return hostUid ? "host-" + hostUid : "";
+}
+
 function showSingerMobileEntry(message = "") {
   const panel = byId("mmSingerMobileEntry");
   const messageNode = byId("mmSingerMobileMessage");
@@ -1924,7 +1929,7 @@ function updateAudienceCount() {
       const identity = safeText(participant.identity);
       let role = "";
       try { role = safeText(JSON.parse(participant.metadata || "{}").role).toLowerCase(); } catch (error) {}
-      const isHostParticipant = identity === safeText(currentShow?.hostUid);
+      const isHostParticipant = identity === getHostParticipantUid();
       const isStageSinger = stageSingerUids.includes(identity);
       const isRegisteredSinger = Object.values(registrations || {}).some(item => safeText(item?.singerUid) === identity);
       const isSingerParticipant = role === "singer" || role === "host";
@@ -2663,12 +2668,12 @@ async function createVideoTile(participant, isLocal) {
   const isHostParticipant = requestedMode === "singer"
     ? (!isLocal &&
        !!currentShow?.hostUid &&
-       identity === safeText(currentShow.hostUid) &&
+       identity === getHostParticipantUid() &&
        identity !== safeText(currentUser?.uid))
     : ((isLocal && currentRole === "host") ||
        (!isLocal &&
         !!currentShow?.hostUid &&
-        identity === safeText(currentShow.hostUid)));
+        identity === getHostParticipantUid()));
 
   // A remote singer is visible to the host only when they have an
   // approved registration for THIS show and have actually connected
@@ -3747,7 +3752,7 @@ function listenToStage() {
     // Reclassify existing camera tiles when the host changes the main stage.
     document.querySelectorAll(".mm-video-box[data-participant-identity]").forEach(tile => {
       const identity = tile.dataset.participantIdentity || "";
-      const isHostTile = tile.id === getTileId(currentShow?.hostUid || "");
+      const isHostTile = tile.id === getTileId(getHostParticipantUid());
       const selected = stageSingerUids.includes(identity);
       tile.classList.toggle("mm-main-stage", selected);
       tile.classList.toggle("mm-waiting-stage", !selected && !isHostTile);
