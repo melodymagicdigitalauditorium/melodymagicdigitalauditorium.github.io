@@ -93,6 +93,11 @@ hr{border-color:#51401e;margin:10px 0}
     <label class="small" for="youtubeInput">YouTube video URL or video ID</label>
     <input id="youtubeInput" type="text" placeholder="Paste YouTube URL here">
 
+    <div class="volume-box" id="hostKaraokeVolumeBox">
+      <div class="volume-label"><strong>🎚️ Singer Karaoke Volume</strong><span id="volumeValue">100%</span></div>
+      <input id="karaokeVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Singer karaoke volume">
+      <p class="small">Adjust the karaoke playback volume on the assigned singer's page.</p>
+    </div>
     <button class="green" id="sendVideoToSingerBtn">📨 SEND VIDEO TO ASSIGNED SINGER</button>
     <button class="blue" id="pauseVideoBtn">⏸ PAUSE SINGER VIDEO</button>
     <button class="red" id="stopVideoBtn">■ STOP SINGER VIDEO</button>
@@ -299,10 +304,10 @@ async function createYouTubePlayer(){
 function setKaraokeVolume(value){
 
   const volume=Math.max(0,Math.min(100,Number(
-    value===undefined ? $("karaokeVolume").value : value
+    value===undefined ? ($("karaokeVolume")?.value ?? 100) : value
   )));
 
-  $("volumeValue").textContent=volume+"%";
+  if ($("volumeValue")) $("volumeValue").textContent=volume+"%";
 
   if(!youtubePlayer||!playerReady)return;
 
@@ -322,7 +327,7 @@ async function publishKaraokeVolume(){
 
   if(!isHost||!currentUser||!showId)return;
 
-  const volume=Number($("karaokeVolume").value);
+  const volume=Number($("karaokeVolume")?.value ?? 100);
 
   setKaraokeVolume(volume);
 
@@ -1241,6 +1246,10 @@ $("hostYouTubeSearchBtn").addEventListener("click",()=>{
 $("hostYouTubeSearch").addEventListener("keydown",event=>{
   if(event.key==="Enter")$("hostYouTubeSearchBtn").click();
 });
+$("karaokeVolume").addEventListener("input",()=>{
+  $("volumeValue").textContent=$("karaokeVolume").value+"%";
+  publishKaraokeVolume();
+});
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
 $("pauseVideoBtn").addEventListener("click",pauseForEveryone);
 $("stopVideoBtn").addEventListener("click",stopForEveryone);
@@ -1248,13 +1257,13 @@ $("stopVideoBtn").addEventListener("click",stopForEveryone);
 
 async function sendVideoToAssignedSinger(){
   if(!isHost||!currentUser){videoMessage("Only the approved host can send karaoke videos.");return;}
-  const videoId=getYouTubeVideoId($("youtubeInput").value);
+  const videoId=getYouTubeVideoId($("youtubeInput")?.value || "");
   if(!videoId){videoMessage("Paste a valid YouTube video link first.");return;}
   try{
     const singers=await getStageSingerRecords();
     if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
     await Promise.all(singers.map(({uid,mobile})=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      videoId,mobile,volume:Number($("karaokeVolume").value),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
+      videoId,mobile,volume:Number($("karaokeVolume")?.value ?? 100),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
     })));
     videoMessage("Video sent to "+singers.length+" assigned singer(s). They can open it on their singer page.");
   }catch(error){
