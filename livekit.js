@@ -2552,7 +2552,9 @@ function registerRoomEvents() {
     async (track, publication, participant) => {
       const source = publication?.source || track?.source;
       // Karaoke is synchronized through each viewer's YouTube player and Firebase.
-      if (source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio) return;
+      // Shared karaoke tab audio must be received and played by singers/audience.
+      // Only skip the video screen-share track; suppressing ScreenShareAudio made karaoke silent.
+      if (source === Track.Source.ScreenShare) return;
       await attachRemoteTrack(track, participant);
     }
   );
