@@ -2233,10 +2233,16 @@ function listenToSingerKaraokeVideo() {
   const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + singerUid);
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
+  let singerKaraokeCurrentVolume = 100;
   singerKaraokeListener = snapshot => {
     const data = snapshot.val() || {};
     const videoId = safeText(data.videoId).trim();
     if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return;
+    const sharedVolume = Math.max(0, Math.min(100, Number(data.volume === undefined ? 100 : data.volume)));
+    singerKaraokeCurrentVolume = sharedVolume;
+    if (youtubePlayer && lastYoutubeVideoId === videoId && typeof youtubePlayer.setVolume === "function") {
+      try { youtubePlayer.setVolume(sharedVolume); if (sharedVolume === 0) youtubePlayer.mute(); else youtubePlayer.unMute(); } catch (error) {}
+    }
     const commandAt = Number(data.commandAt || 0);
     if (commandAt > lastSingerCommandAt) {
       lastSingerCommandAt = commandAt;
@@ -2270,8 +2276,9 @@ function listenToSingerKaraokeVideo() {
         lastYoutubeVideoId = videoId;
         lastPlaybackSignature = "";
         player.loadVideoById(videoId);
-        player.setVolume(100);
-        player.unMute();
+        const initialVolume = Math.max(0, Math.min(100, Number(singerKaraokeCurrentVolume ?? 100)));
+        player.setVolume(initialVolume);
+        if (initialVolume === 0) player.mute(); else player.unMute();
         const status = byId("mmPlaybackStatus");
         if (status) status.textContent = "Host's karaoke video opened on your singer stage.";
       } catch (error) {
