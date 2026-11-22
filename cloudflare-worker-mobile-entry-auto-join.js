@@ -374,8 +374,12 @@ export default {
           }, 403, corsHeaders);
         }
 
+        // Separate the host's LiveKit identity from Firebase UID so
+        // a host cannot replace a singer connected with the same UID.
+        const hostParticipantUid = "host-" + user.uid;
+
         const token = await createLiveKitToken(env, {
-          uid: user.uid,
+          uid: hostParticipantUid,
           showId,
           name: body.name || "Host",
           role: "host",
