@@ -796,7 +796,7 @@ function displayName() {
 function createPanel() {
   if (requestedMode === "singer") {
     const singerOnlyStyle = document.createElement("style");
-    singerOnlyStyle.textContent = "#mmLiveKitPanel{display:none!important}";
+    singerOnlyStyle.textContent = "#mmLiveKitPanel{display:block!important;width:100%!important;max-width:100%!important;margin:8px 0!important;padding:10px!important;background:#151515!important;border:1px solid #9b7628!important;border-radius:10px!important} #mmLiveKitPanel #mmJoinBtn,#mmLiveKitPanel #mmLeaveBtn,#mmLiveKitPanel #mmReactionSection,#mmLiveKitPanel #mmCommentsList,#mmLiveKitPanel #mmCommentInput,#mmLiveKitPanel #mmSendCommentBtn,#mmLiveKitPanel #mmCommentHint{display:none!important} #mmLiveKitPanel #mmMyControls{display:block!important} #mmLiveKitPanel #mmMyControls button{padding:12px 14px!important;font-size:15px!important;font-weight:bold!important;margin:5px 5px 5px 0!important} #mmLiveKitPanel #mmPermissionInfo{margin-top:8px!important;color:#e9bd57!important}";
     document.head.appendChild(singerOnlyStyle);
   }
   if (!IS_HOST_CONTROL_PAGE) {
