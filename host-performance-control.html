@@ -333,6 +333,10 @@ async function publishKaraokeVolume(){
       volumeUpdatedAt:Date.now(),
       volumeUpdatedBy:currentUser.uid
     });
+    const singers=await getStageSingerRecords();
+    await Promise.all(singers.map(({uid,mobile})=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+      mobile,volume,volumeUpdatedAt:Date.now(),volumeUpdatedBy:currentUser.uid
+    })));
 
     videoMessage("Common karaoke volume set to "+volume+"% for everyone.");
 
@@ -1250,7 +1254,7 @@ async function sendVideoToAssignedSinger(){
     const singers=await getStageSingerRecords();
     if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
     await Promise.all(singers.map(({uid,mobile})=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      videoId,mobile,sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
+      videoId,mobile,volume:Number($("karaokeVolume").value),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
     })));
     videoMessage("Video sent to "+singers.length+" assigned singer(s). They can open it on their singer page.");
   }catch(error){
