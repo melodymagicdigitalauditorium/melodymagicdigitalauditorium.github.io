@@ -2225,17 +2225,16 @@ function getSingerYouTubeVideoId(value) {
 
 function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer" || !singerMobile) return;
-  const singerVideoRef = query(
-    ref(db, "singerKaraoke/" + showId),
-    orderByChild("mobile"),
-    equalTo(singerMobile),
-    limitToFirst(1)
-  );
+  // Read only this singer's record. The host writes each command at
+  // singerKaraoke/{showId}/{singerUid}; reading the whole show node
+  // requires broader permissions and is correctly denied by Firebase.
+  const singerUid = getSingerParticipantUid();
+  if (!singerUid) return;
+  const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + singerUid);
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
   singerKaraokeListener = snapshot => {
-    let data = {};
-    snapshot.forEach(child => { data = child.val() || {}; });
+    const data = snapshot.val() || {};
     const videoId = safeText(data.videoId).trim();
     if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return;
     const commandAt = Number(data.commandAt || 0);
