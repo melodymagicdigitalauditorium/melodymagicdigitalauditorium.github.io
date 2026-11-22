@@ -1,5 +1,5 @@
 
-const WORKER_VERSION = "melody-magic-permission-buttons-fix-2026-11-21";
+const WORKER_VERSION = "melody-magic-distinct-host-singer-identities-2026-11-22";
 
 const FIREBASE_PROJECT_ID = "melody-magic-auditorium";
 
@@ -258,6 +258,7 @@ export default {
           workerVersion: WORKER_VERSION,
           authenticatedUid: user.uid,
           singerUid: participantUid,
+          participantIdentity: participantUid,
           registrationConfirmed: true,
           singerStageStatus: selected ? "selected" : "waiting",
           registrationId: registration.registrationId,
@@ -393,6 +394,7 @@ export default {
           action: "joinHost",
           workerVersion: WORKER_VERSION,
           authenticatedUid: user.uid,
+          participantIdentity: hostParticipantUid,
           microphoneAllowed: true,
           cameraAllowed: true,
           canPublishAudio: true,
