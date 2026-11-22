@@ -3012,6 +3012,8 @@ async function startSingerKaraokeAudio() {
       audioEffects = new VirtualAudioEffects();
       const processedMicTrack = await audioEffects.start(micTrack);
       applySharedAudioSettingsToEffects();
+      // Enable the processed audio track before publishing; effects start muted by default.
+      audioEffects.setMuted(false);
       await room.localParticipant.publishTrack(processedMicTrack, {
         name: "Melody Magic Singer Mobile Microphone",
         source: Track.Source.Microphone
@@ -3055,6 +3057,8 @@ async function startSingerKaraokeAudio() {
     audioEffects = new VirtualAudioEffects();
     const processedMicTrack = await audioEffects.start(micTrack);
     applySharedAudioSettingsToEffects();
+    // Enable the processed audio track before mixing/publishing; effects start muted by default.
+    audioEffects.setMuted(false);
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser.");
