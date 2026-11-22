@@ -4349,7 +4349,6 @@ async function initializeShow() {
   createPanel();
   wirePublicInteractionControls();
   wireSingerKaraokeAudioButton();
-  wireSingerKaraokeTools();
   wireSingerMobileEntry();
   updateReactionButtons();
   updateCommentControls();
