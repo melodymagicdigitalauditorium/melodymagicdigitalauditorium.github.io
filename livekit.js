@@ -2764,7 +2764,8 @@ async function createVideoTile(participant, isLocal) {
       ) {
         attachTrackToTile(
           publication.track,
-          tileId + "_media"
+          tileId + "_media",
+          !isLocal
         );
       }
     });
