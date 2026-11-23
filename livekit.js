@@ -64,6 +64,7 @@ let cameraAllowed = false;
 
 let localMicEnabled = false;
 let localCameraEnabled = false;
+let hostSingerMonitorEnabled = true;
 
 let stageSingerUids = [];
 let registrations = {};
@@ -337,13 +338,15 @@ class VirtualAudioEffects {
       0.03
     );
   }
-    setMonitor(enabled) {
+  setMonitor(enabled, volumeValue = null) {
     if (!this.monitorGain || !this.context) return;
 
     this.monitorEnabled = Boolean(enabled);
-
+    const requestedVolume = volumeValue === null
+      ? Number(byId("mmMonitorVolume")?.value || 35)
+      : Number(volumeValue);
     const volume = this.monitorEnabled
-      ? Number(byId("mmMonitorVolume")?.value || 35) / 100
+      ? Math.max(0, Math.min(50, requestedVolume)) / 100
       : 0;
 
     this.monitorGain.gain.setTargetAtTime(
@@ -1147,6 +1150,10 @@ function createPanel() {
         <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
         <input id="mmReverb" type="range" min="0" max="100" value="0">
       </div>
+      <div class="mm-effect-control">
+        <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
+        <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
+      </div>
       <div id="mmEffectsStatus" class="mm-note">Microphone effects are ready.</div>
     </div>
 
@@ -1308,7 +1315,9 @@ function createPanel() {
         scheduleSharedAudioSettingsSave();
       });
     });
-
+    byId("mmHostSingerMonitor")?.addEventListener("change", event => {
+      setHostSingerMonitor(event.target.checked);
+    });
   }
 }
 
@@ -1811,7 +1820,10 @@ function updateKaraokePlayerAccess() {
     try { youtubePlayer.mute(); } catch (error) {}
   }
   const button = byId("mmSingerKaraokeAudioBtn");
-  if (button) button.hidden = !(isCurrentSingerAssignedToStage() && microphoneAllowed);
+  const singerCanPerform = isCurrentSingerAssignedToStage() && microphoneAllowed;
+  if (button) button.hidden = !singerCanPerform;
+  const monitorWrap = byId("mmSingerMonitorWrap");
+  if (monitorWrap) monitorWrap.hidden = !singerCanPerform;
 }
 
 function updateActivePerformerKaraokeLayout() {
@@ -2761,7 +2773,7 @@ async function createVideoTile(participant, isLocal) {
 
 async function attachRemoteTrack(track, participant) {
   await createVideoTile(participant, false);
-  attachTrackToTile(track, getTileId(participant.identity) + "_media");
+  attachTrackToTile(track, getTileId(participant.identity) + "_media", true);
 }
 
 function attachLocalTrack(track, publication) {
@@ -2775,7 +2787,15 @@ function attachLocalTrack(track, publication) {
   );
 }
 
-function attachTrackToTile(track, targetId) {
+function setHostSingerMonitor(enabled) {
+  hostSingerMonitorEnabled = Boolean(enabled);
+  document.querySelectorAll('#mmLiveKitPanel audio[data-mm-remote-singer-audio="true"]').forEach(element => {
+    element.muted = !hostSingerMonitorEnabled;
+    element.volume = hostSingerMonitorEnabled ? 1 : 0;
+  });
+}
+
+function attachTrackToTile(track, targetId, isRemote = false) {
   const target = byId(targetId);
   if (!target || !track) return;
 
@@ -2806,6 +2826,11 @@ function attachTrackToTile(track, targetId) {
     if (track.kind === Track.Kind.Audio) {
       element.autoplay = true;
       element.controls = false;
+      if (isRemote && currentRole === "host") {
+        element.dataset.mmRemoteSingerAudio = "true";
+        element.muted = !hostSingerMonitorEnabled;
+        element.volume = hostSingerMonitorEnabled ? 1 : 0;
+      }
     }
 
     if (!target.contains(element)) {
@@ -3036,6 +3061,7 @@ async function startSingerKaraokeAudio() {
       audioEffects = new VirtualAudioEffects();
       const processedMicTrack = await audioEffects.start(micTrack);
       applySharedAudioSettingsToEffects();
+      audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
       // Enable the processed audio track before publishing; effects start muted by default.
       audioEffects.setMuted(false);
       await room.localParticipant.publishTrack(processedMicTrack, {
@@ -3081,6 +3107,7 @@ async function startSingerKaraokeAudio() {
     audioEffects = new VirtualAudioEffects();
     const processedMicTrack = await audioEffects.start(micTrack);
     applySharedAudioSettingsToEffects();
+    audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
     // Enable the processed audio track before mixing/publishing; effects start muted by default.
     audioEffects.setMuted(false);
 
@@ -3166,11 +3193,8 @@ async function startMicrophoneEffects() {
 
   applySharedAudioSettingsToEffects();
 
-  if (currentRole === "host") {
-    audioEffects.setMonitorVolume(
-      Number(byId("mmMonitorVolume")?.value || 35)
-    );
-    audioEffects.setMonitor(Boolean(byId("mmMonitor")?.checked));
+  if (currentRole === "singer") {
+    audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
   }
 
   audioEffects.setMuted(false);
@@ -4335,6 +4359,16 @@ function wirePublicInteractionControls() {
 }
 
 function wireSingerKaraokeAudioButton() {
+  const monitor = byId("mmSingerMonitor");
+  if (monitor && monitor.dataset.mmWired !== "true") {
+    monitor.dataset.mmWired = "true";
+    monitor.addEventListener("change", () => {
+      if (audioEffects && currentRole === "singer") {
+        audioEffects.setMonitor(monitor.checked, 30);
+      }
+    });
+  }
+
   const button = byId("mmSingerKaraokeAudioBtn");
   if (!button || button.dataset.mmWired === "true") return;
   button.dataset.mmWired = "true";
