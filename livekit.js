@@ -101,12 +101,13 @@ let rawMicrophoneTrack = null;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
 let hostDirectMonitorElement = null;
+// One host-controlled master effects profile is shared by the host and every singer.
 let sharedAudioSettings = {
   echo: 0,
-  delay: 280,
+  delay: 0,
   feedback: 25,
   reverb: 0,
-  mix: 50,
+  mix: 0,
   volume: 80
 };
 let audioSettingsListener = null;
@@ -1169,7 +1170,7 @@ function createPanel() {
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
       </div>
       <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
-      <div id="mmEffectsStatus" class="mm-note">Microphone effects are ready.</div>
+      <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
     </div>
 
     <div class="mm-section" id="mmReactionSection">
@@ -3058,7 +3059,7 @@ function scheduleSharedAudioSettingsSave() {
       );
       if (byId("mmEffectsStatus")) {
         byId("mmEffectsStatus").textContent =
-          "Master microphone settings are live for all singers.";
+          "Master microphone effects are live for the host and all assigned singers.";
       }
     } catch (error) {
       console.error("Shared audio settings save failed:", error);
