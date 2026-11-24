@@ -2798,56 +2798,64 @@ function setHostSingerMonitor(enabled) {
 
 function attachTrackToTile(track, targetId, isRemote = false) {
   const target = byId(targetId);
-  if (!target || !track) return;
+  if (!track) return;
 
   if (track.kind === Track.Kind.Audio) {
-    // Normal auditorium mode: play each remote participant microphone once.
-    // The tab-capture programme mixer is not required for singers or audience.
-    // Ignore any legacy mixed programme track to prevent duplicate audio.
+    // Never attach our own published microphone back to our speakers/headphones.
+    // The singer's optional WebAudio monitor is the only local mic preview.
+    if (!isRemote) return;
+    // Ignore legacy mixed programme track to avoid duplicate audio.
     if (track.name === "Melody Magic Programme Audio") return;
+
+    // Remote audio must not live inside a video tile/section that is hidden
+    // when the participant has no camera. Keep a dedicated always-present sink.
+    let audioSink = byId("mmRemoteAudioSink");
+    if (!audioSink) {
+      audioSink = document.createElement("div");
+      audioSink.id = "mmRemoteAudioSink";
+      audioSink.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden";
+      document.body.appendChild(audioSink);
+    }
+    const attached = track.attach();
+    const elements = Array.isArray(attached) ? attached : [attached];
+    elements.forEach(element => {
+      if (!element) return;
+      element.autoplay = true;
+      element.controls = false;
+      element.dataset.mmRemoteAudioTrack = track.sid || track.name || "remote";
+      if (currentRole === "host") {
+        element.dataset.mmRemoteSingerAudio = "true";
+        element.muted = !hostSingerMonitorEnabled;
+        element.volume = hostSingerMonitorEnabled ? 1 : 0;
+      } else {
+        element.muted = false;
+        element.volume = 1;
+      }
+      if (!audioSink.contains(element)) audioSink.appendChild(element);
+      const playResult = element.play?.();
+      if (playResult && typeof playResult.catch === "function") {
+        playResult.catch(() => showMessage("Tap the page once to enable live audio playback.", "warning"));
+      }
+    });
+    return;
   }
 
+  if (!target) return;
   const attached = track.attach();
-
-  const elements = Array.isArray(attached)
-    ? attached
-    : [attached];
-
+  const elements = Array.isArray(attached) ? attached : [attached];
   elements.forEach(element => {
     if (!element) return;
-
     element.style.width = "100%";
-
     if (track.kind === Track.Kind.Video) {
       element.style.maxHeight = "360px";
       element.autoplay = true;
       element.playsInline = true;
     }
-
-    if (track.kind === Track.Kind.Audio) {
-      element.autoplay = true;
-      element.controls = false;
-      if (isRemote && currentRole === "host") {
-        element.dataset.mmRemoteSingerAudio = "true";
-        element.muted = !hostSingerMonitorEnabled;
-        element.volume = hostSingerMonitorEnabled ? 1 : 0;
-      }
-    }
-
-    if (!target.contains(element)) {
-      target.appendChild(element);
-    }
+    if (!target.contains(element)) target.appendChild(element);
     updateParticipantGalleryVisibility();
-
     const playResult = element.play?.();
-
     if (playResult && typeof playResult.catch === "function") {
-      playResult.catch(() => {
-        showMessage(
-          "Your browser may require a click to start live audio.",
-          "warning"
-        );
-      });
+      playResult.catch(() => showMessage("Your browser may require a click to start live video.", "warning"));
     }
   });
 }
