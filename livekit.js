@@ -182,7 +182,7 @@ class VirtualAudioEffects {
     this.dryGain.gain.value = 1;
 
     this.delay = this.context.createDelay(1.5);
-    this.delay.delayTime.value = 0.28;
+    this.delay.delayTime.value = 0;
 
     this.feedback = this.context.createGain();
     this.feedback.gain.value = 0.25;
@@ -277,7 +277,7 @@ class VirtualAudioEffects {
     if (!this.delay || !this.context) return;
 
     const milliseconds = Math.max(
-      50,
+      0,
       Math.min(1000, Number(value))
     );
 
@@ -1148,8 +1148,8 @@ function createPanel() {
         <input id="mmEcho" type="range" min="0" max="100" value="0">
       </div>
       <div class="mm-effect-control">
-        <label>Delay: <strong id="mmDelayValue">280 ms</strong></label>
-        <input id="mmDelay" type="range" min="50" max="1000" value="280">
+        <label>Echo delay: <strong id="mmDelayValue">0 ms</strong></label>
+        <input id="mmDelay" type="range" min="0" max="1000" value="0">
       </div>
       <div class="mm-effect-control">
         <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
@@ -2979,7 +2979,7 @@ function updateParticipantGalleryVisibility() {
 function normalizeSharedAudioSettings(value = {}) {
   return {
     echo: Math.max(0, Math.min(100, Number(value.echo ?? 0))),
-    delay: Math.max(50, Math.min(1000, Number(value.delay ?? 280))),
+    delay: Math.max(0, Math.min(1000, Number(value.delay ?? 0))),
     feedback: 25,
     reverb: Math.max(0, Math.min(100, Number(value.reverb ?? 0))),
     mix: 0,
@@ -3111,14 +3111,15 @@ function listenToSharedAudioSettings() {
    HOST AND SINGER MICROPHONE AUDIO EFFECTS
 ========================================= */
 
-function hostCanUseAudioEffects() {
-  return (
-    isJoined &&
-    (
-      (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) ||
-      (currentRole === "singer" && microphoneAllowed)
-    )
+function canProcessMicrophoneAudio() {
+  return isJoined && (
+    (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) ||
+    (currentRole === "singer" && microphoneAllowed)
   );
+}
+
+function hostCanUseAudioEffects() {
+  return isJoined && currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE;
 }
 
 async function startSingerKaraokeAudio() {
@@ -3237,7 +3238,7 @@ async function startSingerKaraokeAudio() {
 }
 
 async function startMicrophoneEffects() {
-  if (!hostCanUseAudioEffects()) {
+  if (!canProcessMicrophoneAudio()) {
     throw new Error("Microphone processing is not currently permitted.");
   }
 
