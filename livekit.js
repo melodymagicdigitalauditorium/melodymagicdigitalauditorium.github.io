@@ -227,7 +227,8 @@ class VirtualAudioEffects {
 
     // Local singer monitoring uses a direct microphone route to avoid
     // processing-chain latency. The processed route remains for LiveKit publish.
-    this.source.connect(this.monitorGain);
+    // Monitor the same processed output that is published to the auditorium.
+    this.outputGain.connect(this.monitorGain);
     this.monitorGain.connect(this.context.destination);
 
     this.processedTrack =
@@ -278,16 +279,13 @@ class VirtualAudioEffects {
   setDelayTime(value) {
     if (!this.delay || !this.context) return;
 
-    const milliseconds = Math.max(
-      0,
-      Math.min(1000, Number(value))
-    );
-
-    this.delay.delayTime.setTargetAtTime(
-      milliseconds / 1000,
-      this.context.currentTime,
-      0.03
-    );
+    const milliseconds = Math.max(0, Math.min(1000, Number(value)));
+    this.delay.delayTime.setTargetAtTime(milliseconds / 1000, this.context.currentTime, 0.03);
+    // A zero delay must never leave a feedback loop running.
+    if (milliseconds === 0) {
+      this.feedback.gain.setTargetAtTime(0, this.context.currentTime, 0.01);
+      this.echoGain?.gain.setTargetAtTime(0, this.context.currentTime, 0.01);
+    }
   }
 
   setFeedback(value) {
@@ -1337,10 +1335,11 @@ function createPanel() {
       if (event.target.checked) unlockHostRemoteAudio();
     });
     byId("mmHostSelfMonitor")?.addEventListener("change", event => {
-      if (currentRole === "host") setHostDirectMonitor(event.target.checked);
-      if (event.target.checked) {
-        showMessage("Host self-monitor is ON. Use headphones to avoid echo or feedback.", "warning");
+      if (currentRole === "host") {
+        if (audioEffects) audioEffects.setMonitor(event.target.checked, 30);
+        else if (event.target.checked) showMessage("Start your host microphone first to hear the processed sound.", "warning");
       }
+      if (event.target.checked) showMessage("Host self-monitor is ON. Use headphones to avoid feedback.", "warning");
     });
     byId("mmHostKaraokeMonitor")?.addEventListener("change", event => {
       const player = youtubePlayer;
@@ -2980,7 +2979,7 @@ function normalizeSharedAudioSettings(value = {}) {
   return {
     echo: Math.max(0, Math.min(100, Number(value.echo ?? 0))),
     delay: Math.max(0, Math.min(1000, Number(value.delay ?? 0))),
-    feedback: 25,
+    feedback: 0,
     reverb: Math.max(0, Math.min(100, Number(value.reverb ?? 0))),
     mix: 0,
     volume: 80
@@ -3327,10 +3326,9 @@ async function startMicrophoneEffects() {
   if (currentRole === "singer") {
     audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
   } else if (currentRole === "host") {
-    // Host monitoring uses the raw MediaStream through a native audio element,
-    // not the WebAudio effects graph, to avoid adding an extra processing buffer.
-    audioEffects.setMonitor(false, 0);
-    setupHostDirectMonitor(rawMicrophoneTrack);
+    // Host hears the processed signal so the master effects can be tested accurately.
+    stopHostDirectMonitor();
+    audioEffects.setMonitor(Boolean(byId("mmHostSelfMonitor")?.checked), 30);
   }
 
   audioEffects.setMuted(false);
