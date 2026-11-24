@@ -98,6 +98,7 @@ let publishedProgrammeTrack = null;
 let programmeMixerStarting = false;
 const programmeRemoteInputs = new Map();
 let rawMicrophoneTrack = null;
+let hostSelfMonitorElement = null;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
 // One host-controlled master effects profile is shared by the host and every singer.
@@ -1189,6 +1190,10 @@ function createPanel() {
         <label><input id="mmHostKaraokeMonitor" type="checkbox"> 🎵 Host: hear YouTube karaoke on this device</label>
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
       </div>
+      <div class="mm-effect-control">
+        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Host: hear my own microphone</label>
+        <p class="mm-note">Optional raw microphone playback in your headphones. Android may add monitoring delay. Use headphones and turn OFF if you hear echo.</p>
+      </div>
       <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
       <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
     </div>
@@ -1355,6 +1360,9 @@ function createPanel() {
     byId("mmHostSingerMonitor")?.addEventListener("change", event => {
       setHostSingerMonitor(event.target.checked);
       if (event.target.checked) unlockHostRemoteAudio();
+    });
+    byId("mmHostSelfMonitor")?.addEventListener("change", event => {
+      setHostDirectMonitor(event.target.checked);
     });
     byId("mmHostKaraokeMonitor")?.addEventListener("change", event => {
       const player = youtubePlayer;
@@ -3251,6 +3259,56 @@ async function startSingerKaraokeAudio() {
   }
 }
 
+function setupHostDirectMonitor(track) {
+  stopHostDirectMonitor();
+  if (currentRole !== "host" || !IS_HOST_CONTROL_PAGE || !track) return;
+  const audio = document.createElement("audio");
+  audio.autoplay = false;
+  audio.playsInline = true;
+  audio.muted = true;
+  audio.volume = 1;
+  audio.style.display = "none";
+  audio.srcObject = new MediaStream([track]);
+  document.body.appendChild(audio);
+  hostSelfMonitorElement = audio;
+  track.addEventListener("ended", stopHostDirectMonitor, { once: true });
+}
+
+function setHostDirectMonitor(enabled) {
+  const audio = hostSelfMonitorElement;
+  if (!audio) {
+    const checkbox = byId("mmHostSelfMonitor");
+    if (checkbox) checkbox.checked = false;
+    if (enabled) showMessage("Turn on the host microphone first.", "warning");
+    return;
+  }
+  if (enabled) {
+    audio.muted = false;
+    audio.play().then(() => {
+      showMessage("Host self-monitor is ON. This may have phone audio delay.", "info");
+    }).catch(error => {
+      audio.muted = true;
+      const checkbox = byId("mmHostSelfMonitor");
+      if (checkbox) checkbox.checked = false;
+      showMessage("Host monitor could not start: " + error.message, "warning");
+    });
+  } else {
+    audio.muted = true;
+    audio.pause();
+    showMessage("Host self-monitor is OFF. Your raw microphone remains live.", "info");
+  }
+}
+
+function stopHostDirectMonitor() {
+  if (!hostSelfMonitorElement) return;
+  hostSelfMonitorElement.pause();
+  hostSelfMonitorElement.srcObject = null;
+  hostSelfMonitorElement.remove();
+  hostSelfMonitorElement = null;
+  const checkbox = byId("mmHostSelfMonitor");
+  if (checkbox) checkbox.checked = false;
+}
+
 async function startMicrophoneEffects() {
   if (!canProcessMicrophoneAudio()) throw new Error("Microphone access is not currently permitted.");
   if (!microphoneAllowed) throw new Error("The host has not granted microphone permission.");
@@ -3282,6 +3340,7 @@ async function startMicrophoneEffects() {
   });
 
   publishedMicrophoneTrack = rawMicrophoneTrack;
+  if (currentRole === "host") setupHostDirectMonitor(rawMicrophoneTrack);
   processedMicrophoneTrack = null;
   audioEffects = null;
   localMicEnabled = true;
@@ -3297,6 +3356,7 @@ async function startMicrophoneEffects() {
 ========================================= */
 
 async function stopMicrophoneEffects() {
+  stopHostDirectMonitor();
   if (room && publishedMicrophoneTrack) {
     try {
       await room.localParticipant.unpublishTrack(publishedMicrophoneTrack, true);
