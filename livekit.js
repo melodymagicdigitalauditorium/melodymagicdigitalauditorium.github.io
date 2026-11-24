@@ -100,6 +100,7 @@ const programmeRemoteInputs = new Map();
 let rawMicrophoneTrack = null;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
+let hostDirectMonitorElement = null;
 let sharedAudioSettings = {
   echo: 0,
   delay: 280,
@@ -1335,9 +1336,7 @@ function createPanel() {
       if (event.target.checked) unlockHostRemoteAudio();
     });
     byId("mmHostSelfMonitor")?.addEventListener("change", event => {
-      if (audioEffects && currentRole === "host") {
-        audioEffects.setMonitor(event.target.checked, 30);
-      }
+      if (currentRole === "host") setHostDirectMonitor(event.target.checked);
       if (event.target.checked) {
         showMessage("Host self-monitor is ON. Use headphones to avoid echo or feedback.", "warning");
       }
@@ -3111,6 +3110,51 @@ function listenToSharedAudioSettings() {
    HOST AND SINGER MICROPHONE AUDIO EFFECTS
 ========================================= */
 
+function setupHostDirectMonitor(track) {
+  stopHostDirectMonitor();
+  if (!track || currentRole !== "host") return;
+  const audio = document.createElement("audio");
+  audio.id = "mmHostDirectMonitorAudio";
+  audio.autoplay = true;
+  audio.playsInline = true;
+  audio.controls = false;
+  audio.volume = 0.3;
+  audio.muted = !Boolean(byId("mmHostSelfMonitor")?.checked);
+  audio.srcObject = new MediaStream([track]);
+  audio.style.display = "none";
+  document.body.appendChild(audio);
+  hostDirectMonitorElement = audio;
+  if (!audio.muted) {
+    const playPromise = audio.play();
+    if (playPromise?.catch) playPromise.catch(error => {
+      console.warn("Host direct monitor playback failed:", error);
+      showMessage("Tap Host Self-Monitor again to enable headphone monitoring.", "warning");
+    });
+  }
+}
+
+function setHostDirectMonitor(enabled) {
+  if (!hostDirectMonitorElement) return;
+  hostDirectMonitorElement.muted = !Boolean(enabled);
+  if (enabled) {
+    const playPromise = hostDirectMonitorElement.play();
+    if (playPromise?.catch) playPromise.catch(error => {
+      console.warn("Host direct monitor playback failed:", error);
+      showMessage("Could not start headphone monitoring. Check your phone audio connection.", "warning");
+    });
+  }
+}
+
+function stopHostDirectMonitor() {
+  if (!hostDirectMonitorElement) return;
+  try {
+    hostDirectMonitorElement.pause();
+    hostDirectMonitorElement.srcObject = null;
+    hostDirectMonitorElement.remove();
+  } catch (error) {}
+  hostDirectMonitorElement = null;
+}
+
 function canProcessMicrophoneAudio() {
   return isJoined && (
     (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) ||
@@ -3260,7 +3304,8 @@ async function startMicrophoneEffects() {
     audio: {
       echoCancellation: false,
       noiseSuppression: false,
-      autoGainControl: false
+      autoGainControl: false,
+      latency: { ideal: 0.01 }
     },
     video: false
   });
@@ -3281,7 +3326,10 @@ async function startMicrophoneEffects() {
   if (currentRole === "singer") {
     audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
   } else if (currentRole === "host") {
-    audioEffects.setMonitor(Boolean(byId("mmHostSelfMonitor")?.checked), 30);
+    // Host monitoring uses the raw MediaStream through a native audio element,
+    // not the WebAudio effects graph, to avoid adding an extra processing buffer.
+    audioEffects.setMonitor(false, 0);
+    setupHostDirectMonitor(rawMicrophoneTrack);
   }
 
   audioEffects.setMuted(false);
@@ -3467,6 +3515,7 @@ async function stopMicrophoneEffects() {
     }
   }
   publishedMicrophoneTrack = null;
+  stopHostDirectMonitor();
   processedMicrophoneTrack = null;
   if (singerKaraokeCaptureStream) {
     singerKaraokeCaptureStream.getTracks().forEach(track => { try { track.stop(); } catch (error) {} });
