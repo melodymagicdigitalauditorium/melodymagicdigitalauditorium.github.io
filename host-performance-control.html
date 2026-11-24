@@ -313,10 +313,11 @@ function setKaraokeVolume(value){
 
   try{
 
-    // Keep the host's local YouTube preview silent. This slider still
-    // publishes the desired volume for the active singer's local player.
-    youtubePlayer.setVolume(0);
-    youtubePlayer.mute();
+    // Keep the host's preview at the same level selected for the singer.
+    // Volume adjustments must never mute or stop the local preview.
+    youtubePlayer.setVolume(volume);
+    if(volume===0) youtubePlayer.mute();
+    else youtubePlayer.unMute();
 
   }catch(error){
     console.error("Volume error:",error);
