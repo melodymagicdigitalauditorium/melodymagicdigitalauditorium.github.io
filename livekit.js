@@ -164,7 +164,8 @@ class VirtualAudioEffects {
       throw new Error("Web Audio is not supported by this browser.");
     }
 
-    this.context = new AudioContextClass();
+    // Request the browser's lowest practical audio buffering for live headphone monitoring.
+    this.context = new AudioContextClass({ latencyHint: "interactive" });
 
     if (this.context.state === "suspended") {
       await this.context.resume();
@@ -3064,7 +3065,7 @@ async function startSingerKaraokeAudio() {
     let mobileMicStream = null;
     try {
       mobileMicStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: { ideal: 0.01 } },
         video: false
       });
       const micTrack = mobileMicStream.getAudioTracks()[0];
