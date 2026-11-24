@@ -1141,6 +1141,8 @@ function createPanel() {
     <div class="mm-section" id="mmAudioEffects" hidden>
       <h3>🎙️ Main-stage Microphone Effects</h3>
       <p class="mm-note">Echo, delay and reverb are shared live and applied to every main-stage singer microphone, including duet singers.</p>
+      <button id="mmHostMicToggle" type="button" disabled>🎙️ HOST MIC: OFF — RETRY / TURN ON</button>
+      <p id="mmHostMicStatus" class="mm-note">Host microphone is starting…</p>
       <div class="mm-effect-control">
         <label>Echo: <strong id="mmEchoValue">0%</strong></label>
         <input id="mmEcho" type="range" min="0" max="100" value="0">
@@ -1287,6 +1289,7 @@ function createPanel() {
   byId("mmLeaveBtn").addEventListener("click", leaveAuditorium);
 
   byId("mmMicBtn").addEventListener("click", toggleMicrophone);
+  byId("mmHostMicToggle")?.addEventListener("click", toggleMicrophone);
   byId("mmCameraBtn").addEventListener("click", toggleCamera);
 
   // Simple host controls only: echo, delay and reverb.
