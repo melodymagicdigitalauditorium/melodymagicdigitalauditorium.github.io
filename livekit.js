@@ -1320,6 +1320,7 @@ function createPanel() {
     });
     byId("mmHostSingerMonitor")?.addEventListener("change", event => {
       setHostSingerMonitor(event.target.checked);
+      if (event.target.checked) unlockHostRemoteAudio();
     });
   }
 }
@@ -2793,23 +2794,35 @@ function attachLocalTrack(track, publication) {
 
 function setHostSingerMonitor(enabled) {
   hostSingerMonitorEnabled = Boolean(enabled);
-  // Remote singer audio is mounted in #mmRemoteAudioSink under document.body,
-  // not inside #mmLiveKitPanel. Query the whole document so the host control
-  // actually reaches every incoming singer microphone track.
+  // Keep incoming tracks playing; toggle mute/volume rather than pause.
   document.querySelectorAll('audio[data-mm-remote-singer-audio="true"]').forEach(element => {
     element.muted = !hostSingerMonitorEnabled;
     element.volume = hostSingerMonitorEnabled ? 1 : 0;
     if (hostSingerMonitorEnabled) {
+      element.autoplay = true;
+      element.playsInline = true;
       const playResult = element.play?.();
       if (playResult && typeof playResult.catch === "function") {
-        playResult.catch(() => showMessage("Tap the 'Hear singer's voice' checkbox again or tap the page to enable live singer audio.", "warning"));
+        playResult.catch(error => {
+          console.warn("[Melody Magic] Host singer audio playback blocked:", error);
+          showMessage("Host audio playback blocked. Tap the page once, then turn the singer audio checkbox ON again.", "warning");
+        });
       }
-    } else {
-      try { element.pause?.(); } catch (error) {}
     }
   });
 }
 
+function unlockHostRemoteAudio() {
+  if (currentRole !== "host" || !hostSingerMonitorEnabled) return;
+  document.querySelectorAll('audio[data-mm-remote-singer-audio="true"]').forEach(element => {
+    element.muted = false;
+    element.volume = 1;
+    const playResult = element.play?.();
+    if (playResult && typeof playResult.catch === "function") {
+      playResult.catch(error => console.warn("[Melody Magic] Host audio unlock failed:", error));
+    }
+  });
+}
 function attachTrackToTile(track, targetId, isRemote = false) {
   const target = byId(targetId);
   if (!track) return;
