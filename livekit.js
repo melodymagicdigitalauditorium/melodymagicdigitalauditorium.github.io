@@ -154,6 +154,8 @@ class VirtualAudioEffects {
     this.monitorGain = null;
 
     this.monitorEnabled = false;
+    this.monitorUsesProcessed = false;
+    this.monitorEffectValues = { echo: 0, delay: 0, reverb: 0 };
   }
 
   async start(inputTrack) {
@@ -225,11 +227,11 @@ class VirtualAudioEffects {
     this.monitorGain = this.context.createGain();
     this.monitorGain.gain.value = 0;
 
-    // Local singer monitoring uses a direct microphone route to avoid
-    // processing-chain latency. The processed route remains for LiveKit publish.
-    // Monitor the same processed output that is published to the auditorium.
-    this.outputGain.connect(this.monitorGain);
+    // Start with a direct, low-latency headphone monitor when all effects are zero.
+    // Switch to the processed output only when the host enables an effect.
+    this.source.connect(this.monitorGain);
     this.monitorGain.connect(this.context.destination);
+    this.monitorUsesProcessed = false;
 
     this.processedTrack =
       this.destination.stream.getAudioTracks()[0];
@@ -267,6 +269,8 @@ class VirtualAudioEffects {
   setEcho(value) {
     if (!this.echoGain || !this.context) return;
 
+    this.monitorEffectValues.echo = Number(value) || 0;
+    this.updateMonitorRoute();
     const amount = Math.max(0, Math.min(100, Number(value))) / 100;
 
     this.echoGain.gain.setTargetAtTime(
@@ -279,6 +283,8 @@ class VirtualAudioEffects {
   setDelayTime(value) {
     if (!this.delay || !this.context) return;
 
+    this.monitorEffectValues.delay = Number(value) || 0;
+    this.updateMonitorRoute();
     const milliseconds = Math.max(0, Math.min(1000, Number(value)));
     this.delay.delayTime.setTargetAtTime(milliseconds / 1000, this.context.currentTime, 0.03);
     // A zero delay must never leave a feedback loop running.
@@ -303,6 +309,8 @@ class VirtualAudioEffects {
   setReverb(value) {
     if (!this.reverbGain || !this.context) return;
 
+    this.monitorEffectValues.reverb = Number(value) || 0;
+    this.updateMonitorRoute();
     const amount = Math.max(0, Math.min(100, Number(value))) / 100;
 
     this.reverbGain.gain.setTargetAtTime(
@@ -341,6 +349,25 @@ class VirtualAudioEffects {
       0.03
     );
   }
+  updateMonitorRoute() {
+    if (!this.source || !this.outputGain || !this.monitorGain) return;
+    const needsEffects = Object.values(this.monitorEffectValues)
+      .some(value => Number(value) > 0);
+    if (needsEffects === this.monitorUsesProcessed) return;
+    try {
+      if (needsEffects) {
+        this.source.disconnect(this.monitorGain);
+        this.outputGain.connect(this.monitorGain);
+      } else {
+        this.outputGain.disconnect(this.monitorGain);
+        this.source.connect(this.monitorGain);
+      }
+      this.monitorUsesProcessed = needsEffects;
+    } catch (error) {
+      console.warn("Could not switch microphone monitor route:", error);
+    }
+  }
+
   setMonitor(enabled, volumeValue = null) {
     if (!this.monitorGain || !this.context) return;
 
