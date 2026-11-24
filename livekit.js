@@ -1159,6 +1159,15 @@ function createPanel() {
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
+      <div class="mm-effect-control">
+        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎙️ Host: hear my own microphone</label>
+        <p class="mm-note">Headphones recommended to prevent feedback. This monitor is only on the host device.</p>
+      </div>
+      <div class="mm-effect-control">
+        <label><input id="mmHostKaraokeMonitor" type="checkbox"> 🎵 Host: hear YouTube karaoke on this device</label>
+        <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
+      </div>
+      <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
       <div id="mmEffectsStatus" class="mm-note">Microphone effects are ready.</div>
     </div>
 
@@ -1324,6 +1333,35 @@ function createPanel() {
     byId("mmHostSingerMonitor")?.addEventListener("change", event => {
       setHostSingerMonitor(event.target.checked);
       if (event.target.checked) unlockHostRemoteAudio();
+    });
+    byId("mmHostSelfMonitor")?.addEventListener("change", event => {
+      if (audioEffects && currentRole === "host") {
+        audioEffects.setMonitor(event.target.checked, 30);
+      }
+      if (event.target.checked) {
+        showMessage("Host self-monitor is ON. Use headphones to avoid echo or feedback.", "warning");
+      }
+    });
+    byId("mmHostKaraokeMonitor")?.addEventListener("change", event => {
+      const player = youtubePlayer;
+      if (!player) {
+        showMessage("Load the YouTube karaoke video first.", "warning");
+        event.target.checked = false;
+        return;
+      }
+      try {
+        if (event.target.checked) {
+          player.unMute();
+          player.setVolume(100);
+          player.playVideo();
+          showMessage("YouTube karaoke audio is ON for the host device.", "success");
+        } else {
+          player.mute();
+          showMessage("YouTube karaoke audio is muted on the host device.", "success");
+        }
+      } catch (error) {
+        showMessage("Could not change host karaoke audio: " + error.message, "error");
+      }
     });
   }
 }
@@ -1824,7 +1862,14 @@ function updateKaraokePlayerAccess() {
   if (!canView && youtubePlayer) {
     try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {}
   } else if (canView && youtubePlayer && currentRole === "host") {
-    try { youtubePlayer.mute(); } catch (error) {}
+    try {
+      if (byId("mmHostKaraokeMonitor")?.checked) {
+        youtubePlayer.unMute();
+        youtubePlayer.setVolume(100);
+      } else {
+        youtubePlayer.mute();
+      }
+    } catch (error) {}
   }
   const button = byId("mmSingerKaraokeAudioBtn");
   const singerCanPerform = isCurrentSingerAssignedToStage() && microphoneAllowed;
@@ -3234,6 +3279,8 @@ async function startMicrophoneEffects() {
 
   if (currentRole === "singer") {
     audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
+  } else if (currentRole === "host") {
+    audioEffects.setMonitor(Boolean(byId("mmHostSelfMonitor")?.checked), 30);
   }
 
   audioEffects.setMuted(false);
