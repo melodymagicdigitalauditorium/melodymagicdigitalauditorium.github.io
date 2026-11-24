@@ -1186,7 +1186,10 @@ function createPanel() {
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
-      <div class="mm-note">Host microphone is sent to the auditorium as raw voice. Local self-monitoring is disabled to prevent delayed echo in your headphones.</div>
+      <div class="mm-effect-control">
+        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Host Self-Monitor — hear my own microphone</label>
+        <p class="mm-note">This plays your raw microphone only in your headphones. Phone-based monitoring can have a small delay. Turn it OFF if you hear an echo. Audience audio is unchanged.</p>
+      </div>
       <div class="mm-effect-control">
         <label><input id="mmHostKaraokeMonitor" type="checkbox"> 🎵 Host: hear YouTube karaoke on this device</label>
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
@@ -1323,6 +1326,9 @@ function createPanel() {
 
   byId("mmMicBtn").addEventListener("click", toggleMicrophone);
   byId("mmHostMicToggle")?.addEventListener("click", toggleMicrophone);
+  byId("mmHostSelfMonitor")?.addEventListener("change", event => {
+    setHostDirectMonitor(event.target.checked);
+  });
   byId("mmCameraBtn").addEventListener("click", toggleCamera);
 
   // Simple host controls only: echo, delay and reverb.
@@ -3137,6 +3143,43 @@ function stopHostDirectMonitor() {
   hostDirectMonitorElement = null;
 }
 
+function setupHostDirectMonitor(track) {
+  stopHostDirectMonitor();
+  if (!track || currentRole !== "host" || !IS_HOST_CONTROL_PAGE) return;
+  const audio = document.createElement("audio");
+  audio.id = "mmHostDirectMonitorAudio";
+  audio.autoplay = false;
+  audio.playsInline = true;
+  audio.controls = false;
+  audio.volume = 0.35;
+  audio.muted = true;
+  audio.srcObject = new MediaStream([track]);
+  audio.style.display = "none";
+  document.body.appendChild(audio);
+  hostDirectMonitorElement = audio;
+  if (byId("mmHostSelfMonitor")) byId("mmHostSelfMonitor").checked = false;
+}
+
+function setHostDirectMonitor(enabled) {
+  if (!hostDirectMonitorElement) {
+    if (enabled) showMessage("Turn on HOST MIC first, then enable Host Self-Monitor.", "warning");
+    return;
+  }
+  hostDirectMonitorElement.muted = !Boolean(enabled);
+  if (enabled) {
+    const playPromise = hostDirectMonitorElement.play();
+    if (playPromise?.catch) playPromise.catch(error => {
+      console.warn("Host self-monitor playback failed:", error);
+      const control = byId("mmHostSelfMonitor");
+      if (control) control.checked = false;
+      hostDirectMonitorElement.muted = true;
+      showMessage("Could not start host headphone monitoring. Tap the checkbox again.", "warning");
+    });
+  } else {
+    hostDirectMonitorElement.pause();
+  }
+}
+
 function canProcessMicrophoneAudio() {
   return isJoined && (
     (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) ||
@@ -3296,6 +3339,7 @@ async function startMicrophoneEffects() {
   publishedMicrophoneTrack = rawMicrophoneTrack;
   processedMicrophoneTrack = null;
   audioEffects = null;
+  if (currentRole === "host") setupHostDirectMonitor(rawMicrophoneTrack);
   localMicEnabled = true;
   if (byId("mmEffectsStatus")) {
     byId("mmEffectsStatus").textContent =
