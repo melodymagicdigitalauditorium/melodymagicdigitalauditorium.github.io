@@ -2793,9 +2793,20 @@ function attachLocalTrack(track, publication) {
 
 function setHostSingerMonitor(enabled) {
   hostSingerMonitorEnabled = Boolean(enabled);
-  document.querySelectorAll('#mmLiveKitPanel audio[data-mm-remote-singer-audio="true"]').forEach(element => {
+  // Remote singer audio is mounted in #mmRemoteAudioSink under document.body,
+  // not inside #mmLiveKitPanel. Query the whole document so the host control
+  // actually reaches every incoming singer microphone track.
+  document.querySelectorAll('audio[data-mm-remote-singer-audio="true"]').forEach(element => {
     element.muted = !hostSingerMonitorEnabled;
     element.volume = hostSingerMonitorEnabled ? 1 : 0;
+    if (hostSingerMonitorEnabled) {
+      const playResult = element.play?.();
+      if (playResult && typeof playResult.catch === "function") {
+        playResult.catch(() => showMessage("Tap the 'Hear singer's voice' checkbox again or tap the page to enable live singer audio.", "warning"));
+      }
+    } else {
+      try { element.pause?.(); } catch (error) {}
+    }
   });
 }
 
