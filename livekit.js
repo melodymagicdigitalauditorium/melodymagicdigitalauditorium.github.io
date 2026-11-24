@@ -1186,10 +1186,7 @@ function createPanel() {
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
-      <div class="mm-effect-control">
-        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎙️ Host: hear my own microphone</label>
-        <p class="mm-note">Headphones recommended to prevent feedback. This monitor is only on the host device.</p>
-      </div>
+      <div class="mm-note">Host microphone is sent to the auditorium as raw voice. Local self-monitoring is disabled to prevent delayed echo in your headphones.</div>
       <div class="mm-effect-control">
         <label><input id="mmHostKaraokeMonitor" type="checkbox"> 🎵 Host: hear YouTube karaoke on this device</label>
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
@@ -1360,15 +1357,6 @@ function createPanel() {
     byId("mmHostSingerMonitor")?.addEventListener("change", event => {
       setHostSingerMonitor(event.target.checked);
       if (event.target.checked) unlockHostRemoteAudio();
-    });
-    byId("mmHostSelfMonitor")?.addEventListener("change", event => {
-      if (currentRole === "host") {
-        setHostDirectMonitor(event.target.checked);
-        if (event.target.checked && !hostDirectMonitorElement) {
-          showMessage("Start your host microphone first to hear your raw voice.", "warning");
-        }
-      }
-      if (event.target.checked) showMessage("Raw host microphone monitor is ON. Use headphones.", "warning");
     });
     byId("mmHostKaraokeMonitor")?.addEventListener("change", event => {
       const player = youtubePlayer;
@@ -3139,41 +3127,6 @@ function listenToSharedAudioSettings() {
    HOST AND SINGER MICROPHONE AUDIO EFFECTS
 ========================================= */
 
-function setupHostDirectMonitor(track) {
-  stopHostDirectMonitor();
-  if (!track || currentRole !== "host") return;
-  const audio = document.createElement("audio");
-  audio.id = "mmHostDirectMonitorAudio";
-  audio.autoplay = true;
-  audio.playsInline = true;
-  audio.controls = false;
-  audio.volume = 0.3;
-  audio.muted = !Boolean(byId("mmHostSelfMonitor")?.checked);
-  audio.srcObject = new MediaStream([track]);
-  audio.style.display = "none";
-  document.body.appendChild(audio);
-  hostDirectMonitorElement = audio;
-  if (!audio.muted) {
-    const playPromise = audio.play();
-    if (playPromise?.catch) playPromise.catch(error => {
-      console.warn("Host direct monitor playback failed:", error);
-      showMessage("Tap Host Self-Monitor again to enable headphone monitoring.", "warning");
-    });
-  }
-}
-
-function setHostDirectMonitor(enabled) {
-  if (!hostDirectMonitorElement) return;
-  hostDirectMonitorElement.muted = !Boolean(enabled);
-  if (enabled) {
-    const playPromise = hostDirectMonitorElement.play();
-    if (playPromise?.catch) playPromise.catch(error => {
-      console.warn("Host direct monitor playback failed:", error);
-      showMessage("Could not start headphone monitoring. Check your phone audio connection.", "warning");
-    });
-  }
-}
-
 function stopHostDirectMonitor() {
   if (!hostDirectMonitorElement) return;
   try {
@@ -3332,8 +3285,6 @@ async function startMicrophoneEffects() {
     stream.getTracks().forEach(track => track.stop());
     throw new Error("No microphone was found.");
   }
-
-  if (currentRole === "host") setupHostDirectMonitor(rawMicrophoneTrack);
 
   await room.localParticipant.publishTrack(rawMicrophoneTrack, {
     name: currentRole === "host"
