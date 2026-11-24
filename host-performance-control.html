@@ -1246,8 +1246,13 @@ $("hostYouTubeSearchBtn").addEventListener("click",()=>{
 $("hostYouTubeSearch").addEventListener("keydown",event=>{
   if(event.key==="Enter")$("hostYouTubeSearchBtn").click();
 });
+// Update the label while dragging, but publish only once when the
+// host releases the slider. This avoids rapid overlapping Firebase writes
+// while the singer's YouTube player is running.
 $("karaokeVolume").addEventListener("input",()=>{
   $("volumeValue").textContent=$("karaokeVolume").value+"%";
+});
+$("karaokeVolume").addEventListener("change",()=>{
   publishKaraokeVolume();
 });
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
