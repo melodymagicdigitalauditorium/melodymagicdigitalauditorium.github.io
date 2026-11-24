@@ -3686,15 +3686,36 @@ function updateControlButtons() {
   const mic = byId("mmMicBtn");
   const camera = byId("mmCameraBtn");
   const info = byId("mmPermissionInfo");
-  if (!mic || !camera) return;
+  const hostMic = byId("mmHostMicToggle");
+  const hostMicStatus = byId("mmHostMicStatus");
 
-  mic.disabled = !isJoined || !microphoneAllowed ||
-    (currentRole === "host" && IS_HOST_CONTROL_PAGE);
-  camera.disabled = !isJoined || !cameraAllowed;
-  mic.textContent = currentRole === "host" && IS_HOST_CONTROL_PAGE
-    ? "Use Professional Mixer"
-    : (localMicEnabled ? "Microphone ON" : "Microphone OFF");
-  camera.textContent = localCameraEnabled ? "Camera ON" : "Camera OFF";
+  if (mic) {
+    mic.disabled = !isJoined || !microphoneAllowed ||
+      (currentRole === "host" && IS_HOST_CONTROL_PAGE);
+    mic.textContent = currentRole === "host" && IS_HOST_CONTROL_PAGE
+      ? "Use Host Mic button below"
+      : (localMicEnabled ? "Microphone ON" : "Microphone OFF");
+  }
+  if (camera) {
+    camera.disabled = !isJoined || !cameraAllowed;
+    camera.textContent = localCameraEnabled ? "Camera ON" : "Camera OFF";
+  }
+
+  if (hostMic) {
+    const isHostControl = currentRole === "host" && IS_HOST_CONTROL_PAGE;
+    hostMic.hidden = !isHostControl;
+    hostMic.disabled = !isJoined || !isHostControl || !microphoneAllowed;
+    hostMic.textContent = localMicEnabled
+      ? "🎙️ HOST MIC: ON — TURN OFF"
+      : "🎙️ HOST MIC: OFF — TAP TO TURN ON";
+    if (hostMicStatus && isHostControl) {
+      hostMicStatus.textContent = !microphoneAllowed
+        ? "Host microphone permission is not enabled for this account."
+        : localMicEnabled
+          ? "Host microphone is LIVE and published to the auditorium."
+          : "Host microphone is OFF. Tap the button above to start it.";
+    }
+  }
 
   if (info) {
     if (currentRole === "audience") {
