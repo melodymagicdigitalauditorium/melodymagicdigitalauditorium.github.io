@@ -222,7 +222,9 @@ class VirtualAudioEffects {
     this.monitorGain = this.context.createGain();
     this.monitorGain.gain.value = 0;
 
-    this.outputGain.connect(this.monitorGain);
+    // Local singer monitoring uses a direct microphone route to avoid
+    // processing-chain latency. The processed route remains for LiveKit publish.
+    this.source.connect(this.monitorGain);
     this.monitorGain.connect(this.context.destination);
 
     this.processedTrack =
