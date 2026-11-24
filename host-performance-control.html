@@ -79,8 +79,19 @@ hr{border-color:#51401e;margin:10px 0}
 </section>
 
 <section class="card" id="karaokeSection">
+  <h3>🎵 Host Karaoke Stage</h3>
+  <p class="small">This player is visible in the Host Control Room. Select a song below, then play it for the host and assigned singer.</p>
+  <div id="videoMessage">Choose a YouTube karaoke video to begin.</div>
+  <div id="videoPlayer"></div>
+  <div class="volume-box">
+    <label class="small"><input id="hostKaraokeMonitor" type="checkbox"> 🔊 Hear karaoke on this host device</label>
+    <div class="volume-label"><strong>Host's local karaoke volume</strong><span id="hostKaraokeVolumeValue">70%</span></div>
+    <input id="hostKaraokeVolume" type="range" min="0" max="100" step="1" value="70" aria-label="Host local karaoke volume">
+    <p class="small">This changes only the sound on the host's device. Singer volume remains separate.</p>
+  </div>
+  <hr>
   <h3>🎵 Send Karaoke Video to Singer</h3>
-  <p class="small">The assigned singer opens and plays the video on their own stage. The host can pause or stop it if needed.</p>
+  <p class="small">The same song is synchronized with the assigned singer's stage.</p>
 
   <div id="karaokeControls" style="display:none">
     <hr>
@@ -267,10 +278,9 @@ async function createYouTubePlayer(){
             $("videoPlayer").style.display="block";
             $("videoMessage").style.display="none";
 
-            // Host preview is visual only. The host hears karaoke only
-            // through the active singer's LiveKit-published audio mix.
-            youtubePlayer.setVolume(0);
-            youtubePlayer.mute();
+            // The host's local player audio is controlled separately from
+            // the shared singer volume. It starts muted until the host opts in.
+            applyHostLocalKaraokeAudio();
 
             videoMessage("YouTube player connected.");
 
@@ -309,19 +319,29 @@ function setKaraokeVolume(value){
 
   if ($("volumeValue")) $("volumeValue").textContent=volume+"%";
 
-  if(!youtubePlayer||!playerReady)return;
+  // This slider is the shared singer volume only. Never use it to
+  // change the host's local listening level.
+  if(!youtubePlayer||!playerReady||isHost)return;
 
   try{
-
-    // Keep the host's preview at the same level selected for the singer.
-    // Volume adjustments must never mute or stop the local preview.
     youtubePlayer.setVolume(volume);
     if(volume===0) youtubePlayer.mute();
     else youtubePlayer.unMute();
-
   }catch(error){
     console.error("Volume error:",error);
   }
+}
+
+function applyHostLocalKaraokeAudio(){
+  if(!youtubePlayer||!playerReady)return;
+  const enabled=$("hostKaraokeMonitor")?.checked===true;
+  const volume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
+  if($("hostKaraokeVolumeValue"))$("hostKaraokeVolumeValue").textContent=volume+"%";
+  try{
+    youtubePlayer.setVolume(enabled?volume:0);
+    if(enabled&&volume>0)youtubePlayer.unMute();
+    else youtubePlayer.mute();
+  }catch(error){console.warn("Host local karaoke audio:",error);}
 }
 
 async function publishKaraokeVolume(){
@@ -1255,6 +1275,16 @@ $("karaokeVolume").addEventListener("input",()=>{
 });
 $("karaokeVolume").addEventListener("change",()=>{
   publishKaraokeVolume();
+});
+$("hostKaraokeMonitor").addEventListener("change",()=>{
+  applyHostLocalKaraokeAudio();
+  if($("hostKaraokeMonitor").checked && playerReady){
+    try{youtubePlayer.playVideo();}catch(error){}
+  }
+});
+$("hostKaraokeVolume").addEventListener("input",()=>{
+  $("hostKaraokeVolumeValue").textContent=$("hostKaraokeVolume").value+"%";
+  applyHostLocalKaraokeAudio();
 });
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
 $("pauseVideoBtn").addEventListener("click",pauseForEveryone);
