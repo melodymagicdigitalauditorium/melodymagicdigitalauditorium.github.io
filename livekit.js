@@ -102,6 +102,7 @@ let hostSelfMonitorElement = null;
 let hostMonitorContext = null;
 let hostMonitorAnalyser = null;
 let hostMonitorSource = null;
+let hostMonitorGain = null;
 let hostMonitorFrame = 0;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
@@ -1197,9 +1198,9 @@ function createPanel() {
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
       </div>
       <div class="mm-effect-control">
-        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Host microphone level check</label>
+        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Hear my own voice (headphones)</label>
         <div id="mmHostMicLevel" role="meter" aria-label="Host microphone input level" style="height:12px;background:#333;border-radius:8px;overflow:hidden;margin:8px 0"><div id="mmHostMicLevelBar" style="height:100%;width:0%;background:#d7ad4c;transition:width .08s"></div></div>
-        <p class="mm-note">Safe input check only: shows your microphone level without playing your voice back. This avoids the delayed echo caused by phone audio monitoring. Your live microphone remains on.</p>
+        <p class="mm-note">When ON, your own live microphone is played into your headphones and the level meter moves. Use wired headphones and keep the phone volume low to avoid feedback. Phone/browser monitoring can have a small delay; turn OFF if you hear echo.</p>
       </div>
       <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
       <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
@@ -3322,16 +3323,20 @@ async function startSingerKaraokeAudio() {
 function setupHostDirectMonitor(track) {
   stopHostDirectMonitor();
   if (currentRole !== "host" || !IS_HOST_CONTROL_PAGE || !track) return;
-  // Analyse microphone input only. Never route it to speakers/headphones:
-  // browser audio playback on Android introduces monitoring latency/echo.
+  // Analyse the microphone and provide optional local headphone sidetone.
+  // This is separate from the published live microphone track.
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return;
   try {
-    hostMonitorContext = new AudioContextClass();
+    hostMonitorContext = new AudioContextClass({ latencyHint: "interactive" });
     hostMonitorAnalyser = hostMonitorContext.createAnalyser();
     hostMonitorAnalyser.fftSize = 512;
+    hostMonitorGain = hostMonitorContext.createGain();
+    hostMonitorGain.gain.value = 0;
     hostMonitorSource = hostMonitorContext.createMediaStreamSource(new MediaStream([track]));
     hostMonitorSource.connect(hostMonitorAnalyser);
+    hostMonitorAnalyser.connect(hostMonitorGain);
+    hostMonitorGain.connect(hostMonitorContext.destination);
     hostSelfMonitorElement = { track };
     track.addEventListener("ended", stopHostDirectMonitor, { once: true });
     if (byId("mmHostSelfMonitor")?.checked) setHostDirectMonitor(true);
@@ -3348,15 +3353,16 @@ function setHostDirectMonitor(enabled) {
     if (enabled) showMessage("Turn on the host microphone first.", "warning");
     return;
   }
+  if (hostMonitorContext?.state === "suspended") hostMonitorContext.resume().catch(error => console.warn("Host monitor audio resume:", error));
+  if (hostMonitorGain) hostMonitorGain.gain.setTargetAtTime(enabled ? 0.8 : 0, hostMonitorContext.currentTime, 0.015);
   if (!enabled) {
     if (hostMonitorFrame) cancelAnimationFrame(hostMonitorFrame);
     hostMonitorFrame = 0;
     const bar = byId("mmHostMicLevelBar");
     if (bar) bar.style.width = "0%";
-    showMessage("Mic level check stopped. Your live microphone remains on.", "info");
+    showMessage("Your own voice monitor is OFF. Your live microphone remains on.", "info");
     return;
   }
-  if (hostMonitorContext?.state === "suspended") hostMonitorContext.resume();
   const samples = new Uint8Array(hostMonitorAnalyser.fftSize);
   const updateLevel = () => {
     if (!byId("mmHostSelfMonitor")?.checked || !hostMonitorAnalyser) return;
@@ -3370,7 +3376,7 @@ function setHostDirectMonitor(enabled) {
   };
   if (hostMonitorFrame) cancelAnimationFrame(hostMonitorFrame);
   updateLevel();
-  showMessage("Mic level check is ON. No delayed self-playback is used.", "success");
+  showMessage("Your own voice monitor is ON. Use headphones; a little phone audio delay may occur.", "success");
 }
 
 function stopHostDirectMonitor() {
@@ -3378,10 +3384,12 @@ function stopHostDirectMonitor() {
   hostMonitorFrame = 0;
   try { hostMonitorSource?.disconnect(); } catch (error) {}
   try { hostMonitorAnalyser?.disconnect(); } catch (error) {}
+  try { hostMonitorGain?.disconnect(); } catch (error) {}
   if (hostMonitorContext) hostMonitorContext.close().catch(() => {});
   hostMonitorContext = null;
   hostMonitorAnalyser = null;
   hostMonitorSource = null;
+  hostMonitorGain = null;
   hostSelfMonitorElement = null;
   const checkbox = byId("mmHostSelfMonitor");
   if (checkbox) checkbox.checked = false;
