@@ -2771,6 +2771,22 @@ async function joinAuditorium() {
       if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
       singerAutoJoinTimer = setTimeout(() => { if (!isJoined && !joining && !leaving) joinAuditorium(); }, 8000);
     }
+    // The host enters automatically. If the first token or LiveKit connection
+    // attempt fails, retry it just like a dropped connection and show the
+    // actual reason in the host stage panel instead of leaving controls stuck.
+    if (isHost && IS_HOST_CONTROL_PAGE && !leaving) {
+      const stageStatus = byId("mmStageAssignmentStatus");
+      if (stageStatus) stageStatus.textContent =
+        "Host connection failed: " + (error?.message || "Unknown connection error") +
+        ". Retrying automatically in 8 seconds. Keep this page open.";
+      if (!roomRetryTimer) {
+        roomRetryCount += 1;
+        roomRetryTimer = setTimeout(() => {
+          roomRetryTimer = null;
+          if (isHost && !leaving && !isJoined && !joining) joinAuditorium();
+        }, 8000);
+      }
+    }
     if (room) {
       try { await room.disconnect(); } catch (disconnectError) {
         console.warn("Room cleanup error:", disconnectError);
