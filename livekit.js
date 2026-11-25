@@ -97,6 +97,9 @@ let recoverSingerMicAfterReconnect = false;
 let lastReactionTimes = [];
 
 let audioEffects = null;
+let singerDirectMonitorContext = null;
+let singerDirectMonitorSource = null;
+let singerDirectMonitorGain = null;
 let programmeMixer = null;
 let publishedProgrammeTrack = null;
 let programmeMixerStarting = false;
@@ -3417,6 +3420,41 @@ function hostCanUseAudioEffects() {
   return isJoined && currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE;
 }
 
+function startSingerDirectMonitor(track) {
+  stopSingerDirectMonitor();
+  if (!track) return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    singerDirectMonitorContext = new AudioContextClass({ latencyHint: "interactive" });
+    singerDirectMonitorSource = singerDirectMonitorContext.createMediaStreamSource(new MediaStream([track]));
+    singerDirectMonitorGain = singerDirectMonitorContext.createGain();
+    singerDirectMonitorGain.gain.value = 0;
+    singerDirectMonitorSource.connect(singerDirectMonitorGain);
+    singerDirectMonitorGain.connect(singerDirectMonitorContext.destination);
+    if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
+    setSingerDirectMonitor(Boolean(byId("mmSingerMonitor")?.checked));
+  } catch (error) {
+    console.warn("Singer direct microphone monitor:", error);
+    stopSingerDirectMonitor();
+  }
+}
+
+function setSingerDirectMonitor(enabled) {
+  if (!singerDirectMonitorContext || !singerDirectMonitorGain) return;
+  if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
+  singerDirectMonitorGain.gain.setTargetAtTime(enabled ? 1.6 : 0, singerDirectMonitorContext.currentTime, 0.03);
+}
+
+function stopSingerDirectMonitor() {
+  try { singerDirectMonitorSource?.disconnect(); } catch (error) {}
+  try { singerDirectMonitorGain?.disconnect(); } catch (error) {}
+  if (singerDirectMonitorContext) singerDirectMonitorContext.close().catch(() => {});
+  singerDirectMonitorContext = null;
+  singerDirectMonitorSource = null;
+  singerDirectMonitorGain = null;
+}
+
 async function startSingerKaraokeAudio() {
   if (!room || !isJoined) throw new Error("Not connected to the auditorium yet. Wait for Singer: Connected.");
   if (!isCurrentSingerAssignedToStage()) throw new Error("The host must assign you to the main stage.");
@@ -3443,6 +3481,7 @@ async function startSingerKaraokeAudio() {
         source: Track.Source.Microphone
       });
       rawMicrophoneTrack = localAudioTrack.mediaStreamTrack;
+      startSingerDirectMonitor(localAudioTrack.mediaStreamTrack);
       processedMicrophoneTrack = null;
       publishedMicrophoneTrack = localAudioTrack;
       singerKaraokeCaptureStream = new MediaStream([localAudioTrack.mediaStreamTrack]);
@@ -3675,6 +3714,7 @@ async function startMicrophoneEffects() {
 
 async function stopMicrophoneEffects() {
   stopHostDirectMonitor();
+  stopSingerDirectMonitor();
   if (room && publishedMicrophoneTrack) {
     try {
       await room.localParticipant.unpublishTrack(publishedMicrophoneTrack, true);
@@ -4840,6 +4880,7 @@ function wireSingerKaraokeAudioButton() {
     monitor.dataset.mmWired = "true";
     monitor.addEventListener("change", () => {
       if (audioEffects && currentRole === "singer") audioEffects.setMonitor(monitor.checked, 160);
+      if (currentRole === "singer") setSingerDirectMonitor(monitor.checked);
     });
   }
   const button = byId("mmSingerKaraokeAudioBtn");
