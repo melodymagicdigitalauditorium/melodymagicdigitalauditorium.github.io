@@ -2673,6 +2673,11 @@ async function joinAuditorium() {
         console.warn("[Melody Magic] Browser did not unlock remote audio:", audioUnlockError);
       }
     }
+    // If autoplay is blocked, the next host tap/click will unlock LiveKit audio
+    // and retry all incoming singer tracks without disconnecting anything.
+    if (currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE) {
+      armRemoteAudioUnlock();
+    }
     updateSharedKaraokeButton();
     listenToSharedAudioSettings();
 
@@ -3080,12 +3085,21 @@ function armRemoteAudioUnlock() {
         console.warn("[Melody Magic] Remote audio still blocked:", error);
       });
     });
-    if (singerKaraokePlaybackRequested && youtubePlayer) {
-      try {
-        youtubePlayer.unMute();
-        youtubePlayer.playVideo();
-      } catch (error) {
-        console.warn("[Melody Magic] Karaoke audio unlock retry:", error);
+    if (currentRole === "host" && hostSingerMonitorEnabled) {
+      unlockHostRemoteAudio().catch(error => console.warn("[Melody Magic] Host audio unlock retry:", error));
+    }
+    if (youtubePlayer) {
+      const hostKaraokeOn = currentRole === "host"
+        ? Boolean(byId("mmHostKaraokeMonitor")?.checked)
+        : singerKaraokePlaybackRequested;
+      if (hostKaraokeOn || singerKaraokePlaybackRequested) {
+        try {
+          youtubePlayer.unMute();
+          if (currentRole === "host") youtubePlayer.setVolume(100);
+          youtubePlayer.playVideo();
+        } catch (error) {
+          console.warn("[Melody Magic] Karaoke audio unlock retry:", error);
+        }
       }
     }
   }, { once: true, capture: true });
