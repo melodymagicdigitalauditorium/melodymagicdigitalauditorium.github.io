@@ -37,6 +37,15 @@ hr{border-color:#51401e;margin:10px 0}
  button{padding:10px 11px}
 }
 
+
+#hostControls{grid-row:3}
+#livekitArea{grid-row:4}
+#queueSection{grid-row:5;grid-column:1}
+#karaokeSection{grid-row:5;grid-column:2}
+#currentPerformer{grid-row:6;grid-column:1}
+@media(max-width:700px){
+ #hostControls,#livekitArea,#queueSection,#karaokeSection,#currentPerformer{grid-row:auto}
+}
 /* Host control room: compact, ordered dashboard */
 body{padding:6px}
 .container{max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start}
