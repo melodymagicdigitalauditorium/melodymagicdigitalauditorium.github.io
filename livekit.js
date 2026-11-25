@@ -2807,6 +2807,37 @@ function registerRoomEvents() {
     }
   );
 
+  room.on(RoomEvent.Reconnecting, () => {
+    setSingerVisibleStatus('Connection recovering', 'Internet connection unstable. LiveKit is reconnecting; keep this page open.');
+    showMessage('Connection interrupted. Reconnecting automatically...', 'warning');
+  });
+
+  room.on(RoomEvent.Reconnected, async () => {
+    isJoined = true;
+    setSingerVisibleStatus('LIVE — Reconnected', 'Connection restored. Audio tracks are recovering.');
+    if (room && typeof room.startAudio === 'function') { try { await room.startAudio(); } catch (error) { console.warn('Audio unlock after reconnect:', error); } }
+    updateControlButtons();
+    updateAudienceCount();
+    if (currentRole === 'host' && isHost && IS_HOST_CONTROL_PAGE && !publishedMicrophoneTrack) {
+      try { await startMicrophoneEffects(); } catch (error) { showMessage('Host mic recovery failed: ' + error.message, 'warning'); }
+    }
+    if (currentRole === 'singer' && recoverSingerMicAfterReconnect && isCurrentSingerAssignedToStage() && microphoneAllowed && !publishedMicrophoneTrack) {
+      try { await startSingerKaraokeAudio(); } catch (error) { showMessage('Singer mic recovery failed: ' + error.message, 'warning'); }
+    }
+  });
+
+  room.on(RoomEvent.TrackSubscriptionFailed, (trackSid, participant) => {
+    console.warn('[Melody Magic] Remote track subscription failed:', trackSid, participant && participant.identity);
+    showMessage('A live audio/video track failed to connect. Please wait while connection recovers.', 'warning');
+  });
+
+  room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+    if (room && !room.canPlaybackAudio) {
+      showMessage('Browser audio is blocked. Tap anywhere once to enable auditorium sound.', 'warning');
+      armRemoteAudioUnlock();
+    }
+  });
+
   room.on(RoomEvent.Disconnected, reason => {
     console.error("[Melody Magic] LiveKit disconnected:", {
       reason: reason || "no reason supplied",
