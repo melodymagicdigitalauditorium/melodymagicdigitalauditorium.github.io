@@ -130,6 +130,8 @@ let sharedKaraokeStopping = false;
 let singerKaraokeCaptureStream = null;
 let singerKaraokeAudioContext = null;
 let singerKaraokeMixTrack = null;
+let singerKaraokePlaybackRequested = false;
+let remoteAudioUnlockListenerInstalled = false;
 
 let liveComments = [];
 let liveQueue = [];
@@ -2166,9 +2168,10 @@ async function createYouTubePlayer(initialVideoId = "") {
             },
             onAutoplayBlocked: () => {
               const status = byId("mmPlaybackStatus");
-              if (status) status.textContent = "Your browser blocked automatic karaoke sound. The host controls playback; if Android blocks it, tap once anywhere on this page to allow audio.";
+              if (status) status.textContent = "Your browser blocked automatic karaoke sound. Tap anywhere once; the host's current track will resume.";
               const enableButton = byId("mmEnableKaraokeSound");
               if (enableButton) enableButton.hidden = true;
+              armRemoteAudioUnlock();
             }
           }
         });
@@ -2381,14 +2384,17 @@ function listenToSingerKaraokeVideo() {
         if (commandAt > lastSingerCommandAt) {
           lastSingerCommandAt = commandAt;
           if (command === "play") {
+            singerKaraokePlaybackRequested = true;
             if (!isNewVideo) player.seekTo(position, true);
             player.playVideo();
             if (status) status.textContent = "Host is playing your karaoke track.";
             if (notice) notice.textContent = "🎵 Karaoke is playing — controlled by the host.";
           } else if (command === "pause") {
+            singerKaraokePlaybackRequested = false;
             player.pauseVideo();
             if (status) status.textContent = "The host paused your karaoke track.";
           } else if (command === "stop") {
+            singerKaraokePlaybackRequested = false;
             player.stopVideo();
             if (status) status.textContent = "The host stopped your karaoke track.";
           } else if (isNewVideo && status) {
@@ -2915,6 +2921,35 @@ function unlockHostRemoteAudio() {
     }
   });
 }
+function armRemoteAudioUnlock() {
+  if (remoteAudioUnlockListenerInstalled) return;
+  remoteAudioUnlockListenerInstalled = true;
+  document.addEventListener("pointerdown", async () => {
+    remoteAudioUnlockListenerInstalled = false;
+    try {
+      if (room && typeof room.startAudio === "function") await room.startAudio();
+    } catch (error) {
+      console.warn("[Melody Magic] Remote audio unlock retry:", error);
+    }
+    document.querySelectorAll('audio[data-mm-remote-audio-track]').forEach(element => {
+      element.muted = false;
+      element.volume = 1;
+      const result = element.play?.();
+      if (result && typeof result.catch === "function") result.catch(error => {
+        console.warn("[Melody Magic] Remote audio still blocked:", error);
+      });
+    });
+    if (singerKaraokePlaybackRequested && youtubePlayer) {
+      try {
+        youtubePlayer.unMute();
+        youtubePlayer.playVideo();
+      } catch (error) {
+        console.warn("[Melody Magic] Karaoke audio unlock retry:", error);
+      }
+    }
+  }, { once: true, capture: true });
+}
+
 function attachTrackToTile(track, targetId, isRemote = false) {
   const target = byId(targetId);
   if (!track) return;
@@ -2953,7 +2988,10 @@ function attachTrackToTile(track, targetId, isRemote = false) {
       if (!audioSink.contains(element)) audioSink.appendChild(element);
       const playResult = element.play?.();
       if (playResult && typeof playResult.catch === "function") {
-        playResult.catch(() => showMessage("Tap the page once to enable live audio playback.", "warning"));
+        playResult.catch(() => {
+          showMessage("Your browser blocked live audio. Tap anywhere once to enable sound.", "warning");
+          armRemoteAudioUnlock();
+        });
       }
     });
     return;
