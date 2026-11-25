@@ -1923,13 +1923,16 @@ function updateActivePerformerKaraokeLayout() {
   const myMobile = safeText(singerRegistration?.mobile).replace(/\D/g, "").slice(-10);
   const activeMobile = safeText(performance.mobile || performance.singerMobile).replace(/\D/g, "").slice(-10);
   const isSinger = requestedMode === "singer" || currentRole === "singer" || !!singerRegistration;
+  const isHostStagePerformer = IS_HOST_CONTROL_PAGE && currentRole === "host" &&
+    !!getHostParticipantUid() && stageSingerUids.includes(getHostParticipantUid());
   const isPerforming = safeText(performance.status || performance.performanceStatus).toLowerCase() === "performing";
   const identityMatches =
     (!!myUid && !!performance.singerUid && performance.singerUid === myUid) ||
     (!!myRegistrationId && !!activeRegistrationId && activeRegistrationId === myRegistrationId) ||
     (!!myName && !!activeName && activeName === myName) ||
     (!!myMobile && !!activeMobile && activeMobile === myMobile);
-  const isMyPerformance = isSinger && (stageSingerUids.includes(myUid) || (isPerforming && identityMatches));
+  const isMyPerformance = isHostStagePerformer ||
+    (isSinger && (stageSingerUids.includes(myUid) || (isPerforming && identityMatches)));
 
   document.body.classList.toggle("mm-active-performer", isMyPerformance);
   updateKaraokePlayerAccess();
@@ -3973,6 +3976,16 @@ function populateSingerSelectors() {
     placeholder.textContent = label;
     select.appendChild(placeholder);
 
+    // The host is a real stage performer too. Use the same LiveKit identity
+    // that the host camera tile uses, so solo-host and host+ singer duets work.
+    const hostUid = getHostParticipantUid();
+    if (hostUid) {
+      const hostOption = document.createElement("option");
+      hostOption.value = hostUid;
+      hostOption.textContent = "👑 Host (me)";
+      select.appendChild(hostOption);
+    }
+
     approved.forEach(item => {
       const option = document.createElement("option");
 
@@ -3983,7 +3996,7 @@ function populateSingerSelectors() {
       select.appendChild(option);
     });
 
-    if (approved.some(item => item.singerUid === previous)) {
+    if (previous === hostUid || approved.some(item => item.singerUid === previous)) {
       select.value = previous;
     }
   };
@@ -4167,17 +4180,29 @@ async function selectMainSingers() {
     : [singerOne];
 
   const approved = getApprovedRegistrations();
+  const hostParticipantUid = getHostParticipantUid();
 
-  const selected = selectedUids.map(uid =>
-    approved.find(item => item.singerUid === uid)
-  );
+  // Represent the host in the same stage list as singers. The host's own
+  // microphone/camera are already controlled by the host control room.
+  const selected = selectedUids.map(uid => {
+    if (hostParticipantUid && uid === hostParticipantUid) {
+      return {
+        id: "host",
+        singerUid: hostParticipantUid,
+        singerName: displayName(),
+        name: displayName(),
+        isHost: true
+      };
+    }
+    return approved.find(item => item.singerUid === uid) || null;
+  });
 
   if (selected.some(item => !item)) {
-    showMessage("One or more selected singers are not approved.", "error");
+    showMessage("One or more selected performers are not approved.", "error");
     return;
   }
 
-  const registrationIds = selected.map(item => item.id);
+  const registrationIds = selected.map(item => item.isHost ? "host" : item.id);
 
   const singerNames = selected.map(item =>
     item.singerName || item.name || "Singer"
