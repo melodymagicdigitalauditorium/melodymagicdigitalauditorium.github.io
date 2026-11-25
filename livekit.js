@@ -3353,6 +3353,8 @@ function setHostDirectMonitor(enabled) {
     if (enabled) showMessage("Turn on the host microphone first.", "warning");
     return;
   }
+  if (hostMonitorContext?.state === "suspended") hostMonitorContext.resume().catch(error => console.warn("Host monitor audio resume:", error));
+  if (hostMonitorGain) hostMonitorGain.gain.setTargetAtTime(enabled ? 0.8 : 0, hostMonitorContext.currentTime, 0.015);
   if (!enabled) {
     if (hostMonitorFrame) cancelAnimationFrame(hostMonitorFrame);
     hostMonitorFrame = 0;
@@ -3361,8 +3363,6 @@ function setHostDirectMonitor(enabled) {
     showMessage("Your own voice monitor is OFF. Your live microphone remains on.", "info");
     return;
   }
-  if (hostMonitorContext?.state === "suspended") hostMonitorContext.resume().catch(error => console.warn("Host monitor audio resume:", error));
-  if (hostMonitorGain) hostMonitorGain.gain.setTargetAtTime(enabled ? 0.8 : 0, hostMonitorContext.currentTime, 0.015);
   const samples = new Uint8Array(hostMonitorAnalyser.fftSize);
   const updateLevel = () => {
     if (!byId("mmHostSelfMonitor")?.checked || !hostMonitorAnalyser) return;
