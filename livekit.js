@@ -3646,17 +3646,27 @@ async function toggleMicrophone() {
   }
 
   try {
-    // The host microphone is a permanent programme input. The host button
-    // is a retry/enable control only and must never unpublish the host voice.
+    // Host ON/OFF only mutes/unmutes the already-published LiveKit track.
+    // It never stops the browser microphone, unpublishes the track, or drops
+    // the LiveKit connection. If the capture really ended, offer a retry.
     if (currentRole === "host" && IS_HOST_CONTROL_PAGE) {
-      if (localMicEnabled && publishedMicrophoneTrack?.mediaStreamTrack?.readyState === "live" && publishedMicrophoneTrack.mediaStreamTrack.enabled) {
-        showMessage("Host microphone is already LIVE and cannot be turned off.", "info");
-        updateControlButtons();
-        return;
+      const liveTrack = publishedMicrophoneTrack?.mediaStreamTrack?.readyState === "live";
+      if (liveTrack && publishedMicrophoneTrack) {
+        if (localMicEnabled) {
+          await publishedMicrophoneTrack.mute();
+          localMicEnabled = false;
+          showMessage("Host microphone muted. Connection remains LIVE.", "info");
+        } else {
+          await publishedMicrophoneTrack.unmute();
+          localMicEnabled = true;
+          showMessage("Host microphone ON. Same connection restored.", "success");
+        }
+      } else {
+        // Initial start or recovery after the device/browser ended capture.
+        await startMicrophoneEffects();
+        showMessage("Host microphone connected and LIVE.", "success");
       }
-      await startMicrophoneEffects();
       updateControlButtons();
-      showMessage("Host microphone is LIVE for everyone.", "success");
       return;
     }
 
@@ -3755,15 +3765,20 @@ function updateControlButtons() {
     const isHostControl = currentRole === "host" && IS_HOST_CONTROL_PAGE;
     hostMic.hidden = !isHostControl;
     hostMic.disabled = !isJoined || !isHostControl || !microphoneAllowed;
+    const hostTrackConnected = publishedMicrophoneTrack?.mediaStreamTrack?.readyState === "live";
     hostMic.textContent = localMicEnabled
-      ? "🎙️ HOST MIC: LIVE — ALWAYS ON"
-      : "🎙️ START / RETRY HOST MICROPHONE";
+      ? "🎙️ HOST MIC: ON — TAP TO MUTE"
+      : hostTrackConnected
+        ? "🎙️ HOST MIC: OFF — TAP TO UNMUTE"
+        : "🎙️ START / RETRY HOST MICROPHONE";
     if (hostMicStatus && isHostControl) {
       hostMicStatus.textContent = !microphoneAllowed
         ? "Host microphone access is unavailable. Check browser microphone permission."
-        : localMicEnabled
-          ? "Host microphone is LIVE and published to everyone. It cannot be turned off from this page."
-          : "Host microphone is not connected yet. Tap START / RETRY and allow microphone access.";
+        : hostTrackConnected
+          ? localMicEnabled
+            ? "Host microphone is ON. LiveKit connection stays connected."
+            : "Host microphone is muted. Microphone connection is still active."
+          : "Host microphone is not connected. Tap START / RETRY and allow microphone access.";
     }
   }
 
