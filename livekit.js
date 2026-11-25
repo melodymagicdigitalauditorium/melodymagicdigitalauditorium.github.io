@@ -3285,8 +3285,8 @@ async function startSingerKaraokeAudio() {
   }
   if (publishedMicrophoneTrack) return;
 
-  // Mobile browsers cannot reliably share tab audio. Publish the singer's
-  // microphone directly on phones; desktop can still send mic + tab audio.
+  // On mobile, publish a clean microphone track directly. Karaoke playback
+  // remains on the singer's YouTube player and is started/unmuted by this tap.
   const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (isMobileBrowser || !navigator.mediaDevices?.getDisplayMedia) {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -3295,35 +3295,48 @@ async function startSingerKaraokeAudio() {
     let mobileMicStream = null;
     try {
       mobileMicStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: { ideal: 0.01 } },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
         video: false
       });
       const micTrack = mobileMicStream.getAudioTracks()[0];
       if (!micTrack) throw new Error("No microphone was found.");
-      audioEffects = new VirtualAudioEffects();
-      const processedMicTrack = await audioEffects.start(micTrack);
-      applySharedAudioSettingsToEffects();
-      audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
-      // Enable the processed audio track before publishing; effects start muted by default.
-      audioEffects.setMuted(false);
-      await room.localParticipant.publishTrack(processedMicTrack, {
-        name: "Melody Magic Singer Mobile Microphone",
+      await room.localParticipant.publishTrack(micTrack, {
+        name: "Melody Magic Singer Raw Microphone",
         source: Track.Source.Microphone
       });
-      singerKaraokeCaptureStream = new MediaStream([micTrack]);
-      singerKaraokeAudioContext = null;
-      singerKaraokeMixTrack = processedMicTrack;
       rawMicrophoneTrack = micTrack;
-      processedMicrophoneTrack = processedMicTrack;
-      publishedMicrophoneTrack = processedMicTrack;
+      processedMicrophoneTrack = null;
+      publishedMicrophoneTrack = micTrack;
+      singerKaraokeCaptureStream = mobileMicStream;
+      singerKaraokeAudioContext = null;
+      singerKaraokeMixTrack = micTrack;
+      audioEffects = null;
       localMicEnabled = true;
+
+      // Audio playback on mobile requires a direct user gesture. Try to start
+      // the host-selected song locally; the mic remains live if video isn't ready.
+      let karaokeStarted = false;
+      if (youtubePlayer) {
+        try {
+          youtubePlayer.unMute();
+          youtubePlayer.setVolume(100);
+          youtubePlayer.playVideo();
+          karaokeStarted = true;
+        } catch (playError) {
+          console.warn("[Melody Magic] Singer karaoke play failed:", playError);
+        }
+      }
       updateControlButtons();
       const button = byId("mmSingerKaraokeAudioBtn");
-      if (button) button.textContent = "■ Stop singer microphone";
-      showMessage("Your phone microphone is live. Karaoke audio is supplied separately.", "success");
+      if (button) button.textContent = "■ STOP MIC + KARAOKE AUDIO";
+      showMessage(
+        karaokeStarted
+          ? "Raw singer microphone is live and karaoke audio started on your phone."
+          : "Raw singer microphone is live. Karaoke player is not ready yet; ask host to send/play the song.",
+        karaokeStarted ? "success" : "warning"
+      );
       return;
     } catch (error) {
-      if (audioEffects) { audioEffects.stop(); audioEffects = null; }
       if (mobileMicStream) mobileMicStream.getTracks().forEach(track => track.stop());
       throw error;
     }
@@ -4626,6 +4639,9 @@ function wireSingerKaraokeAudioButton() {
     try {
       if (localMicEnabled) {
         await stopMicrophoneEffects();
+        if (youtubePlayer) {
+          try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {}
+        }
         button.textContent = "🎤 START MIC + KARAOKE AUDIO";
         showMessage("Singer microphone and karaoke audio stopped.");
       } else {
