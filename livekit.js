@@ -2166,9 +2166,9 @@ async function createYouTubePlayer(initialVideoId = "") {
             },
             onAutoplayBlocked: () => {
               const status = byId("mmPlaybackStatus");
-              if (status) status.textContent = "Tap ENABLE KARAOKE SOUND once to allow synchronized playback.";
+              if (status) status.textContent = "Your browser blocked automatic karaoke sound. The host controls playback; if Android blocks it, tap once anywhere on this page to allow audio.";
               const enableButton = byId("mmEnableKaraokeSound");
-              if (enableButton) enableButton.hidden = false;
+              if (enableButton) enableButton.hidden = true;
             }
           }
         });
@@ -2381,7 +2381,7 @@ function listenToSingerKaraokeVideo() {
         if (commandAt > lastSingerCommandAt) {
           lastSingerCommandAt = commandAt;
           if (command === "play") {
-            if (!isNewVideo && position > 0) player.seekTo(position, true);
+            if (!isNewVideo) player.seekTo(position, true);
             player.playVideo();
             if (status) status.textContent = "Host is playing your karaoke track.";
             if (notice) notice.textContent = "🎵 Karaoke is playing — controlled by the host.";
