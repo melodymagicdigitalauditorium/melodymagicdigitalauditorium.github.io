@@ -2807,6 +2807,16 @@ function registerRoomEvents() {
       // Only skip the video screen-share track; suppressing ScreenShareAudio made karaoke silent.
       if (source === Track.Source.ScreenShare) return;
       await attachRemoteTrack(track, participant);
+      if (currentRole === "host" && isHost && track?.kind === Track.Kind.Audio) {
+        const who = participant?.name || participant?.identity || "Singer";
+        const sink = byId("mmRemoteAudioSink");
+        const audioCount = sink ? sink.querySelectorAll('audio[data-mm-remote-singer-audio="true"]').length : 0;
+        showMessage(
+          "SINGER AUDIO RECEIVED from " + who +
+          ". Audio player attached (" + audioCount + "). If you still hear nothing, tap the singer-monitor checkbox once and check your headphone volume.",
+          "success"
+        );
+      }
     }
   );
 
