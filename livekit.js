@@ -2667,7 +2667,7 @@ async function joinAuditorium() {
     if (byId("mmAudioEffects")) byId("mmAudioEffects").hidden = !hostEffects;
     if (byId("mmHostControls")) byId("mmHostControls").hidden = !(isHost && IS_HOST_CONTROL_PAGE);
 
-    room = new Room({ adaptiveStream: true, dynacast: true });
+    room = new Room({ adaptiveStream: true, dynacast: true, autoSubscribe: true });
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
@@ -2814,19 +2814,18 @@ async function joinAuditorium() {
 function registerRoomEvents() {
   if (!room) return;
 
-  // Explicitly subscribe to every remote audio publication. This is important
-  // for mobile host browsers: a participant can join while auto-subscription
-  // is delayed or disabled by a previous reconnect.
+  // Explicitly subscribe to every remote audio publication for BOTH host and
+  // singers. Do not rely only on the SDK's default auto-subscribe behavior:
+  // mobile browsers can miss audio publications during reconnects.
   room.on(RoomEvent.TrackPublished, async (publication, participant) => {
-    if (currentRole !== "host" || !isHost || publication?.kind !== Track.Kind.Audio) return;
-    const who = participant?.name || participant?.identity || "Singer";
-    showMessage("Singer joined: " + who + ". Requesting microphone audio...", "info");
+    if (publication?.kind !== Track.Kind.Audio) return;
+    const who = participant?.name || participant?.identity || "Participant";
     try {
-      if (typeof publication.setSubscribed === "function") {
+      if (typeof publication.setSubscribed === "function" && !publication.isSubscribed) {
         await publication.setSubscribed(true);
       }
     } catch (error) {
-      showMessage("Could not subscribe to " + who + "'s microphone: " + (error?.message || error), "error");
+      showMessage("Could not connect audio from " + who + ": " + (error?.message || error), "error");
     }
   });
 
@@ -2834,11 +2833,17 @@ function registerRoomEvents() {
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
       const source = publication?.source || track?.source;
-      // Karaoke is synchronized through each viewer's YouTube player and Firebase.
-      // Shared karaoke tab audio must be received and played by singers/audience.
-      // Only skip the video screen-share track; suppressing ScreenShareAudio made karaoke silent.
-      if (source === Track.Source.ScreenShare) return;
+      // Skip only the screen-share VIDEO. Always attach audio tracks, including
+      // microphone audio and screen-share/tab audio, on every participant device.
+      if (track?.kind === Track.Kind.Video && source === Track.Source.ScreenShare) return;
       await attachRemoteTrack(track, participant);
+      if (track?.kind === Track.Kind.Audio) {
+        const who = participant?.name || participant?.identity || "participant";
+        console.info("[Melody Magic] Remote audio connected:", who, source || "unknown source");
+        if (currentRole === "singer") {
+          showMessage("Live audio connected from " + who + ".", "success");
+        }
+      }
       if (currentRole === "host" && isHost && track?.kind === Track.Kind.Audio) {
         const who = participant?.name || participant?.identity || "Singer";
         const sink = byId("mmRemoteAudioSink");
