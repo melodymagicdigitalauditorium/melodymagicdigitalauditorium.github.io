@@ -1234,14 +1234,14 @@ function createPanel() {
       </select>
 
       <div>
-        <label for="mmSingerOne">Singer 1:</label>
+        <label for="mmSingerOne">Performer 1 (host or singer):</label>
         <select id="mmSingerOne">
           <option value="">Select approved singer</option>
         </select>
       </div>
 
       <div>
-        <label for="mmSingerTwo">Singer 2:</label>
+        <label for="mmSingerTwo">Performer 2 (for duet):</label>
         <select id="mmSingerTwo">
           <option value="">Select second singer</option>
         </select>
@@ -4001,8 +4001,8 @@ function populateSingerSelectors() {
     }
   };
 
-  buildOptions(first, "Select approved singer");
-  buildOptions(second, "Select second singer");
+  buildOptions(first, "Select host or approved singer");
+  buildOptions(second, "Select second performer");
 }
 
 
@@ -4239,9 +4239,11 @@ async function selectMainSingers() {
       });
     }
 
+    const hostIsOnStage = selectedUids.includes(hostParticipantUid);
     showMessage(
-      mode.toUpperCase() +
-      " stage assigned. Grant microphone permission separately.",
+      hostIsOnStage
+        ? (mode.toUpperCase() + " stage assigned with you on stage. Your host microphone is already live; turn on your camera if you want to appear on video. Grant microphone permission to the other singer for a duet.")
+        : (mode.toUpperCase() + " stage assigned. Grant microphone permission separately."),
       "success"
     );
 
