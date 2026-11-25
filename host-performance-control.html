@@ -109,8 +109,10 @@ hr{border-color:#51401e;margin:10px 0}
       <input id="karaokeVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Singer karaoke volume">
       <p class="small">Adjust the karaoke playback volume on the assigned singer's page.</p>
     </div>
-    <button class="green" id="sendVideoToSingerBtn">📨 SEND VIDEO TO ASSIGNED SINGER</button>
-    <button class="blue" id="pauseVideoBtn">⏸ PAUSE SINGER VIDEO</button>
+    <button class="green" id="playKaraokeForEveryoneBtn" type="button">▶ PLAY KARAOKE FOR EVERYONE</button>
+    <p class="small">After pasting the YouTube link, tap this button to load and start the karaoke video for the host and connected auditorium participants.</p>
+    <button class="blue" id="sendVideoToSingerBtn" type="button">📨 SEND VIDEO TO ASSIGNED SINGER</button>
+    <button class="blue" id="pauseVideoBtn" type="button">⏸ PAUSE SINGER VIDEO</button>
     <button class="red" id="stopVideoBtn">■ STOP SINGER VIDEO</button>
 
     <p id="videoStatus" class="small">Host video controls are ready.</p>
@@ -1286,6 +1288,7 @@ $("hostKaraokeVolume").addEventListener("input",()=>{
   $("hostKaraokeVolumeValue").textContent=$("hostKaraokeVolume").value+"%";
   applyHostLocalKaraokeAudio();
 });
+$("playKaraokeForEveryoneBtn").addEventListener("click",playForEveryone);
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
 $("pauseVideoBtn").addEventListener("click",pauseForEveryone);
 $("stopVideoBtn").addEventListener("click",stopForEveryone);
