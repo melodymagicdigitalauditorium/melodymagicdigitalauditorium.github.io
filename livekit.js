@@ -2856,9 +2856,9 @@ function registerRoomEvents() {
       localMicEnabled = false;
       localCameraEnabled = false;
 
-      microphoneAllowed = false;
-      cameraAllowed = false;
-
+      // A LiveKit transport drop does not revoke Firebase host permissions.
+      // Preserve the last approved singer mic/camera permissions so reconnect
+      // can republish the microphone without waiting for a Firebase value change.
       stopMicrophoneEffects();
       stopProfessionalProgrammeMixer();
       stopSharedKaraokeCapture("Disconnected from the live auditorium.");
