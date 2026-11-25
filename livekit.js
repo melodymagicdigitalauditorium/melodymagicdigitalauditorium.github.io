@@ -1,7 +1,8 @@
 import {
   Room,
   RoomEvent,
-  Track
+  Track,
+  createLocalAudioTrack
 } from "https://esm.sh/livekit-client@2";
 
 import { auth, db, connectAuditorium } from "./firebase.js";
@@ -1234,7 +1235,7 @@ function createPanel() {
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
       <div class="mm-effect-control">
-        <label><input id="mmHostKaraokeMonitor" type="checkbox"> 🎵 Host: hear YouTube karaoke on this device</label>
+        <label><input id="mmHostKaraokeMonitor" type="checkbox" checked> 🎵 Host: hear YouTube karaoke on this device</label>
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
       </div>
       <div class="mm-effect-control">
@@ -3331,11 +3332,68 @@ async function startSingerKaraokeAudio() {
   if (!microphoneAllowed) throw new Error("The host must turn your microphone permission ON.");
   if (publishedMicrophoneTrack) return;
 
-  // On mobile, publish a clean microphone track directly. Karaoke playback
-  // remains on the singer's YouTube player and is started/unmuted by this tap.
+  // Mobile singer: use LiveKit's LocalAudioTrack API rather than publishing
+  // a raw browser MediaStreamTrack. This keeps publication/unpublication and
+  // reconnect handling under LiveKit's track lifecycle.
   const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (isMobileBrowser || !navigator.mediaDevices?.getDisplayMedia) {
     if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Microphone access is not supported by this browser.");
+    }
+    let localAudioTrack = null;
+    try {
+      localAudioTrack = await createLocalAudioTrack({
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      });
+      await room.localParticipant.publishTrack(localAudioTrack, {
+        name: "Melody Magic Singer Raw Microphone",
+        source: Track.Source.Microphone
+      });
+      rawMicrophoneTrack = localAudioTrack.mediaStreamTrack;
+      processedMicrophoneTrack = null;
+      publishedMicrophoneTrack = localAudioTrack;
+      singerKaraokeCaptureStream = new MediaStream([localAudioTrack.mediaStreamTrack]);
+      singerKaraokeAudioContext = null;
+      singerKaraokeMixTrack = localAudioTrack.mediaStreamTrack;
+      audioEffects = null;
+      localMicEnabled = true;
+      recoverSingerMicAfterReconnect = false;
+
+      // Start the synchronized YouTube accompaniment locally after this tap.
+      // On phones, the host must separately share the tab audio to broadcast
+      // the accompaniment to the whole auditorium.
+      let karaokeStarted = false;
+      if (youtubePlayer) {
+        try {
+          youtubePlayer.unMute();
+          youtubePlayer.setVolume(100);
+          youtubePlayer.playVideo();
+          karaokeStarted = true;
+        } catch (playError) {
+          console.warn("[Melody Magic] Singer karaoke play failed:", playError);
+        }
+      }
+      updateControlButtons();
+      const button = byId("mmSingerKaraokeAudioBtn");
+      if (button) button.textContent = "■ STOP MIC + KARAOKE AUDIO";
+      showMessage(
+        karaokeStarted
+          ? "Singer microphone is LIVE. Karaoke is playing on this phone."
+          : "Singer microphone is LIVE. Ask the host to load and play the karaoke song.",
+        karaokeStarted ? "success" : "warning"
+      );
+      return;
+    } catch (error) {
+      if (localAudioTrack) {
+        try { await room.localParticipant.unpublishTrack(localAudioTrack, true); } catch (e) {}
+        try { localAudioTrack.stop(); } catch (e) {}
+      }
+      throw new Error("Singer microphone could not connect: " + (error?.message || error));
+    }
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Microphone access is not supported by this browser.");
     }
     let mobileMicStream = null;
