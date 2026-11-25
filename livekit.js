@@ -598,8 +598,8 @@ class ProfessionalProgrammeMixer {
     this.hostMicStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,
-        noiseSuppression: true,
-        autoGainControl: true
+        noiseSuppression: false,
+        autoGainControl: false
       },
       video: false
     });
@@ -3443,7 +3443,7 @@ function startSingerDirectMonitor(track) {
 function setSingerDirectMonitor(enabled) {
   if (!singerDirectMonitorContext || !singerDirectMonitorGain) return;
   if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
-  singerDirectMonitorGain.gain.setTargetAtTime(enabled ? 0.8 : 0, singerDirectMonitorContext.currentTime, 0.03);
+  singerDirectMonitorGain.gain.setTargetAtTime(enabled ? 0.25 : 0, singerDirectMonitorContext.currentTime, 0.03);
 }
 
 function stopSingerDirectMonitor() {
