@@ -3402,6 +3402,7 @@ async function startSingerKaraokeAudio() {
       }
       throw new Error("Singer microphone could not connect: " + (error?.message || error));
     }
+  }
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("Microphone access is not supported by this browser.");
   }
