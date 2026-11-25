@@ -1308,12 +1308,6 @@ function createPanel() {
         </div>
       </div>
 
-      <div class="mm-section">
-        <h3>🎵 Share Karaoke Audio with Everyone</h3>
-        <p class="mm-note">Load and play the karaoke video first. Then share this Chrome tab and enable “Share tab audio” so singers and audience can hear the accompaniment.</p>
-        <button id="mmShareKaraokeBtn" type="button" disabled>▶ SHARE KARAOKE WITH EVERYONE</button>
-        <p id="mmShareKaraokeStatus" class="mm-note" role="status">Waiting for the host to connect and load a karaoke video.</p>
-      </div>
     </div>
 
     <!-- Karaoke player is rendered once by the host page's dedicated Karaoke Performance section. -->
