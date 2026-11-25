@@ -4771,6 +4771,22 @@ async function handleSingerKaraokeAudioButton(button) {
 // dynamically-installed event listeners for its primary microphone control.
 window.MelodyMagicSingerAudio = handleSingerKaraokeAudioButton;
 
+// Capture the singer button at document level as a fallback. This still works
+// if the page rebuilds the button or a later UI routine replaces its onclick.
+if (!window.__mmSingerAudioDelegated) {
+  window.__mmSingerAudioDelegated = true;
+  document.addEventListener("click", event => {
+    const target = event.target;
+    const button = target && target.closest
+      ? target.closest("#mmSingerKaraokeAudioBtn")
+      : null;
+    if (!button) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    handleSingerKaraokeAudioButton(button);
+  }, true);
+}
+
 function wireSingerKaraokeAudioButton() {
   const monitor = byId("mmSingerMonitor");
   if (monitor && monitor.dataset.mmWired !== "true") {
