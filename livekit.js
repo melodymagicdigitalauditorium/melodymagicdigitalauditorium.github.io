@@ -1288,7 +1288,10 @@ function createPanel() {
         </select>
       </div>
 
-      <button id="mmSetStageBtn">Assign Main Stage</button>
+      <button id="mmSetStageBtn" disabled>Assign Main Stage</button>
+      <div id="mmStageAssignmentStatus" class="mm-note" role="status">
+        Checking host connection and approved singer list...
+      </div>
 
       <div class="mm-note">
         Singers can keep their cameras on while waiting.
@@ -3950,6 +3953,17 @@ function updateControlButtons() {
     camera.textContent = localCameraEnabled ? "Camera ON" : "Camera OFF";
   }
 
+  const stageButton = byId("mmSetStageBtn");
+  if (stageButton) {
+    stageButton.disabled = !isJoined || !isHost || !IS_HOST_CONTROL_PAGE;
+  }
+  const stageStatus = byId("mmStageAssignmentStatus");
+  if (stageStatus && IS_HOST_CONTROL_PAGE && isHost) {
+    stageStatus.textContent = isJoined
+      ? "Connected. Select an approved singer and assign the main stage."
+      : "Host verified. Connecting to the auditorium... Stage assignment will unlock when connected.";
+  }
+
   if (hostMic) {
     const isHostControl = currentRole === "host" && IS_HOST_CONTROL_PAGE;
     hostMic.hidden = !isHostControl;
@@ -4854,11 +4868,20 @@ async function initializeShow() {
     if (requestedMode === "singer") listenToSingerKaraokeVideo();
 
     if (byId("mmHostControls")) {
-      byId("mmHostControls").hidden = true;
+      // Show the stage-assignment block as soon as the host is verified.
+      // Do not make this essential control disappear while LiveKit connects.
+      byId("mmHostControls").hidden = !(isHost && IS_HOST_CONTROL_PAGE);
     }
 
     if (byId("mmAudioEffects")) {
       byId("mmAudioEffects").hidden = true;
+    }
+
+    if (isHost && IS_HOST_CONTROL_PAGE) {
+      // Load approved performers before LiveKit finishes connecting so the
+      // host can immediately see who is eligible for the main stage.
+      await loadHostRegistrations();
+      updateControlButtons();
     }
 
     if (isHost) {
