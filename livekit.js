@@ -99,6 +99,10 @@ let programmeMixerStarting = false;
 const programmeRemoteInputs = new Map();
 let rawMicrophoneTrack = null;
 let hostSelfMonitorElement = null;
+let hostMonitorContext = null;
+let hostMonitorAnalyser = null;
+let hostMonitorSource = null;
+let hostMonitorFrame = 0;
 let processedMicrophoneTrack = null;
 let publishedMicrophoneTrack = null;
 // One host-controlled master effects profile is shared by the host and every singer.
@@ -1191,8 +1195,9 @@ function createPanel() {
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
       </div>
       <div class="mm-effect-control">
-        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Host: hear my own microphone</label>
-        <p class="mm-note">Optional raw microphone playback in your headphones. Android may add monitoring delay. Use headphones and turn OFF if you hear echo.</p>
+        <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Host microphone level check</label>
+        <div id="mmHostMicLevel" role="meter" aria-label="Host microphone input level" style="height:12px;background:#333;border-radius:8px;overflow:hidden;margin:8px 0"><div id="mmHostMicLevelBar" style="height:100%;width:0%;background:#d7ad4c;transition:width .08s"></div></div>
+        <p class="mm-note">Safe input check only: shows your microphone level without playing your voice back. This avoids the delayed echo caused by phone audio monitoring. Your live microphone remains on.</p>
       </div>
       <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
       <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
@@ -3262,51 +3267,71 @@ async function startSingerKaraokeAudio() {
 function setupHostDirectMonitor(track) {
   stopHostDirectMonitor();
   if (currentRole !== "host" || !IS_HOST_CONTROL_PAGE || !track) return;
-  const audio = document.createElement("audio");
-  audio.autoplay = false;
-  audio.playsInline = true;
-  audio.muted = true;
-  audio.volume = 1;
-  audio.style.display = "none";
-  audio.srcObject = new MediaStream([track]);
-  document.body.appendChild(audio);
-  hostSelfMonitorElement = audio;
-  track.addEventListener("ended", stopHostDirectMonitor, { once: true });
+  // Analyse microphone input only. Never route it to speakers/headphones:
+  // browser audio playback on Android introduces monitoring latency/echo.
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    hostMonitorContext = new AudioContextClass();
+    hostMonitorAnalyser = hostMonitorContext.createAnalyser();
+    hostMonitorAnalyser.fftSize = 512;
+    hostMonitorSource = hostMonitorContext.createMediaStreamSource(new MediaStream([track]));
+    hostMonitorSource.connect(hostMonitorAnalyser);
+    hostSelfMonitorElement = { track };
+    track.addEventListener("ended", stopHostDirectMonitor, { once: true });
+    if (byId("mmHostSelfMonitor")?.checked) setHostDirectMonitor(true);
+  } catch (error) {
+    console.warn("Host mic level check:", error);
+    stopHostDirectMonitor();
+  }
 }
 
 function setHostDirectMonitor(enabled) {
-  const audio = hostSelfMonitorElement;
-  if (!audio) {
+  if (!hostMonitorAnalyser || !hostSelfMonitorElement) {
     const checkbox = byId("mmHostSelfMonitor");
     if (checkbox) checkbox.checked = false;
     if (enabled) showMessage("Turn on the host microphone first.", "warning");
     return;
   }
-  if (enabled) {
-    audio.muted = false;
-    audio.play().then(() => {
-      showMessage("Host self-monitor is ON. This may have phone audio delay.", "info");
-    }).catch(error => {
-      audio.muted = true;
-      const checkbox = byId("mmHostSelfMonitor");
-      if (checkbox) checkbox.checked = false;
-      showMessage("Host monitor could not start: " + error.message, "warning");
-    });
-  } else {
-    audio.muted = true;
-    audio.pause();
-    showMessage("Host self-monitor is OFF. Your raw microphone remains live.", "info");
+  if (!enabled) {
+    if (hostMonitorFrame) cancelAnimationFrame(hostMonitorFrame);
+    hostMonitorFrame = 0;
+    const bar = byId("mmHostMicLevelBar");
+    if (bar) bar.style.width = "0%";
+    showMessage("Mic level check stopped. Your live microphone remains on.", "info");
+    return;
   }
+  if (hostMonitorContext?.state === "suspended") hostMonitorContext.resume();
+  const samples = new Uint8Array(hostMonitorAnalyser.fftSize);
+  const updateLevel = () => {
+    if (!byId("mmHostSelfMonitor")?.checked || !hostMonitorAnalyser) return;
+    hostMonitorAnalyser.getByteTimeDomainData(samples);
+    let peak = 0;
+    for (let i = 0; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i] - 128));
+    const percent = Math.min(100, Math.round(peak * 100 / 48));
+    const bar = byId("mmHostMicLevelBar");
+    if (bar) bar.style.width = percent + "%";
+    hostMonitorFrame = requestAnimationFrame(updateLevel);
+  };
+  if (hostMonitorFrame) cancelAnimationFrame(hostMonitorFrame);
+  updateLevel();
+  showMessage("Mic level check is ON. No delayed self-playback is used.", "success");
 }
 
 function stopHostDirectMonitor() {
-  if (!hostSelfMonitorElement) return;
-  hostSelfMonitorElement.pause();
-  hostSelfMonitorElement.srcObject = null;
-  hostSelfMonitorElement.remove();
+  if (hostMonitorFrame) cancelAnimationFrame(hostMonitorFrame);
+  hostMonitorFrame = 0;
+  try { hostMonitorSource?.disconnect(); } catch (error) {}
+  try { hostMonitorAnalyser?.disconnect(); } catch (error) {}
+  if (hostMonitorContext) hostMonitorContext.close().catch(() => {});
+  hostMonitorContext = null;
+  hostMonitorAnalyser = null;
+  hostMonitorSource = null;
   hostSelfMonitorElement = null;
   const checkbox = byId("mmHostSelfMonitor");
   if (checkbox) checkbox.checked = false;
+  const bar = byId("mmHostMicLevelBar");
+  if (bar) bar.style.width = "0%";
 }
 
 async function startMicrophoneEffects() {
