@@ -159,6 +159,7 @@ footer{padding:8px}
 <section id="livekitArea" class="card">
   <h3>🔊 Live Auditorium</h3>
   <p class="small">The host connects automatically when this control room opens.</p>
+  <p id="livekitLoadStatus" class="small" role="status">Loading live auditorium controls…</p>
 </section>
 
 <section class="card" id="karaokeSection">
@@ -1557,7 +1558,7 @@ window.addEventListener("beforeunload",()=>{
 
 </script>
 
-<script type="module" src="./livekit.js?v=20261125-stage-assignment-4"></script>
+<script type="module" src="./livekit.js?v=20261125-stage-assignment-5" onerror="(function(){var s=document.getElementById('livekitLoadStatus');if(s){s.textContent='Live auditorium controls could not load. Refresh once; if this message remains, the live module has a loading error.';s.style.color='#ff7777';}})()"></script>
 
 </body>
 </html>
