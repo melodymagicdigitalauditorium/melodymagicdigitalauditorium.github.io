@@ -89,6 +89,9 @@ let joining = false;
 let leaving = false;
 let singerAutoJoinTimer = null;
 let singerAutoJoinStarted = false;
+let roomRetryTimer = null;
+let roomRetryCount = 0;
+let recoverSingerMicAfterReconnect = false;
 
 let lastReactionTimes = [];
 
@@ -2643,6 +2646,7 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    roomRetryCount = 0;
     // The singer's CONTINUE / ENTER action is the page interaction that
     // authorizes audible playback on mobile browsers. Ask LiveKit to start
     // all subscribed remote audio immediately after joining.
@@ -2847,6 +2851,7 @@ function registerRoomEvents() {
       showId: showId || "missing"
     });
     if (!leaving) {
+      recoverSingerMicAfterReconnect = currentRole === 'singer' && localMicEnabled;
       isJoined = false;
       localMicEnabled = false;
       localCameraEnabled = false;
@@ -2858,12 +2863,22 @@ function registerRoomEvents() {
       stopProfessionalProgrammeMixer();
       stopSharedKaraokeCapture("Disconnected from the live auditorium.");
 
-      showMessage("Disconnected from the auditorium.", "warning");
+      showMessage("Disconnected from the auditorium. Automatic retry scheduled.", "warning");
+      setSingerVisibleStatus("Disconnected — retrying", "Connection dropped. App will automatically reconnect.");
 
       resetButtons();
       updateReactionButtons();
       updateCommentControls();
       updateAudienceCount();
+      if (!leaving && !roomRetryTimer) {
+        roomRetryCount += 1;
+        const retryDelay = Math.min(30000, 3000 * Math.pow(2, Math.min(roomRetryCount - 1, 4)));
+        roomRetryTimer = setTimeout(() => {
+          roomRetryTimer = null;
+          if (!leaving && !isJoined && !joining) joinAuditorium();
+        }, retryDelay);
+        setSingerVisibleStatus('Reconnecting automatically', 'Retry ' + roomRetryCount + ' in ' + Math.round(retryDelay / 1000) + ' seconds. Keep this page open.');
+      }
     }
   });
 
@@ -3343,6 +3358,7 @@ async function startSingerKaraokeAudio() {
       singerKaraokeMixTrack = micTrack;
       audioEffects = null;
       localMicEnabled = true;
+      recoverSingerMicAfterReconnect = false;
 
       // Audio playback on mobile requires a direct user gesture. Try to start
       // the host-selected song locally; the mic remains live if video isn't ready.
@@ -3971,6 +3987,10 @@ function listenToMyPermissions() {
 async function autoEnableSingerMicrophone() {
   if (currentRole !== "singer") return;
   updateKaraokePlayerAccess();
+  if (recoverSingerMicAfterReconnect && isCurrentSingerAssignedToStage() && microphoneAllowed && !localMicEnabled) {
+    try { await startSingerKaraokeAudio(); recoverSingerMicAfterReconnect = false; return; }
+    catch (recoveryError) { showMessage("Singer mic recovery failed: " + recoveryError.message + ". Tap START MIC to retry.", "warning"); }
+  }
   if (isCurrentSingerAssignedToStage() && microphoneAllowed && !localMicEnabled) {
     const button = byId("mmSingerKaraokeAudioBtn");
     if (button) button.hidden = false;
@@ -4533,6 +4553,8 @@ function stopFirebaseListeners() {
 async function leaveAuditorium() {
   if (leaving) return;
   leaving = true;
+  recoverSingerMicAfterReconnect = false;
+  if (roomRetryTimer) { clearTimeout(roomRetryTimer); roomRetryTimer = null; }
   if (singerAutoJoinTimer) clearTimeout(singerAutoJoinTimer);
   try {
     await stopProfessionalProgrammeMixer();
