@@ -624,6 +624,24 @@ async function loadSelectedVideo(){
   }
 }
 
+async function sendSingerKaraokeCommand(command, details={}){
+  if(!isHost||!currentUser||!showId)return;
+  const singers=await getStageSingerRecords();
+  const commandAt=Date.now();
+  const videoId=details.videoId||currentVideoId;
+  if(!videoId)return;
+  await Promise.all(singers.map(({uid,mobile})=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
+    mobile,
+    videoId,
+    volume:Number(details.volume??$("karaokeVolume")?.value??100),
+    command,
+    commandAt,
+    position:Math.max(0,Number(details.position||0)),
+    startedAt:Number(details.startedAt||0),
+    commandedBy:currentUser.uid
+  })));
+}
+
 async function playForEveryone(){
 
   if(!isHost||!currentUser)return;
@@ -660,6 +678,12 @@ async function playForEveryone(){
     };
 
     await update(ref(db,"karaokePlayback/"+showId),data);
+    await sendSingerKaraokeCommand("play",{
+      videoId:currentVideoId,
+      position:0,
+      startedAt:data.startedAt,
+      volume:data.volume
+    });
 
     playbackData=data;
 
@@ -705,8 +729,11 @@ async function pauseForEveryone(){
     const singers=await getStageSingerRecords();
     if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
     const commandAt=Date.now();
+    const position=playerReady&&youtubePlayer
+      ? (youtubePlayer.getCurrentTime()||0)
+      : expectedPosition(playbackData);
     await Promise.all(singers.map(({uid,mobile})=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      mobile,command:"pause",commandAt,commandedBy:currentUser.uid
+      mobile,videoId:currentVideoId,command:"pause",commandAt,position,commandedBy:currentUser.uid
     })));
     videoMessage("Pause command sent to the assigned singer.");
   }catch(error){
@@ -740,6 +767,12 @@ async function resumeForEveryone(){
     };
 
     await update(ref(db,"karaokePlayback/"+showId),data);
+    await sendSingerKaraokeCommand("play",{
+      videoId:currentVideoId,
+      position,
+      startedAt:data.startedAt,
+      volume:data.volume
+    });
 
     playbackData=data;
 
@@ -768,8 +801,11 @@ async function stopForEveryone(){
     const singers=await getStageSingerRecords();
     if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
     const commandAt=Date.now();
+    const position=playerReady&&youtubePlayer
+      ? (youtubePlayer.getCurrentTime()||0)
+      : expectedPosition(playbackData);
     await Promise.all(singers.map(({uid,mobile})=>update(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      mobile,command:"stop",commandAt,commandedBy:currentUser.uid
+      mobile,videoId:currentVideoId,command:"stop",commandAt,position,commandedBy:currentUser.uid
     })));
     videoMessage("Stop command sent to the assigned singer.");
   }catch(error){
