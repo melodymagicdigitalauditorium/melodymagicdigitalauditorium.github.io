@@ -2798,6 +2798,22 @@ async function joinAuditorium() {
 function registerRoomEvents() {
   if (!room) return;
 
+  // Explicitly subscribe to every remote audio publication. This is important
+  // for mobile host browsers: a participant can join while auto-subscription
+  // is delayed or disabled by a previous reconnect.
+  room.on(RoomEvent.TrackPublished, async (publication, participant) => {
+    if (currentRole !== "host" || !isHost || publication?.kind !== Track.Kind.Audio) return;
+    const who = participant?.name || participant?.identity || "Singer";
+    showMessage("Singer joined: " + who + ". Requesting microphone audio...", "info");
+    try {
+      if (typeof publication.setSubscribed === "function") {
+        await publication.setSubscribed(true);
+      }
+    } catch (error) {
+      showMessage("Could not subscribe to " + who + "'s microphone: " + (error?.message || error), "error");
+    }
+  });
+
   room.on(
     RoomEvent.TrackSubscribed,
     async (track, publication, participant) => {
