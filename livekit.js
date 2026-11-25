@@ -2714,7 +2714,12 @@ async function joinAuditorium() {
       }
       updateControlButtons();
     } else {
-      if (byId("mmHostControls")) byId("mmHostControls").hidden = true;
+      // Host verification is authoritative for showing host stage controls.
+      // The token role can temporarily resolve as audience during reconnects;
+      // do not hide the host's stage assignment panel in that case.
+      if (byId("mmHostControls")) {
+        byId("mmHostControls").hidden = !(isHost && IS_HOST_CONTROL_PAGE);
+      }
       if (byId("mmAudioEffects")) byId("mmAudioEffects").hidden = true;
       listenToMyPermissions();
       listenToStage();
