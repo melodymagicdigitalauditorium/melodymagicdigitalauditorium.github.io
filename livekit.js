@@ -1148,6 +1148,43 @@ function createPanel() {
         border-radius:7px;
         background:#292319;
       }
+
+      /* Live Stage service categories: collapsed by default, with the main video stage kept visible. */
+      #mmLiveKitPanel .mm-service-dropdown {
+        margin:8px 0;
+        border:1px solid #6f5526;
+        border-radius:9px;
+        background:#171717;
+        overflow:hidden;
+      }
+      #mmLiveKitPanel .mm-service-dropdown > summary {
+        list-style:none;
+        cursor:pointer;
+        padding:12px 14px;
+        color:#e9bd57;
+        font-weight:700;
+        user-select:none;
+      }
+      #mmLiveKitPanel .mm-service-dropdown > summary::-webkit-details-marker {display:none}
+      #mmLiveKitPanel .mm-service-dropdown > summary:after {
+        content:"+";
+        float:right;
+        color:#e9bd57;
+        font-size:18px;
+        line-height:16px;
+      }
+      #mmLiveKitPanel .mm-service-dropdown[open] > summary:after {content:"−"}
+      #mmLiveKitPanel .mm-service-dropdown > .mm-dropdown-content {
+        padding:4px 10px 10px;
+        border-top:1px solid #44371f;
+      }
+      #mmLiveKitPanel .mm-service-dropdown .mm-section {
+        margin-top:8px;
+        padding-top:8px;
+      }
+      @media(max-width:600px) {
+        #mmLiveKitPanel .mm-service-dropdown > summary {padding:13px 12px}
+      }
     </style>
 
     <h2>Melody Magic Live Auditorium</h2>
@@ -1323,6 +1360,40 @@ function createPanel() {
   `;
 
   target.appendChild(panel);
+
+  // On the public Live Stage page, group secondary services into compact dropdowns.
+  // Keep the live performer video gallery and shared karaoke player visible.
+  if (!IS_HOST_CONTROL_PAGE) {
+    const makeServiceDropdown = (title, nodes) => {
+      const present = nodes.filter(Boolean);
+      if (!present.length) return;
+      const details = document.createElement("details");
+      details.className = "mm-service-dropdown";
+      const summary = document.createElement("summary");
+      summary.textContent = title;
+      const content = document.createElement("div");
+      content.className = "mm-dropdown-content";
+      present.forEach(node => content.appendChild(node));
+      details.append(summary, content);
+      const stageHeading = byId("mmPerformersHeading")?.parentElement;
+      panel.insertBefore(details, stageHeading || null);
+    };
+
+    const joinRow = byId("mmJoinBtn")?.parentElement;
+    const myControls = byId("mmMyControls");
+    makeServiceDropdown("🎤 Auditorium Access & My Controls", [joinRow, myControls]);
+
+    const reactions = byId("mmReactionSection");
+    const comments = byId("mmCommentsList")?.closest(".mm-section");
+    makeServiceDropdown("💬 Reactions & Live Comments", [reactions, comments]);
+
+    const showStats = panel.querySelector(".mm-two-column");
+    const upcoming = byId("mmQueueList")?.closest(".mm-section");
+    makeServiceDropdown("📋 Show Information & Singer Queue", [showStats, upcoming]);
+
+    const hostCamera = byId("mmHostVideoGrid")?.closest(".mm-section");
+    makeServiceDropdown("🎥 Host Camera", [hostCamera]);
+  }
 
   if (!IS_HOST_CONTROL_PAGE) {
     byId("mmHostControls")?.remove();
