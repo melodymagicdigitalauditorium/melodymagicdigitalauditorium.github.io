@@ -2114,7 +2114,7 @@ async function createYouTubePlayer(initialVideoId = "") {
           height: playerHeight,
           videoId: initialVideoId,
           playerVars: {
-            autoplay: 0,
+            autoplay: 1,
             controls: 0,
             disablekb: 1,
             playsinline: 1,
@@ -2333,80 +2333,86 @@ function getSingerYouTubeVideoId(value) {
 
 function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer" || !singerMobile) return;
-  // Read only this singer's record. The host writes each command at
-  // singerKaraoke/{showId}/{singerUid}; reading the whole show node
-  // requires broader permissions and is correctly denied by Firebase.
+  // Read only this singer's record. The host writes commands to the exact
+  // approved singer path, so no broad Firebase read permission is required.
   const singerUid = getSingerParticipantUid();
   if (!singerUid) return;
   const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + singerUid);
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
-  let singerKaraokeCurrentVolume = 100;
+  let lastSingerVideoId = "";
+
   singerKaraokeListener = snapshot => {
     const data = snapshot.val() || {};
     const videoId = safeText(data.videoId).trim();
     if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return;
+
     const sharedVolume = Math.max(0, Math.min(100, Number(data.volume === undefined ? 100 : data.volume)));
-    singerKaraokeCurrentVolume = sharedVolume;
-    if (youtubePlayer && lastYoutubeVideoId === videoId && typeof youtubePlayer.setVolume === "function") {
-      try { youtubePlayer.setVolume(sharedVolume); if (sharedVolume === 0) youtubePlayer.mute(); else youtubePlayer.unMute(); } catch (error) {}
-    }
     const commandAt = Number(data.commandAt || 0);
-    if (commandAt > lastSingerCommandAt) {
-      lastSingerCommandAt = commandAt;
-      if (youtubePlayer && lastYoutubeVideoId === videoId) {
-        const command = safeText(data.command).toLowerCase();
-        if (command === "pause") {
-          try { youtubePlayer.pauseVideo(); } catch (error) {}
-          const playbackStatus = byId("mmPlaybackStatus");
-          if (playbackStatus) playbackStatus.textContent = "The host paused your karaoke video.";
-        } else if (command === "stop") {
-          try { youtubePlayer.stopVideo(); } catch (error) {}
-          const playbackStatus = byId("mmPlaybackStatus");
-          if (playbackStatus) playbackStatus.textContent = "The host stopped your karaoke video.";
-        }
-      }
-    }
+    const command = safeText(data.command).toLowerCase();
+    const position = Math.max(0, Number(data.position || data.basePosition || 0));
+    const isNewVideo = videoId !== lastSingerVideoId;
+
+    // Create/cue the karaoke player automatically when the host sends a song.
+    // No separate OPEN VIDEO button is required on the singer page.
+    lastSingerVideoId = videoId;
+    lastYoutubeVideoId = videoId;
+    const status = byId("mmPlaybackStatus");
     const notice = byId("mmSingerSentVideo");
-    if (!notice) return;
-    notice.replaceChildren();
-    const label = document.createElement("strong");
-    label.textContent = "🎵 The host sent you a karaoke video. ";
-    const openButton = document.createElement("button");
-    openButton.type = "button";
-    openButton.textContent = "OPEN VIDEO ON MY STAGE";
-    openButton.style.cssText = "padding:9px 11px;margin:6px;border-radius:7px;border:1px solid #b58a35;background:#292319;color:#fff";
-    openButton.addEventListener("click", async () => {
-      openButton.disabled = true;
-      try {
-        const player = await createYouTubePlayer(videoId);
-        if (!player) throw new Error("YouTube player is not ready.");
-        lastYoutubeVideoId = videoId;
-        lastPlaybackSignature = "";
-        player.loadVideoById(videoId);
-        const initialVolume = Math.max(0, Math.min(100, Number(singerKaraokeCurrentVolume ?? 100)));
-        player.setVolume(initialVolume);
-        if (initialVolume === 0) player.mute(); else player.unMute();
-        const status = byId("mmPlaybackStatus");
-        if (status) status.textContent = "Host's karaoke video opened on your singer stage.";
-      } catch (error) {
-        const status = byId("mmPlaybackStatus");
-        if (status) status.textContent = "Could not open host video: " + error.message;
-      } finally {
-        openButton.disabled = false;
-      }
-    });
-    notice.append(label, openButton);
     const videoNotice = byId("mmSingerVideoNotice");
-    if (videoNotice) videoNotice.textContent = "New karaoke video received from the host.";
+    if (notice) notice.textContent = "🎵 Host karaoke received. Waiting for the host to press play.";
+    if (videoNotice) videoNotice.textContent = "Karaoke is controlled by the host and will start automatically.";
+
+    createYouTubePlayer(videoId).then(player => {
+      if (!player) return;
+      try {
+        player.setVolume(sharedVolume);
+        if (sharedVolume === 0) player.mute();
+        else player.unMute();
+
+        if (isNewVideo) {
+          if (command === "play") {
+            player.loadVideoById({ videoId, startSeconds: position });
+          } else {
+            player.cueVideoById({ videoId, startSeconds: position });
+          }
+        }
+
+        if (commandAt > lastSingerCommandAt) {
+          lastSingerCommandAt = commandAt;
+          if (command === "play") {
+            if (!isNewVideo && position > 0) player.seekTo(position, true);
+            player.playVideo();
+            if (status) status.textContent = "Host is playing your karaoke track.";
+            if (notice) notice.textContent = "🎵 Karaoke is playing — controlled by the host.";
+          } else if (command === "pause") {
+            player.pauseVideo();
+            if (status) status.textContent = "The host paused your karaoke track.";
+          } else if (command === "stop") {
+            player.stopVideo();
+            if (status) status.textContent = "The host stopped your karaoke track.";
+          } else if (isNewVideo && status) {
+            status.textContent = "Karaoke received. Waiting for the host to start playback.";
+          }
+        } else if (isNewVideo && status) {
+          status.textContent = "Karaoke received. Waiting for the host to start playback.";
+        }
+      } catch (error) {
+        console.warn("[Melody Magic] Could not apply host karaoke command:", error);
+        if (status) status.textContent = "Karaoke player error: " + error.message;
+      }
+    }).catch(error => {
+      console.warn("[Melody Magic] Could not prepare host karaoke:", error);
+      if (status) status.textContent = "Could not load host karaoke: " + error.message;
+    });
   };
+
   onValue(singerVideoRef, singerKaraokeListener, error => {
     console.error("Singer karaoke video listener error:", error);
     const status = byId("mmSingerVideoNotice");
     if (status) status.textContent = "Could not receive host video: " + error.message;
   });
 }
-
 function listenToKaraokePlayback() {
   if (!showId) return;
 
@@ -2556,6 +2562,17 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    // The singer's CONTINUE / ENTER action is the page interaction that
+    // authorizes audible playback on mobile browsers. Ask LiveKit to start
+    // all subscribed remote audio immediately after joining.
+    if (typeof room.startAudio === "function") {
+      try {
+        await room.startAudio();
+        console.info("[Melody Magic] Remote auditorium audio unlocked.");
+      } catch (audioUnlockError) {
+        console.warn("[Melody Magic] Browser did not unlock remote audio:", audioUnlockError);
+      }
+    }
     updateSharedKaraokeButton();
     listenToSharedAudioSettings();
 
