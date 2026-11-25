@@ -2873,7 +2873,22 @@ function registerRoomEvents() {
     async participant => {
       await createVideoTile(participant, false);
       updateAudienceCount();
-
+      try {
+        const publications = participant?.trackPublications;
+        const values = publications && typeof publications.values === "function"
+          ? Array.from(publications.values())
+          : [];
+        for (const publication of values) {
+          if (publication?.kind === Track.Kind.Audio &&
+              typeof publication.setSubscribed === "function" &&
+              !publication.isSubscribed) {
+            await publication.setSubscribed(true);
+          }
+        }
+      } catch (error) {
+        console.warn("[Melody Magic] Participant audio subscription:", error);
+        showMessage("Could not subscribe to this participant's microphone: " + (error?.message || error), "error");
+      }
       showMessage(
         (participant.name || "A participant") +
         " joined the auditorium."
@@ -3473,8 +3488,8 @@ async function startSingerKaraokeAudio() {
     try {
       localAudioTrack = await createLocalAudioTrack({
         echoCancellation: false,
-        noiseSuppression: true,
-        autoGainControl: true
+        noiseSuppression: false,
+        autoGainControl: false
       });
       await room.localParticipant.publishTrack(localAudioTrack, {
         name: "Melody Magic Singer Raw Microphone",
