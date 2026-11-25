@@ -4698,7 +4698,9 @@ function resetButtons() {
   }
 
   if (byId("mmHostControls")) {
-    byId("mmHostControls").hidden = true;
+    // A temporary LiveKit disconnect must not hide the verified host's
+    // stage-assignment controls. Keep them available during automatic reconnect.
+    byId("mmHostControls").hidden = !(isHost && IS_HOST_CONTROL_PAGE);
   }
 
   if (byId("mmAudioEffects")) {
