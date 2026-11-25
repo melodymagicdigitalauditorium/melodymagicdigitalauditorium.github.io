@@ -3646,6 +3646,20 @@ async function toggleMicrophone() {
   }
 
   try {
+    // The host microphone is a permanent programme input. The host button
+    // is a retry/enable control only and must never unpublish the host voice.
+    if (currentRole === "host" && IS_HOST_CONTROL_PAGE) {
+      if (localMicEnabled && publishedMicrophoneTrack?.mediaStreamTrack?.readyState === "live" && publishedMicrophoneTrack.mediaStreamTrack.enabled) {
+        showMessage("Host microphone is already LIVE and cannot be turned off.", "info");
+        updateControlButtons();
+        return;
+      }
+      await startMicrophoneEffects();
+      updateControlButtons();
+      showMessage("Host microphone is LIVE for everyone.", "success");
+      return;
+    }
+
     if (localMicEnabled) {
       await stopMicrophoneEffects();
       showMessage("Microphone OFF.");
@@ -3655,8 +3669,6 @@ async function toggleMicrophone() {
 
     if (currentRole === "singer") {
       await startSingerKaraokeAudio();
-    } else if (currentRole === "host") {
-      await startMicrophoneEffects();
     }
 
     updateControlButtons();
@@ -3664,11 +3676,12 @@ async function toggleMicrophone() {
 
   } catch (error) {
     console.error("Microphone error:", error);
-
     if (currentRole === "host") {
-      await stopMicrophoneEffects();
+      const status = byId("mmHostMicStatus");
+      if (status) status.textContent = "Host microphone could not start: " + error.message + ". Tap RETRY after allowing microphone access.";
+      localMicEnabled = false;
+      updateControlButtons();
     }
-
     showMessage("Microphone error: " + error.message, "error");
   }
 }
@@ -3743,14 +3756,14 @@ function updateControlButtons() {
     hostMic.hidden = !isHostControl;
     hostMic.disabled = !isJoined || !isHostControl || !microphoneAllowed;
     hostMic.textContent = localMicEnabled
-      ? "🎙️ HOST MIC: ON — TURN OFF"
-      : "🎙️ HOST MIC: OFF — TAP TO TURN ON";
+      ? "🎙️ HOST MIC: LIVE — ALWAYS ON"
+      : "🎙️ START / RETRY HOST MICROPHONE";
     if (hostMicStatus && isHostControl) {
       hostMicStatus.textContent = !microphoneAllowed
-        ? "Host microphone permission is not enabled for this account."
+        ? "Host microphone access is unavailable. Check browser microphone permission."
         : localMicEnabled
-          ? "Host microphone is LIVE and published to the auditorium."
-          : "Host microphone is OFF. Tap the button above to start it.";
+          ? "Host microphone is LIVE and published to everyone. It cannot be turned off from this page."
+          : "Host microphone is not connected yet. Tap START / RETRY and allow microphone access.";
     }
   }
 
