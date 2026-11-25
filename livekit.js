@@ -4745,12 +4745,21 @@ function wireSingerKaraokeAudioButton() {
   const button = byId("mmSingerKaraokeAudioBtn");
   if (!button) return;
   button.hidden = true;
-  button.onclick = async event => {
+  button.disabled = false;
+  button.style.pointerEvents = "auto";
+  button.style.touchAction = "manipulation";
+  button.style.position = "relative";
+  button.style.zIndex = "5";
+  if (button.dataset.mmMicClickWired === "true") return;
+  button.dataset.mmMicClickWired = "true";
+  button.addEventListener("click", async event => {
     event.preventDefault();
+    event.stopPropagation();
     if (button.disabled) return;
     button.disabled = true;
     const status = byId("mmSingerVideoNotice");
     try {
+      if (status) status.textContent = "Button received. Checking auditorium and microphone...";
       if (localMicEnabled) {
         if (status) status.textContent = "Stopping microphone and karaoke...";
         await stopMicrophoneEffects();
@@ -4759,20 +4768,20 @@ function wireSingerKaraokeAudioButton() {
         if (status) status.textContent = "Stopped. Press START to sing again.";
         showMessage("Singer microphone and karaoke audio stopped.");
       } else {
-        button.textContent = "Starting audio...";
-        if (status) status.textContent = "Starting microphone... Please allow mic access.";
+        button.textContent = "Starting microphone...";
+        if (status) status.textContent = "Button is working. Requesting microphone access...";
         await startSingerKaraokeAudio();
         if (status && localMicEnabled) status.textContent = "Microphone is live. Karaoke play was requested.";
       }
     } catch (error) {
       button.textContent = "🎤 START MIC + KARAOKE AUDIO";
       if (status) status.textContent = "START FAILED: " + (error.message || "Unknown error");
-      showMessage("Could not start singer audio: " + error.message, "error");
+      showMessage("Could not start singer audio: " + (error.message || error), "error");
     } finally {
       button.disabled = false;
       updateKaraokePlayerAccess();
     }
-  };
+  });
 }
 
 /* =========================================
