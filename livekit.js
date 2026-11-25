@@ -4090,6 +4090,34 @@ function renderSingerPermissionControls() {
       changeSingerPermission(item.singerUid, micOn, !cameraOn);
     });
 
+    const joinLink = new URL("./live-performance.html", location.href);
+    joinLink.searchParams.set("showId", showId);
+    joinLink.searchParams.set("mode", "singer");
+    joinLink.searchParams.set("registrationId", item.id);
+
+    const whatsappButton = document.createElement("button");
+    whatsappButton.textContent = "SEND JOIN LINK ON WHATSAPP";
+    whatsappButton.disabled = blocked;
+    whatsappButton.addEventListener("click", () => {
+      const messageText = "Your singer registration is approved for " +
+        (showData?.name || "Melody Magic Digital Auditorium") +
+        ". Open your personal joining link: " + joinLink.href;
+      window.open("https://wa.me/?text=" + encodeURIComponent(messageText), "_blank", "noopener");
+    });
+
+    const copyLinkButton = document.createElement("button");
+    copyLinkButton.textContent = "COPY JOIN LINK";
+    copyLinkButton.disabled = blocked;
+    copyLinkButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(joinLink.href);
+        showMessage("Personal joining link copied for " +
+          (item.singerName || item.name || "singer") + ".", "success");
+      } catch (error) {
+        showMessage("Could not copy the link. Use the WhatsApp button instead.", "error");
+      }
+    });
+
     const blockButton = document.createElement("button");
     blockButton.textContent = blocked ? "Blocked" : "Block Singer";
     blockButton.disabled = blocked;
@@ -4110,7 +4138,7 @@ function renderSingerPermissionControls() {
       }
     });
 
-    card.append(name, status, micButton, cameraButton, blockButton);
+    card.append(name, status, micButton, cameraButton, whatsappButton, copyLinkButton, blockButton);
     container.appendChild(card);
   });
 }
@@ -4550,17 +4578,45 @@ async function initializeShow() {
     isHost = await verifyHost();
 
     if (!isHost && requestedMode === "singer") {
-      let savedMobile = "";
-      try { savedMobile = localStorage.getItem("mmSingerMobile:" + showId) || ""; } catch (error) {}
-      if (savedMobile) {
+      if (registrationId) {
+        // Personal host-issued links identify the exact approved registration.
+        // The mobile number is read from this show's registration record, not
+        // exposed in the shared URL or requested from the singer.
         try {
-          await activateSingerMobileRegistration(savedMobile);
+          const approvedSnapshot = await get(
+            ref(db, "showRegistrations/" + showId + "/" + registrationId)
+          );
+          const approvedRecord = approvedSnapshot.val() || {};
+          const approvedMobile = String(approvedRecord.mobile || "").replace(/\D/g, "");
+
+          if (!approvedSnapshot.exists() ||
+              !approvedRecord.singerUid ||
+              !isApproved(approvedRecord.status) ||
+              !/^\d{10}$/.test(approvedMobile)) {
+            throw new Error("This personal joining link is invalid, expired, or no longer approved. Please ask the host for a new link.");
+          }
+
+          await activateSingerMobileRegistration(approvedMobile);
         } catch (error) {
-          try { localStorage.removeItem("mmSingerMobile:" + showId); } catch (removeError) {}
-          showSingerMobileEntry(error.message || "Please enter your registered mobile number.");
+          console.error("Approved singer link verification failed:", error);
+          const mobilePanel = byId("mmSingerMobileEntry");
+          if (mobilePanel) mobilePanel.hidden = true;
+          setSingerVisibleStatus("Joining link could not be verified", error.message || "Please ask the host for a new approved link.");
+          showMessage(error.message || "Please ask the host for a new approved link.", "error");
         }
       } else {
-        showSingerMobileEntry();
+        let savedMobile = "";
+        try { savedMobile = localStorage.getItem("mmSingerMobile:" + showId) || ""; } catch (error) {}
+        if (savedMobile) {
+          try {
+            await activateSingerMobileRegistration(savedMobile);
+          } catch (error) {
+            try { localStorage.removeItem("mmSingerMobile:" + showId); } catch (removeError) {}
+            showSingerMobileEntry(error.message || "Please enter your registered mobile number.");
+          }
+        } else {
+          showSingerMobileEntry();
+        }
       }
     }
 
