@@ -4734,6 +4734,43 @@ function wirePublicInteractionControls() {
   updateReactionButtons();
 }
 
+async function handleSingerKaraokeAudioButton(button) {
+  if (!button || button.dataset.mmMicStarting === "true") return;
+  button.dataset.mmMicStarting = "true";
+  button.disabled = true;
+  const status = byId("mmSingerVideoNotice");
+  try {
+    if (status) status.textContent = "Tap received. Checking auditorium connection...";
+    if (!room || !isJoined) throw new Error("Singer is not connected yet. Check Singer status and wait until it says LIVE.");
+    if (!isCurrentSingerAssignedToStage()) throw new Error("The host must assign you to the main stage.");
+    if (!microphoneAllowed) throw new Error("The host must press Unmute Mic for you.");
+    if (localMicEnabled) {
+      if (status) status.textContent = "Stopping microphone...";
+      await stopMicrophoneEffects();
+      if (youtubePlayer) { try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {} }
+      button.textContent = "🎤 START MIC + KARAOKE AUDIO";
+      if (status) status.textContent = "Microphone stopped.";
+    } else {
+      button.textContent = "CONNECTING MICROPHONE...";
+      if (status) status.textContent = "Tap received. Requesting microphone permission...";
+      await startSingerKaraokeAudio();
+      if (status && localMicEnabled) status.textContent = "Microphone connected and live. Karaoke playback requested.";
+    }
+  } catch (error) {
+    button.textContent = "🎤 START MIC + KARAOKE AUDIO";
+    if (status) status.textContent = "MICROPHONE ERROR: " + (error?.message || "Unknown error");
+    showMessage("Singer audio error: " + (error?.message || error), "error");
+  } finally {
+    button.dataset.mmMicStarting = "false";
+    button.disabled = false;
+    updateKaraokePlayerAccess();
+  }
+}
+
+// Expose a direct button action so the singer page does not depend only on
+// dynamically-installed event listeners for its primary microphone control.
+window.MelodyMagicSingerAudio = handleSingerKaraokeAudioButton;
+
 function wireSingerKaraokeAudioButton() {
   const monitor = byId("mmSingerMonitor");
   if (monitor && monitor.dataset.mmWired !== "true") {
@@ -4744,44 +4781,11 @@ function wireSingerKaraokeAudioButton() {
   }
   const button = byId("mmSingerKaraokeAudioBtn");
   if (!button) return;
-  button.hidden = true;
-  button.disabled = false;
   button.style.pointerEvents = "auto";
   button.style.touchAction = "manipulation";
   button.style.position = "relative";
-  button.style.zIndex = "5";
-  if (button.dataset.mmMicClickWired === "true") return;
-  button.dataset.mmMicClickWired = "true";
-  button.addEventListener("click", async event => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (button.disabled) return;
-    button.disabled = true;
-    const status = byId("mmSingerVideoNotice");
-    try {
-      if (status) status.textContent = "Button received. Checking auditorium and microphone...";
-      if (localMicEnabled) {
-        if (status) status.textContent = "Stopping microphone and karaoke...";
-        await stopMicrophoneEffects();
-        if (youtubePlayer) { try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {} }
-        button.textContent = "🎤 START MIC + KARAOKE AUDIO";
-        if (status) status.textContent = "Stopped. Press START to sing again.";
-        showMessage("Singer microphone and karaoke audio stopped.");
-      } else {
-        button.textContent = "Starting microphone...";
-        if (status) status.textContent = "Button is working. Requesting microphone access...";
-        await startSingerKaraokeAudio();
-        if (status && localMicEnabled) status.textContent = "Microphone is live. Karaoke play was requested.";
-      }
-    } catch (error) {
-      button.textContent = "🎤 START MIC + KARAOKE AUDIO";
-      if (status) status.textContent = "START FAILED: " + (error.message || "Unknown error");
-      showMessage("Could not start singer audio: " + (error.message || error), "error");
-    } finally {
-      button.disabled = false;
-      updateKaraokePlayerAccess();
-    }
-  });
+  button.style.zIndex = "100";
+  button.onclick = () => handleSingerKaraokeAudioButton(button);
 }
 
 /* =========================================
