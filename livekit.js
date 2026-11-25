@@ -4100,7 +4100,7 @@ function renderSingerPermissionControls() {
     whatsappButton.disabled = blocked;
     whatsappButton.addEventListener("click", () => {
       const messageText = "Your singer registration is approved for " +
-        (showData?.name || "Melody Magic Digital Auditorium") +
+        (currentShow?.name || currentShow?.showName || currentShow?.title || "Melody Magic Digital Auditorium") +
         ". Open your personal joining link: " + joinLink.href;
       window.open("https://wa.me/?text=" + encodeURIComponent(messageText), "_blank", "noopener");
     });
