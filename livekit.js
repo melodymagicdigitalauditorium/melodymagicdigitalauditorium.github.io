@@ -384,10 +384,10 @@ class VirtualAudioEffects {
 
     this.monitorEnabled = Boolean(enabled);
     const requestedVolume = volumeValue === null
-      ? Number(byId("mmMonitorVolume")?.value || 35)
+      ? Number(byId("mmMonitorVolume")?.value || 85)
       : Number(volumeValue);
     const volume = this.monitorEnabled
-      ? Math.max(0, Math.min(50, requestedVolume)) / 100
+      ? Math.max(0, Math.min(100, requestedVolume)) / 100
       : 0;
 
     this.monitorGain.gain.setTargetAtTime(
@@ -3505,7 +3505,7 @@ async function startSingerKaraokeAudio() {
     audioEffects = new VirtualAudioEffects();
     const processedMicTrack = await audioEffects.start(micTrack);
     applySharedAudioSettingsToEffects();
-    audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 30);
+    audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 85);
     // Enable the processed audio track before mixing/publishing; effects start muted by default.
     audioEffects.setMuted(false);
 
@@ -4839,7 +4839,7 @@ function wireSingerKaraokeAudioButton() {
   if (monitor && monitor.dataset.mmWired !== "true") {
     monitor.dataset.mmWired = "true";
     monitor.addEventListener("change", () => {
-      if (audioEffects && currentRole === "singer") audioEffects.setMonitor(monitor.checked, 30);
+      if (audioEffects && currentRole === "singer") audioEffects.setMonitor(monitor.checked, 85);
     });
   }
   const button = byId("mmSingerKaraokeAudioBtn");
