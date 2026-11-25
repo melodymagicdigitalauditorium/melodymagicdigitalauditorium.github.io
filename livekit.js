@@ -2644,7 +2644,7 @@ async function joinAuditorium() {
     if (byId("mmMyControls")) byId("mmMyControls").hidden = currentRole !== "singer";
     const hostEffects = currentRole === "host" && isHost && IS_HOST_CONTROL_PAGE;
     if (byId("mmAudioEffects")) byId("mmAudioEffects").hidden = !hostEffects;
-    if (byId("mmHostControls")) byId("mmHostControls").hidden = true;
+    if (byId("mmHostControls")) byId("mmHostControls").hidden = !(isHost && IS_HOST_CONTROL_PAGE);
 
     room = new Room({ adaptiveStream: true, dynacast: true });
     registerRoomEvents();
