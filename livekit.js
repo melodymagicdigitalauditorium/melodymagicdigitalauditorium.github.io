@@ -2321,11 +2321,20 @@ async function applyPlayback(data) {
       data.volume === undefined ? 100 : data.volume
     )));
 
-    // Host gets a silent visual preview only. Only the assigned singer hears
-    // local YouTube playback; everyone else receives the singer-published mix.
+    // The host's local monitor is independent of the singer's broadcast volume.
+    // Keep the host player audible when its monitor checkbox is ON; this is also
+    // the tab audio captured by Share Karaoke With Everyone.
     if (currentRole === "host" || isHost) {
-      player.setVolume(0);
-      player.mute();
+      const hostMonitorOn = byId("mmHostKaraokeMonitor")
+        ? byId("mmHostKaraokeMonitor").checked
+        : true;
+      if (hostMonitorOn) {
+        player.setVolume(100);
+        player.unMute();
+      } else {
+        player.setVolume(0);
+        player.mute();
+      }
     } else {
       player.setVolume(sharedVolume);
       if (sharedVolume === 0) player.mute();
@@ -3028,25 +3037,25 @@ function setHostSingerMonitor(enabled) {
   document.querySelectorAll('audio[data-mm-remote-singer-audio="true"]').forEach(element => {
     element.muted = !hostSingerMonitorEnabled;
     element.volume = hostSingerMonitorEnabled ? 1 : 0;
-    if (hostSingerMonitorEnabled) {
-      element.autoplay = true;
-      element.playsInline = true;
-      const playResult = element.play?.();
-      if (playResult && typeof playResult.catch === "function") {
-        playResult.catch(error => {
-          console.warn("[Melody Magic] Host singer audio playback blocked:", error);
-          showMessage("Host audio playback blocked. Tap the page once, then turn the singer audio checkbox ON again.", "warning");
-        });
-      }
-    }
   });
+  if (hostSingerMonitorEnabled) {
+    unlockHostRemoteAudio().catch(error => console.warn("[Melody Magic] Host audio unlock:", error));
+  }
 }
 
-function unlockHostRemoteAudio() {
+async function unlockHostRemoteAudio() {
   if (currentRole !== "host" || !hostSingerMonitorEnabled) return;
+  // LiveKit requires startAudio() to run from a real user gesture on browsers
+  // that block autoplay. The host monitor checkbox supplies that gesture.
+  if (room && typeof room.startAudio === "function") {
+    try { await room.startAudio(); }
+    catch (error) { console.warn("[Melody Magic] Host room audio unlock:", error); }
+  }
   document.querySelectorAll('audio[data-mm-remote-singer-audio="true"]').forEach(element => {
     element.muted = false;
     element.volume = 1;
+    element.autoplay = true;
+    element.playsInline = true;
     const playResult = element.play?.();
     if (playResult && typeof playResult.catch === "function") {
       playResult.catch(error => console.warn("[Melody Magic] Host audio unlock failed:", error));
@@ -3108,6 +3117,7 @@ function attachTrackToTile(track, targetId, isRemote = false) {
       if (!element) return;
       element.autoplay = true;
       element.controls = false;
+      element.playsInline = true;
       element.dataset.mmRemoteAudioTrack = track.sid || track.name || "remote";
       if (currentRole === "host") {
         element.dataset.mmRemoteSingerAudio = "true";
