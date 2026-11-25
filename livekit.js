@@ -3402,60 +3402,6 @@ async function startSingerKaraokeAudio() {
       }
       throw new Error("Singer microphone could not connect: " + (error?.message || error));
     }
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Microphone access is not supported by this browser.");
-    }
-    let mobileMicStream = null;
-    try {
-      mobileMicStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-        video: false
-      });
-      const micTrack = mobileMicStream.getAudioTracks()[0];
-      if (!micTrack) throw new Error("No microphone was found.");
-      await room.localParticipant.publishTrack(micTrack, {
-        name: "Melody Magic Singer Raw Microphone",
-        source: Track.Source.Microphone
-      });
-      rawMicrophoneTrack = micTrack;
-      processedMicrophoneTrack = null;
-      publishedMicrophoneTrack = micTrack;
-      singerKaraokeCaptureStream = mobileMicStream;
-      singerKaraokeAudioContext = null;
-      singerKaraokeMixTrack = micTrack;
-      audioEffects = null;
-      localMicEnabled = true;
-      recoverSingerMicAfterReconnect = false;
-
-      // Audio playback on mobile requires a direct user gesture. Try to start
-      // the host-selected song locally; the mic remains live if video isn't ready.
-      let karaokeStarted = false;
-      if (youtubePlayer) {
-        try {
-          youtubePlayer.unMute();
-          youtubePlayer.setVolume(100);
-          youtubePlayer.playVideo();
-          karaokeStarted = true;
-        } catch (playError) {
-          console.warn("[Melody Magic] Singer karaoke play failed:", playError);
-        }
-      }
-      updateControlButtons();
-      const button = byId("mmSingerKaraokeAudioBtn");
-      if (button) button.textContent = "■ STOP MIC + KARAOKE AUDIO";
-      showMessage(
-        karaokeStarted
-          ? "Raw singer microphone is live and karaoke audio started on your phone."
-          : "Raw singer microphone is live. Karaoke player is not ready yet; ask host to send/play the song.",
-        karaokeStarted ? "success" : "warning"
-      );
-      return;
-    } catch (error) {
-      if (mobileMicStream) mobileMicStream.getTracks().forEach(track => track.stop());
-      throw error;
-    }
-  }
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("Microphone access is not supported by this browser.");
   }
