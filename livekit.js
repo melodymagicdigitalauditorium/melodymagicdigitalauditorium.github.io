@@ -595,8 +595,8 @@ class ProfessionalProgrammeMixer {
     this.hostMicStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
+        noiseSuppression: true,
+        autoGainControl: true
       },
       video: false
     });
@@ -3435,8 +3435,8 @@ async function startSingerKaraokeAudio() {
     try {
       localAudioTrack = await createLocalAudioTrack({
         echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
+        noiseSuppression: true,
+        autoGainControl: true
       });
       await room.localParticipant.publishTrack(localAudioTrack, {
         name: "Melody Magic Singer Raw Microphone",
@@ -3496,7 +3496,7 @@ async function startSingerKaraokeAudio() {
     if (!tabAudio) throw new Error("No tab audio was shared. Select This Tab and tick Share tab audio.");
     displayStream.getVideoTracks().forEach(track => track.stop());
     micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true },
       video: false
     });
     const micTrack = micStream.getAudioTracks()[0];
@@ -3639,8 +3639,8 @@ async function startMicrophoneEffects() {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
       echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false
+      noiseSuppression: true,
+      autoGainControl: true
     },
     video: false
   });
