@@ -3280,9 +3280,9 @@ function hostCanUseAudioEffects() {
 }
 
 async function startSingerKaraokeAudio() {
-  if (!isCurrentSingerAssignedToStage() || !microphoneAllowed || !room || !isJoined) {
-    throw new Error("Wait until the host assigns you to the main stage and grants microphone permission.");
-  }
+  if (!room || !isJoined) throw new Error("Not connected to the auditorium yet. Wait for Singer: Connected.");
+  if (!isCurrentSingerAssignedToStage()) throw new Error("The host must assign you to the main stage.");
+  if (!microphoneAllowed) throw new Error("The host must turn your microphone permission ON.");
   if (publishedMicrophoneTrack) return;
 
   // On mobile, publish a clean microphone track directly. Karaoke playback
@@ -4624,38 +4624,40 @@ function wireSingerKaraokeAudioButton() {
   if (monitor && monitor.dataset.mmWired !== "true") {
     monitor.dataset.mmWired = "true";
     monitor.addEventListener("change", () => {
-      if (audioEffects && currentRole === "singer") {
-        audioEffects.setMonitor(monitor.checked, 30);
-      }
+      if (audioEffects && currentRole === "singer") audioEffects.setMonitor(monitor.checked, 30);
     });
   }
-
   const button = byId("mmSingerKaraokeAudioBtn");
-  if (!button || button.dataset.mmWired === "true") return;
-  button.dataset.mmWired = "true";
+  if (!button) return;
   button.hidden = true;
-  button.addEventListener("click", async () => {
+  button.onclick = async event => {
+    event.preventDefault();
+    if (button.disabled) return;
     button.disabled = true;
+    const status = byId("mmSingerVideoNotice");
     try {
       if (localMicEnabled) {
+        if (status) status.textContent = "Stopping microphone and karaoke...";
         await stopMicrophoneEffects();
-        if (youtubePlayer) {
-          try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {}
-        }
+        if (youtubePlayer) { try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {} }
         button.textContent = "🎤 START MIC + KARAOKE AUDIO";
+        if (status) status.textContent = "Stopped. Press START to sing again.";
         showMessage("Singer microphone and karaoke audio stopped.");
       } else {
         button.textContent = "Starting audio...";
+        if (status) status.textContent = "Starting microphone... Please allow mic access.";
         await startSingerKaraokeAudio();
+        if (status && localMicEnabled) status.textContent = "Microphone is live. Karaoke play was requested.";
       }
     } catch (error) {
       button.textContent = "🎤 START MIC + KARAOKE AUDIO";
+      if (status) status.textContent = "START FAILED: " + (error.message || "Unknown error");
       showMessage("Could not start singer audio: " + error.message, "error");
     } finally {
       button.disabled = false;
       updateKaraokePlayerAccess();
     }
-  });
+  };
 }
 
 /* =========================================
