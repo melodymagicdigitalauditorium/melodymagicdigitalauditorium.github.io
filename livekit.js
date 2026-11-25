@@ -1367,6 +1367,8 @@ function createPanel() {
   `;
 
   target.appendChild(panel);
+  const loadStatus = byId("livekitLoadStatus");
+  if (loadStatus) loadStatus.remove();
 
   // On the public Live Stage page, group secondary services into compact dropdowns.
   // Keep the live performer video gallery and shared karaoke player visible.
@@ -4797,7 +4799,22 @@ function wireSingerKaraokeAudioButton() {
 ========================================= */
 
 async function initializeShow() {
-  createPanel();
+  try {
+    createPanel();
+  } catch (error) {
+    console.error("Live auditorium panel creation failed:", error);
+    const area = byId("livekitArea");
+    if (area) {
+      const status = byId("livekitLoadStatus") || document.createElement("p");
+      status.id = "livekitLoadStatus";
+      status.className = "small";
+      status.setAttribute("role", "alert");
+      status.style.color = "#ff7777";
+      status.textContent = "Live auditorium panel could not start: " + (error?.message || "Please refresh the page.");
+      if (!status.parentElement) area.appendChild(status);
+    }
+    return;
+  }
   wirePublicInteractionControls();
   wireSingerKaraokeAudioButton();
   wireSingerMobileEntry();
