@@ -1299,10 +1299,17 @@ function createPanel() {
       </div>
 
       <div class="mm-section">
-              <h3>🎙️ Singer Microphone Permissions</h3>
+        <h3>🎙️ Singer Microphone Permissions</h3>
         <div id="mmSingerPermissions">
           No approved singers found.
         </div>
+      </div>
+
+      <div class="mm-section">
+        <h3>🎵 Share Karaoke Audio with Everyone</h3>
+        <p class="mm-note">Load and play the karaoke video first. Then share this Chrome tab and enable “Share tab audio” so singers and audience can hear the accompaniment.</p>
+        <button id="mmShareKaraokeBtn" type="button" disabled>▶ SHARE KARAOKE WITH EVERYONE</button>
+        <p id="mmShareKaraokeStatus" class="mm-note" role="status">Waiting for the host to connect and load a karaoke video.</p>
       </div>
     </div>
 
@@ -1474,6 +1481,9 @@ function createPanel() {
       }
     });
   }
+
+  // Wire the host's actual tab-audio sharing control after the panel exists.
+  wireSharedKaraokeButton();
 }
 
 
