@@ -1520,7 +1520,7 @@ function createPanel() {
       recorderPanel.style.padding = "10px";
       recorderPanel.style.border = "1px solid #9b7628";
       recorderPanel.style.borderRadius = "9px";
-      panel.appendChild(recorderPanel);
+      panel.querySelector('.mm-host-singers-record')?.appendChild(recorderPanel) || panel.appendChild(recorderPanel);
     }
   }
 
