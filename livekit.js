@@ -3511,7 +3511,9 @@ async function startSingerKaraokeAudio() {
   if (!room || !isJoined) throw new Error("Not connected to the auditorium yet. Wait for Singer: Connected.");
   if (!isCurrentSingerAssignedToStage()) throw new Error("The host must assign you to the main stage.");
   if (!microphoneAllowed) throw new Error("The host must turn your microphone permission ON.");
-  if (publishedMicrophoneTrack) return;
+  if (publishedMicrophoneTrack &&
+      (publishedMicrophoneTrack.readyState || publishedMicrophoneTrack.mediaStreamTrack?.readyState) === "live") return;
+  if (publishedMicrophoneTrack) publishedMicrophoneTrack = null;
 
   // Mobile singer: use LiveKit's LocalAudioTrack API rather than publishing
   // a raw browser MediaStreamTrack. This keeps publication/unpublication and
@@ -3751,6 +3753,9 @@ async function startMicrophoneEffects() {
   });
 
   publishedMicrophoneTrack = rawMicrophoneTrack;
+  // Keep the raw capture enabled after publish; host ON/OFF is controlled
+  // through the native MediaStreamTrack.enabled property.
+  rawMicrophoneTrack.enabled = true;
   if (currentRole === "host") setupHostDirectMonitor(rawMicrophoneTrack);
   processedMicrophoneTrack = null;
   audioEffects = null;
@@ -3971,19 +3976,21 @@ async function toggleMicrophone() {
     // It never stops the browser microphone, unpublishes the track, or drops
     // the LiveKit connection. If the capture really ended, offer a retry.
     if (currentRole === "host" && IS_HOST_CONTROL_PAGE) {
-      const liveTrack = publishedMicrophoneTrack?.mediaStreamTrack?.readyState === "live";
-      if (liveTrack && publishedMicrophoneTrack) {
-        if (localMicEnabled) {
-          await publishedMicrophoneTrack.mute();
-          localMicEnabled = false;
-          showMessage("Host microphone muted. Connection remains LIVE.", "info");
-        } else {
-          await publishedMicrophoneTrack.unmute();
-          localMicEnabled = true;
-          showMessage("Host microphone ON. Same connection restored.", "success");
-        }
+      const liveTrack = publishedMicrophoneTrack &&
+        (publishedMicrophoneTrack.readyState || publishedMicrophoneTrack.mediaStreamTrack?.readyState) === "live";
+      if (liveTrack) {
+        // startMicrophoneEffects publishes a raw MediaStreamTrack, not a
+        // LiveKit LocalTrack wrapper. Toggle the native track's enabled flag.
+        const mediaTrack = publishedMicrophoneTrack.mediaStreamTrack || publishedMicrophoneTrack;
+        mediaTrack.enabled = !localMicEnabled;
+        localMicEnabled = mediaTrack.enabled;
+        showMessage(localMicEnabled
+          ? "Host microphone ON. Live voice is being sent."
+          : "Host microphone muted. Connection remains LIVE.", localMicEnabled ? "success" : "info");
       } else {
-        // Initial start or recovery after the device/browser ended capture.
+        // Remove a stale ended track reference before retrying capture.
+        publishedMicrophoneTrack = null;
+        rawMicrophoneTrack = null;
         await startMicrophoneEffects();
         showMessage("Host microphone connected and LIVE.", "success");
       }
@@ -4097,7 +4104,7 @@ function updateControlButtons() {
     const isHostControl = currentRole === "host" && IS_HOST_CONTROL_PAGE;
     hostMic.hidden = !isHostControl;
     hostMic.disabled = !isJoined || !isHostControl || !microphoneAllowed;
-    const hostTrackConnected = publishedMicrophoneTrack?.mediaStreamTrack?.readyState === "live";
+    const hostTrackConnected = (publishedMicrophoneTrack?.readyState || publishedMicrophoneTrack?.mediaStreamTrack?.readyState) === "live";
     hostMic.textContent = localMicEnabled
       ? "🎙️ HOST MIC: ON — TAP TO MUTE"
       : hostTrackConnected
