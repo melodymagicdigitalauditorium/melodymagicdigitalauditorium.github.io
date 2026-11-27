@@ -774,7 +774,14 @@ async function playForEveryone(){
     if(!currentVideoId){videoMessage("Video is not ready yet. Try again.");return;}
     const commandAt=Date.now()+1200;
     const position=playerReady&&youtubePlayer?(youtubePlayer.getCurrentTime()||0):0;
-    await sendSingerKaraokeCommand("play",{videoId:currentVideoId,position,startedAt:commandAt,volume:Number($("karaokeVolume")?.value??100)});
+    const volume=Number($("karaokeVolume")?.value??100);
+    await sendSingerKaraokeCommand("play",{videoId:currentVideoId,position,startedAt:commandAt,volume});
+    // Keep the shared player only for audio delivery to audience devices; the
+    // assigned singer page ignores this path and uses its private player only.
+    await update(ref(db,"karaokePlayback/"+showId),{
+      videoId:currentVideoId,state:"playing",basePosition:position,startedAt:commandAt,
+      syncPosition:position,syncAt:commandAt,volume,updatedAt:Date.now(),updatedBy:currentUser.uid
+    });
     const hostIsAssigned=performers.some(item=>item.isHost);
     setHostSingerView(performers.length>0&&!hostIsAssigned);
     if(hostIsAssigned){
@@ -1424,10 +1431,18 @@ async function sendVideoToAssignedSinger(){
   try{
     const singers=await getStageSingerRecords();
     if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
+    currentVideoId=videoId;
+    await update(ref(db,"karaokePlayback/"+showId),{
+      videoId,state:"stopped",basePosition:0,startedAt:0,syncPosition:0,syncAt:0,
+      volume:Number($("karaokeVolume")?.value ?? 100),updatedAt:Date.now(),updatedBy:currentUser.uid
+    });
     await Promise.all(singers.map(({uid,mobile})=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),{
-      videoId,mobile,volume:Number($("karaokeVolume")?.value ?? 100),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
+      videoId,mobile,volume:Number($("karaokeVolume")?.value ?? 100),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0,position:0
     })));
-    setHostSingerView(true);
+    const hostIsAssigned=singers.some(item=>item.isHost);
+    setHostSingerView(singers.length>0&&!hostIsAssigned);
+    await createYouTubePlayer();
+    if(youtubePlayer&&playerReady){youtubePlayer.cueVideoById({videoId,startSeconds:0});applyHostLocalKaraokeAudio();}
     videoMessage("Video sent to "+singers.length+" assigned performer(s). It is paused. Press PLAY VIDEO FOR ASSIGNED PERFORMER when ready.");
   }catch(error){
     console.error("Send singer video error:",error);
