@@ -3318,24 +3318,41 @@ function removeSingerVoiceRecordTrack(track) {
   singerVoiceRecordSources.delete(key);
 }
 async function startSingerVoiceRecording() {
-  if (currentRole !== "host" || !isHost) return;
+  if (currentRole !== "host" || !isHost || !IS_HOST_CONTROL_PAGE) return;
   const status = byId("mmSingerVoiceRecordStatus");
   const start = byId("mmRecordSingerVoiceBtn");
   const stop = byId("mmStopSingerVoiceRecordBtn");
   const playback = byId("mmSingerVoiceRecordPlayback");
   const download = byId("mmSingerVoiceRecordDownload");
-  if (!window.MediaRecorder || !singerVoiceRecordDestination) {
-    if (status) status.textContent = "Audio recording is not supported by this browser.";
+  if (!window.MediaRecorder) {
+    if (status) status.textContent = "Recording is not supported in this browser. Please use the latest Chrome.";
     return;
   }
   try {
+    // Create the recording destination from the Record button gesture. Do not
+    // depend on a remote singer having connected first.
+    if (!singerVoiceRecordContext || !singerVoiceRecordDestination) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Web Audio recording is not supported by this browser.");
+      singerVoiceRecordContext = new AudioContextClass({ latencyHint: "interactive" });
+      singerVoiceRecordDestination = singerVoiceRecordContext.createMediaStreamDestination();
+    }
     if (rawMicrophoneTrack?.readyState === "live" && !singerVoiceRecordSources.has("local-host-mic")) {
       const localSource = singerVoiceRecordContext.createMediaStreamSource(new MediaStream([rawMicrophoneTrack]));
       localSource.connect(singerVoiceRecordDestination);
       singerVoiceRecordSources.set("local-host-mic", { source: localSource, name: "Host microphone" });
     }
+    // Include remote audio tracks that were already connected before Record
+    // was pressed, as well as tracks arriving while recording is underway.
+    room?.remoteParticipants?.forEach(participant => {
+      participant.trackPublications?.forEach(publication => {
+        if (publication.track?.kind === Track.Kind.Audio) {
+          addSingerVoiceRecordTrack(publication.track, participant);
+        }
+      });
+    });
     if (!singerVoiceRecordSources.size) {
-      if (status) status.textContent = "No auditorium audio is connected yet. Start the host or singer microphone and karaoke playback first.";
+      if (status) status.textContent = "No live microphone or singer audio is connected yet. Connect the host microphone or a singer, then press Record again.";
       return;
     }
     if (singerVoiceRecordContext.state === "suspended") await singerVoiceRecordContext.resume();
@@ -3344,24 +3361,29 @@ async function startSingerVoiceRecording() {
     if (playback) { playback.pause(); playback.removeAttribute("src"); playback.style.display = "none"; playback.load(); }
     if (download) { download.removeAttribute("href"); download.style.display = "none"; }
     singerVoiceRecordChunks = [];
-    const preferred = "audio/webm;codecs=opus";
-    const mimeType = MediaRecorder.isTypeSupported?.(preferred) ? preferred : "audio/webm";
-    singerVoiceRecorder = new MediaRecorder(singerVoiceRecordDestination.stream, { mimeType });
+    const mimeCandidates = ["audio/webm;codecs=opus", "audio/webm"];
+    const mimeType = mimeCandidates.find(type => MediaRecorder.isTypeSupported?.(type)) || "";
+    singerVoiceRecorder = mimeType
+      ? new MediaRecorder(singerVoiceRecordDestination.stream, { mimeType })
+      : new MediaRecorder(singerVoiceRecordDestination.stream);
     singerVoiceRecorder.ondataavailable = event => { if (event.data?.size) singerVoiceRecordChunks.push(event.data); };
     singerVoiceRecorder.onerror = event => { if (status) status.textContent = "Recording error: " + (event.error?.message || "Please try again."); };
     singerVoiceRecorder.onstop = () => {
       const blob = new Blob(singerVoiceRecordChunks, { type: singerVoiceRecorder?.mimeType || "audio/webm" });
-      if (!blob.size) { if (status) status.textContent = "No audio was captured. Check that the singer microphone is live."; return; }
+      if (!blob.size) { if (status) status.textContent = "No audio was captured. Check that a microphone or singer audio is live."; return; }
       singerVoiceRecordUrl = URL.createObjectURL(blob);
       if (playback) { playback.src = singerVoiceRecordUrl; playback.style.display = "block"; }
       if (download) { download.href = singerVoiceRecordUrl; download.style.display = "inline-block"; }
-      if (status) status.textContent = "Performance recording ready. Press PLAY to hear the voices and music together, or download it.";
+      if (status) status.textContent = "Recording ready. Press PLAY to listen, or download the performance recording.";
     };
     singerVoiceRecorder.start(250);
     if (start) start.disabled = true;
     if (stop) stop.disabled = false;
-    if (status) status.textContent = "Recording the connected performance mix: host voice, singer voices and shared karaoke audio. Press STOP when finished.";
-  } catch (error) { if (status) status.textContent = "Could not start recording: " + error.message; }
+    if (status) status.textContent = "Recording connected host and singer audio. Press STOP when the performance is finished.";
+  } catch (error) {
+    console.error("[Melody Magic] Recording start failed:", error);
+    if (status) status.textContent = "Could not start recording: " + (error?.message || "Please try again.");
+  }
 }
 function stopSingerVoiceRecording() {
   if (singerVoiceRecorder?.state !== "recording") return;
