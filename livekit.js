@@ -2528,6 +2528,23 @@ function listenToSingerKaraokeVideo() {
     if (notice) notice.textContent = "🎵 Host karaoke received. Waiting for the host to press play.";
     if (videoNotice) videoNotice.textContent = "Karaoke is controlled by the host and will start automatically.";
 
+    // Reveal the singer's karaoke panel immediately when a private video arrives.
+    updateKaraokePlayerAccess();
+    const playerContainer = byId("mmYoutubePlayer");
+    if (playerContainer) {
+      playerContainer.style.position = "relative";
+      playerContainer.style.left = "";
+      playerContainer.style.top = "";
+      playerContainer.style.width = "100%";
+      playerContainer.style.height = "auto";
+      playerContainer.style.minHeight = "240px";
+      playerContainer.style.opacity = "1";
+      playerContainer.style.pointerEvents = "auto";
+    }
+    const playerCard = playerContainer?.closest(".card, .mm-card");
+    if (playerCard) playerCard.style.display = "block";
+    if (status) status.textContent = "Host video received. Loading karaoke player...";
+
     createYouTubePlayer(videoId).then(player => {
       if (!player) return;
       try {
@@ -2594,6 +2611,7 @@ function listenToSingerKaraokeVideo() {
     }).catch(error => {
       console.warn("[Melody Magic] Could not prepare host karaoke:", error);
       if (status) status.textContent = "Could not load host karaoke: " + error.message;
+      if (videoNotice) videoNotice.textContent = "Video failed to load. Ask the host to resend the karaoke video.";
     });
   };
 
@@ -4681,14 +4699,15 @@ async function selectMainSingers() {
       stageData
     );
 
-    for (const item of approved) {
-      await workerRequest({
-        action: "syncPermissions",
-        uid: item.singerUid,
-        microphoneAllowed: false,
-        cameraAllowed: true
-      });
-    }
+    // Automatically grant the selected main-stage performer microphone permission.
+    // The singer still taps START MIC on their phone (browser gesture required).
+    // Unselected singers remain mic-disabled; camera permission remains available.
+    await Promise.all(approved.map(item => workerRequest({
+      action: "syncPermissions",
+      uid: item.singerUid,
+      microphoneAllowed: selectedUids.includes(item.singerUid),
+      cameraAllowed: true
+    })));
 
     const hostIsOnStage = selectedUids.includes(hostParticipantUid);
     showMessage(
