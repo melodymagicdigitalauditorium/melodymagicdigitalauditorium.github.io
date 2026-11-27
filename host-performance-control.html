@@ -157,19 +157,16 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
 
 <section class="card" id="queueSection">
   <h3>🎤 Singing Queue</h3>
-  <p class="small">Approved performers waiting for their turn.</p>
   <div id="performerQueue">Loading performers...</div>
 </section>
 
 <section class="card" id="hostControls" style="display:none">
   <h3>👑 Host Show Controls</h3>
-  <p class="small">Start the show when you are ready. Approved singers will be connected to the live auditorium automatically and appear in the singing queue.</p>
   <button class="green" id="startShowBtn">▶ START SHOW</button>
   <button class="red" id="endShowBtn">■ END SHOW</button>
   <p id="showLifecycleMessage" class="small"></p>
   <hr>
   <h3>🎤 Host Performance Controls</h3>
-  <p class="small">Only the approved host with an active subscription can manage performances.</p>
 
   <button class="green" id="startBtn">▶ START NEXT PERFORMER</button>
   <button class="blue" id="nextBtn">⏭ FINISH & NEXT</button>
@@ -180,43 +177,35 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
 
 <section id="livekitArea" class="card">
   <h3>🔊 Live Auditorium</h3>
-  <p class="small">The host connects automatically when this control room opens.</p>
   <p id="livekitLoadStatus" class="small" role="status">Loading live auditorium controls…</p>
 </section>
 
 <section class="card" id="karaokeSection">
   <h3>🎵 Host Karaoke Stage</h3>
-  <p class="small">This player is visible in the Host Control Room. Select a song below, then play it for the host and assigned singer.</p>
   <div id="videoMessage">Choose a YouTube karaoke video to begin.</div>
   <div id="videoPlayer"></div>
   <div class="volume-box">
     <label class="small"><input id="hostKaraokeMonitor" type="checkbox" checked> 🔊 Hear karaoke on this host device</label>
     <div class="volume-label"><strong>Host's local karaoke volume</strong><span id="hostKaraokeVolumeValue">70%</span></div>
     <input id="hostKaraokeVolume" type="range" min="0" max="100" step="1" value="70" aria-label="Host local karaoke volume">
-    <p class="small">This changes only the sound on the host's device. Singer volume remains separate.</p>
   </div>
   <hr>
   <h3>🎵 Send Karaoke Video to Singer</h3>
-  <p class="small">The same song is synchronized with the assigned singer's stage.</p>
 
   <div id="karaokeControls" style="display:none">
     <hr>
     <h3>👑 Host Karaoke Controls</h3>
-    <p class="small">Only the approved host can select and control the karaoke video.</p>
 
     <label class="small" for="hostYouTubeSearch">Search YouTube karaoke songs</label>
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><input id="hostYouTubeSearch" type="text" placeholder="Search song / movie / singer" style="flex:1;min-width:180px"><button class="blue" id="hostYouTubeSearchBtn" type="button">SEARCH YOUTUBE</button></div>
-    <p class="small">Search here, open a karaoke video on YouTube, then copy its link and paste it below to send to the assigned singer.</p>
     <label class="small" for="youtubeInput">YouTube video URL or video ID</label>
     <input id="youtubeInput" type="text" placeholder="Paste YouTube URL here">
 
     <div class="volume-box" id="hostKaraokeVolumeBox">
       <div class="volume-label"><strong>🎚️ Singer Karaoke Volume</strong><span id="volumeValue">100%</span></div>
       <input id="karaokeVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Singer karaoke volume">
-      <p class="small">Adjust the karaoke playback volume on the assigned singer's page.</p>
     </div>
     <button class="green" id="playKaraokeForEveryoneBtn" type="button">▶ PLAY VIDEO FOR ASSIGNED PERFORMER</button>
-    <p class="small">Send the video first. It stays paused until you press Play. Only the assigned host or approved singer sees the video; everyone else hears the live vocal and karaoke audio.</p>
     <button class="blue" id="sendVideoToSingerBtn" type="button">📨 SEND VIDEO TO ASSIGNED SINGER</button>
     <button class="blue" id="pauseVideoBtn" type="button">⏸ PAUSE ASSIGNED VIDEO</button>
     <button class="red" id="stopVideoBtn">■ STOP ASSIGNED VIDEO</button>
