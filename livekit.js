@@ -1978,14 +1978,19 @@ function updateKaraokePlayerAccess() {
   const container = byId("mmYoutubePlayer");
   const card = container?.closest(".card, .mm-card");
   const assignedSinger = isCurrentSingerAssignedToStage();
+  // The host can also be the active performer on the main stage. In that
+  // case show the karaoke video on the host's Live Stage screen too.
+  const hostIsPerforming = currentRole === "host" && isHost &&
+    IS_HOST_CONTROL_PAGE && !!getHostParticipantUid() &&
+    stageSingerUids.includes(getHostParticipantUid());
   const isAudience = currentRole === "audience";
   const canReceiveAudio = isHost || assignedSinger || isAudience;
-  const canSeeVideo = currentRole === "singer" && assignedSinger;
+  const canSeeVideo = assignedSinger || hostIsPerforming;
 
   if (card) card.style.display = canReceiveAudio ? "" : "none";
 
-  // Only the assigned singer sees the video. Host and audience keep the
-  // YouTube iframe running off-screen so its audio remains available.
+  // The assigned singer or a host performing on the main stage sees
+  // the video. Other host/audience devices keep the iframe off-screen for audio.
   if (container) {
     if (canSeeVideo) {
       container.style.position = "";
