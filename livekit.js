@@ -66,6 +66,12 @@ let cameraAllowed = false;
 let localMicEnabled = false;
 let localCameraEnabled = false;
 let hostSingerMonitorEnabled = true;
+let singerVoiceRecordContext = null;
+let singerVoiceRecordDestination = null;
+let singerVoiceRecordSources = new Map();
+let singerVoiceRecorder = null;
+let singerVoiceRecordChunks = [];
+let singerVoiceRecordUrl = "";
 
 let stageSingerUids = [];
 let registrations = {};
@@ -1242,6 +1248,14 @@ function createPanel() {
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
+      <div class="mm-effect-control" id="mmSingerVoiceRecorder">
+        <h3>🎙️ Check Singer Voice</h3>
+        <button id="mmRecordSingerVoiceBtn" type="button">● RECORD SINGER VOICE</button>
+        <button id="mmStopSingerVoiceRecordBtn" type="button" disabled>■ STOP</button>
+        <p id="mmSingerVoiceRecordStatus" class="mm-note">Record the incoming singer microphone audio, then play it back to check clarity and delay.</p>
+        <audio id="mmSingerVoiceRecordPlayback" controls playsinline style="display:none;width:100%;margin-top:8px"></audio>
+        <a id="mmSingerVoiceRecordDownload" style="display:none;color:#f5c542" download="melody-magic-singer-voice-test.webm">Download voice test</a>
+      </div>
       <div class="mm-effect-control">
         <label><input id="mmHostKaraokeMonitor" type="checkbox" checked> 🎵 Host: hear YouTube karaoke on this device</label>
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
@@ -1447,6 +1461,8 @@ function createPanel() {
   });
 
   if (IS_HOST_CONTROL_PAGE && byId("mmAudioEffects")) {
+    byId("mmRecordSingerVoiceBtn")?.addEventListener("click", startSingerVoiceRecording);
+    byId("mmStopSingerVoiceRecordBtn")?.addEventListener("click", stopSingerVoiceRecording);
     ["mmEcho", "mmDelay", "mmReverb"].forEach(id => {
       byId(id).addEventListener("input", () => {
         updateAudioControlLabels();
@@ -2987,6 +3003,7 @@ function registerRoomEvents() {
         remoteSharedKaraokeAudioTracks.add(track);
         applySingerKaraokeAudioRouting();
       }
+      if (track?.kind === Track.Kind.Audio && source === Track.Source.Microphone && currentRole === "host" && isHost) addSingerVoiceRecordTrack(track, participant);
       await attachRemoteTrack(track, participant);
       if (track?.kind === Track.Kind.Audio) {
         const who = participant?.name || participant?.identity || "participant";
@@ -3011,6 +3028,7 @@ function registerRoomEvents() {
   room.on(
     RoomEvent.TrackUnsubscribed,
     track => {
+      removeSingerVoiceRecordTrack(track);
       removeRemoteSingerFromProgrammeMixer(track);
       remoteSharedKaraokeAudioTracks.delete(track);
       applySingerKaraokeAudioRouting();
@@ -3245,7 +3263,78 @@ async function createVideoTile(participant, isLocal) {
   }
 }
 
-async function attachRemoteTrack(track, participant) {
+async 
+/* HOST SINGER VOICE TEST RECORDING — remote microphone tracks only. */
+function addSingerVoiceRecordTrack(track, participant) {
+  if (!track?.mediaStreamTrack || singerVoiceRecordSources.has(track.sid)) return;
+  try {
+    if (!singerVoiceRecordContext) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return;
+      singerVoiceRecordContext = new C({ latencyHint: "interactive" });
+      singerVoiceRecordDestination = singerVoiceRecordContext.createMediaStreamDestination();
+    }
+    const source = singerVoiceRecordContext.createMediaStreamSource(new MediaStream([track.mediaStreamTrack]));
+    source.connect(singerVoiceRecordDestination);
+    singerVoiceRecordSources.set(track.sid || track, { source, name: participant?.name || participant?.identity || "Singer" });
+    const status = byId("mmSingerVoiceRecordStatus");
+    if (status) status.textContent = "Singer microphone connected. Press RECORD to capture the incoming voice.";
+  } catch (error) { console.warn("[Melody Magic] Singer recording input:", error); }
+}
+function removeSingerVoiceRecordTrack(track) {
+  const key = track?.sid || track;
+  const item = singerVoiceRecordSources.get(key);
+  if (!item) return;
+  try { item.source.disconnect(); } catch (error) {}
+  singerVoiceRecordSources.delete(key);
+}
+async function startSingerVoiceRecording() {
+  if (currentRole !== "host" || !isHost) return;
+  const status = byId("mmSingerVoiceRecordStatus");
+  const start = byId("mmRecordSingerVoiceBtn");
+  const stop = byId("mmStopSingerVoiceRecordBtn");
+  const playback = byId("mmSingerVoiceRecordPlayback");
+  const download = byId("mmSingerVoiceRecordDownload");
+  if (!window.MediaRecorder || !singerVoiceRecordDestination || !singerVoiceRecordSources.size) {
+    if (status) status.textContent = "No incoming singer microphone yet. Assign a singer to Main Stage and start their microphone first.";
+    return;
+  }
+  try {
+    if (singerVoiceRecordContext.state === "suspended") await singerVoiceRecordContext.resume();
+    if (singerVoiceRecordUrl) URL.revokeObjectURL(singerVoiceRecordUrl);
+    singerVoiceRecordUrl = "";
+    if (playback) { playback.pause(); playback.removeAttribute("src"); playback.style.display = "none"; playback.load(); }
+    if (download) { download.removeAttribute("href"); download.style.display = "none"; }
+    singerVoiceRecordChunks = [];
+    const preferred = "audio/webm;codecs=opus";
+    const mimeType = MediaRecorder.isTypeSupported?.(preferred) ? preferred : "audio/webm";
+    singerVoiceRecorder = new MediaRecorder(singerVoiceRecordDestination.stream, { mimeType });
+    singerVoiceRecorder.ondataavailable = event => { if (event.data?.size) singerVoiceRecordChunks.push(event.data); };
+    singerVoiceRecorder.onerror = event => { if (status) status.textContent = "Recording error: " + (event.error?.message || "Please try again."); };
+    singerVoiceRecorder.onstop = () => {
+      const blob = new Blob(singerVoiceRecordChunks, { type: singerVoiceRecorder?.mimeType || "audio/webm" });
+      if (!blob.size) { if (status) status.textContent = "No audio was captured. Check that the singer microphone is live."; return; }
+      singerVoiceRecordUrl = URL.createObjectURL(blob);
+      if (playback) { playback.src = singerVoiceRecordUrl; playback.style.display = "block"; }
+      if (download) { download.href = singerVoiceRecordUrl; download.style.display = "inline-block"; }
+      if (status) status.textContent = "Voice test ready. Press PLAY to hear the singer voice or download it.";
+    };
+    singerVoiceRecorder.start(250);
+    if (start) start.disabled = true;
+    if (stop) stop.disabled = false;
+    if (status) status.textContent = "Recording incoming singer microphone audio. Sing normally, then press STOP.";
+  } catch (error) { if (status) status.textContent = "Could not start recording: " + error.message; }
+}
+function stopSingerVoiceRecording() {
+  if (singerVoiceRecorder?.state !== "recording") return;
+  singerVoiceRecorder.stop();
+  if (byId("mmRecordSingerVoiceBtn")) byId("mmRecordSingerVoiceBtn").disabled = false;
+  if (byId("mmStopSingerVoiceRecordBtn")) byId("mmStopSingerVoiceRecordBtn").disabled = true;
+  const status = byId("mmSingerVoiceRecordStatus");
+  if (status) status.textContent = "Preparing the voice test…";
+}
+
+function attachRemoteTrack(track, participant) {
   await createVideoTile(participant, false);
   attachTrackToTile(track, getTileId(participant.identity) + "_media", true);
 }
