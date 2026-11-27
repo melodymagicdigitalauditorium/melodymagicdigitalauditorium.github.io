@@ -1248,14 +1248,6 @@ function createPanel() {
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
-      <div class="mm-effect-control" id="mmSingerVoiceRecorder">
-        <h3>🎙️ Record Complete Performance</h3>
-        <button id="mmRecordSingerVoiceBtn" type="button">● RECORD VOICE + KARAOKE</button>
-        <button id="mmStopSingerVoiceRecordBtn" type="button" disabled>■ STOP</button>
-        <p id="mmSingerVoiceRecordStatus" class="mm-note">Records the host and incoming singer microphones plus shared karaoke audio when that audio is connected to the auditorium.</p>
-        <audio id="mmSingerVoiceRecordPlayback" controls playsinline style="display:none;width:100%;margin-top:8px"></audio>
-        <a id="mmSingerVoiceRecordDownload" style="display:none;color:#f5c542" download="melody-magic-performance-test.webm">Download performance test</a>
-      </div>
       <div class="mm-effect-control">
         <label><input id="mmHostKaraokeMonitor" type="checkbox" checked> 🎵 Host: hear YouTube karaoke on this device</label>
         <p class="mm-note">Turn this on when the host is singing. It changes only the host's local player audio.</p>
@@ -1267,6 +1259,18 @@ function createPanel() {
       </div>
       <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
       <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
+    </div>
+    </div>
+
+
+    <div class="mm-section mm-card" id="mmRecordingPanel" style="border:1px solid #b58a35;background:#171717;padding:12px;border-radius:10px;margin-top:12px">
+      <h3>🎙️ Record Complete Performance</h3>
+      <p class="mm-note">Record the host and connected singer voices, plus karaoke audio when it is shared into the auditorium.</p>
+      <button id="mmRecordSingerVoiceBtn" type="button" style="background:#b58a35;color:#111;font-weight:bold;padding:12px 16px">● RECORD VOICE + KARAOKE</button>
+      <button id="mmStopSingerVoiceRecordBtn" type="button" disabled style="background:#a52a2a;color:white;padding:12px 16px">■ STOP</button>
+      <p id="mmSingerVoiceRecordStatus" class="mm-note">Ready to record when the host microphone or singer audio is connected.</p>
+      <audio id="mmSingerVoiceRecordPlayback" controls playsinline style="display:none;width:100%;margin-top:8px"></audio>
+      <p><a id="mmSingerVoiceRecordDownload" style="display:none;color:#f5c542" download="melody-magic-performance-test.webm">Download performance recording</a></p>
     </div>
 
     <div class="mm-section" id="mmReactionSection">
