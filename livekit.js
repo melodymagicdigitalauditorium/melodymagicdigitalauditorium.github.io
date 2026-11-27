@@ -133,6 +133,8 @@ let lastPlaybackSignature = "";
 let playbackStartTimer = null;
 let playbackSyncTimer = null;
 let sharedKaraokeTracks = [];
+// Keep one authoritative accompaniment when the host shares tab audio.
+const remoteSharedKaraokeAudioTracks = new Set();
 let sharedKaraokeStarting = false;
 let sharedKaraokeStopping = false;
 let singerKaraokeCaptureStream = null;
@@ -2435,6 +2437,17 @@ function getSingerYouTubeVideoId(value) {
   return "";
 }
 
+function applySingerKaraokeAudioRouting() {
+  if (currentRole !== "singer" || !youtubePlayer) return;
+  if (remoteSharedKaraokeAudioTracks.size > 0) {
+    // Keep the singer's video visible, but silence its duplicate local audio.
+    try { youtubePlayer.mute(); youtubePlayer.setVolume(0); } catch (error) {}
+  } else if (singerKaraokePlaybackRequested) {
+    // Use local accompaniment only when no host tab-audio stream is present.
+    try { youtubePlayer.setVolume(100); youtubePlayer.unMute(); } catch (error) {}
+  }
+}
+
 function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer" || !singerMobile) return;
   // Read only this singer's record. The host writes commands to the exact
@@ -2504,6 +2517,7 @@ function listenToSingerKaraokeVideo() {
         } else if (isNewVideo && status) {
           status.textContent = "Karaoke received. Waiting for the host to start playback.";
         }
+        applySingerKaraokeAudioRouting();
       } catch (error) {
         console.warn("[Melody Magic] Could not apply host karaoke command:", error);
         if (status) status.textContent = "Karaoke player error: " + error.message;
@@ -2834,6 +2848,10 @@ function registerRoomEvents() {
       // Skip only the screen-share VIDEO. Always attach audio tracks, including
       // microphone audio and screen-share/tab audio, on every participant device.
       if (track?.kind === Track.Kind.Video && source === Track.Source.ScreenShare) return;
+      if (track?.kind === Track.Kind.Audio && source === Track.Source.ScreenShareAudio) {
+        remoteSharedKaraokeAudioTracks.add(track);
+        applySingerKaraokeAudioRouting();
+      }
       await attachRemoteTrack(track, participant);
       if (track?.kind === Track.Kind.Audio) {
         const who = participant?.name || participant?.identity || "participant";
@@ -2859,6 +2877,8 @@ function registerRoomEvents() {
     RoomEvent.TrackUnsubscribed,
     track => {
       removeRemoteSingerFromProgrammeMixer(track);
+      remoteSharedKaraokeAudioTracks.delete(track);
+      applySingerKaraokeAudioRouting();
       detachTrackElements(track);
     }
   );
@@ -3511,6 +3531,7 @@ async function startSingerKaraokeAudio() {
           youtubePlayer.setVolume(100);
           youtubePlayer.playVideo();
           karaokeStarted = true;
+          applySingerKaraokeAudioRouting();
         } catch (playError) {
           console.warn("[Melody Magic] Singer karaoke play failed:", playError);
         }
@@ -4733,6 +4754,7 @@ async function leaveAuditorium() {
     console.warn("Leave error:", error);
   } finally {
     stopFirebaseListeners();
+    remoteSharedKaraokeAudioTracks.clear();
     if (audioEffects) {
       audioEffects.stop();
       audioEffects = null;
