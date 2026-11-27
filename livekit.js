@@ -1486,31 +1486,13 @@ function createPanel() {
     if (recorderPanel) singerAndRecord.appendChild(recorderPanel);
     panel.appendChild(singerAndRecord);
 
-    const socialSection = document.createElement("div");
-    socialSection.className = "mm-section mm-host-social-share";
-    socialSection.innerHTML = '<h3>🔗 Share This Auditorium</h3><p class="mm-note">Share the live show link with your audience on WhatsApp and other social apps.</p><button id="mmShareShowBtn" type="button">📲 SHARE SHOW LINK</button>';
     const communitySection = document.createElement("div");
     communitySection.className = "mm-host-community";
     if (reactionsSection) communitySection.appendChild(reactionsSection);
     if (commentsSection) communitySection.appendChild(commentsSection);
-    panel.append(communitySection, socialSection);
+    panel.append(communitySection);
 
-    byId("mmShareShowBtn")?.addEventListener("click", async () => {
-      const shareUrl = new URL("live-stage.html?showId=" + encodeURIComponent(showId || ""), location.origin).href;
-      const shareData = { title: "Melody Magic Digital Auditorium", text: "Join my live auditorium show!", url: shareUrl };
-      try {
-        if (navigator.share) await navigator.share(shareData);
-        else if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(shareUrl);
-          const button = byId("mmShareShowBtn");
-          if (button) button.textContent = "✓ LINK COPIED";
-        } else {
-          window.prompt("Copy this auditorium link:", shareUrl);
-        }
-      } catch (error) {
-        if (error?.name !== "AbortError") console.warn("Show sharing was not completed:", error);
-      }
-    });
+;
   }
 
   // Keep the performance recorder visible on the host page even before
