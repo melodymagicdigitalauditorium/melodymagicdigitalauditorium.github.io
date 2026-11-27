@@ -119,6 +119,14 @@ footer{padding:8px}
  #videoPlayer{max-height:none}
 }
 
+
+/* Host karaoke becomes a full-width main screen when the host is assigned to sing. */
+body.mm-active-performer #karaokeSection{grid-column:1/-1!important;grid-row:auto!important;width:100%!important}
+body.mm-active-performer #videoPlayer{max-height:none!important;min-height:0!important;width:100%!important;aspect-ratio:16/9!important}
+body.mm-active-performer #mmYoutubePlayer{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;opacity:1!important;pointer-events:auto!important}
+body.mm-active-performer #mmYoutubePlayer iframe{width:100%!important;aspect-ratio:16/9!important;height:auto!important;min-height:240px!important;max-height:none!important}
+body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYoutubePlayer .mm-card{width:100%!important;max-width:none!important}
+@media(max-width:700px){body.mm-active-performer #karaokeSection{order:2!important}body.mm-active-performer #livekitArea{order:3!important}}
 </style>
 </head>
 
