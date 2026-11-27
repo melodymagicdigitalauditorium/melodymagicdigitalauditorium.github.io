@@ -1249,12 +1249,12 @@ function createPanel() {
         <p class="mm-note">This only turns singer audio on or off for the host. Audience audio is unchanged. Headphones recommended.</p>
       </div>
       <div class="mm-effect-control" id="mmSingerVoiceRecorder">
-        <h3>🎙️ Check Singer Voice</h3>
-        <button id="mmRecordSingerVoiceBtn" type="button">● RECORD SINGER VOICE</button>
+        <h3>🎙️ Record Complete Performance</h3>
+        <button id="mmRecordSingerVoiceBtn" type="button">● RECORD VOICE + KARAOKE</button>
         <button id="mmStopSingerVoiceRecordBtn" type="button" disabled>■ STOP</button>
-        <p id="mmSingerVoiceRecordStatus" class="mm-note">Record the incoming singer microphone audio, then play it back to check clarity and delay.</p>
+        <p id="mmSingerVoiceRecordStatus" class="mm-note">Records the host and incoming singer microphones plus shared karaoke audio when that audio is connected to the auditorium.</p>
         <audio id="mmSingerVoiceRecordPlayback" controls playsinline style="display:none;width:100%;margin-top:8px"></audio>
-        <a id="mmSingerVoiceRecordDownload" style="display:none;color:#f5c542" download="melody-magic-singer-voice-test.webm">Download voice test</a>
+        <a id="mmSingerVoiceRecordDownload" style="display:none;color:#f5c542" download="melody-magic-performance-test.webm">Download performance test</a>
       </div>
       <div class="mm-effect-control">
         <label><input id="mmHostKaraokeMonitor" type="checkbox" checked> 🎵 Host: hear YouTube karaoke on this device</label>
@@ -3003,7 +3003,7 @@ function registerRoomEvents() {
         remoteSharedKaraokeAudioTracks.add(track);
         applySingerKaraokeAudioRouting();
       }
-      if (track?.kind === Track.Kind.Audio && source === Track.Source.Microphone && currentRole === "host" && isHost) addSingerVoiceRecordTrack(track, participant);
+      if (track?.kind === Track.Kind.Audio && currentRole === "host" && isHost) addSingerVoiceRecordTrack(track, participant);
       await attachRemoteTrack(track, participant);
       if (track?.kind === Track.Kind.Audio) {
         const who = participant?.name || participant?.identity || "participant";
@@ -3264,7 +3264,7 @@ async function createVideoTile(participant, isLocal) {
 }
 
 async 
-/* HOST SINGER VOICE TEST RECORDING — remote microphone tracks only. */
+/* HOST PERFORMANCE TEST RECORDING — host mic + remote stage voices + shared karaoke audio. */
 function addSingerVoiceRecordTrack(track, participant) {
   if (!track?.mediaStreamTrack || singerVoiceRecordSources.has(track.sid)) return;
   try {
@@ -3278,7 +3278,7 @@ function addSingerVoiceRecordTrack(track, participant) {
     source.connect(singerVoiceRecordDestination);
     singerVoiceRecordSources.set(track.sid || track, { source, name: participant?.name || participant?.identity || "Singer" });
     const status = byId("mmSingerVoiceRecordStatus");
-    if (status) status.textContent = "Singer microphone connected. Press RECORD to capture the incoming voice.";
+    if (status) status.textContent = "Auditorium audio connected. Recording can include stage voices and shared karaoke audio.";
   } catch (error) { console.warn("[Melody Magic] Singer recording input:", error); }
 }
 function removeSingerVoiceRecordTrack(track) {
@@ -3295,11 +3295,20 @@ async function startSingerVoiceRecording() {
   const stop = byId("mmStopSingerVoiceRecordBtn");
   const playback = byId("mmSingerVoiceRecordPlayback");
   const download = byId("mmSingerVoiceRecordDownload");
-  if (!window.MediaRecorder || !singerVoiceRecordDestination || !singerVoiceRecordSources.size) {
-    if (status) status.textContent = "No incoming singer microphone yet. Assign a singer to Main Stage and start their microphone first.";
+  if (!window.MediaRecorder || !singerVoiceRecordDestination) {
+    if (status) status.textContent = "Audio recording is not supported by this browser.";
     return;
   }
   try {
+    if (rawMicrophoneTrack?.readyState === "live" && !singerVoiceRecordSources.has("local-host-mic")) {
+      const localSource = singerVoiceRecordContext.createMediaStreamSource(new MediaStream([rawMicrophoneTrack]));
+      localSource.connect(singerVoiceRecordDestination);
+      singerVoiceRecordSources.set("local-host-mic", { source: localSource, name: "Host microphone" });
+    }
+    if (!singerVoiceRecordSources.size) {
+      if (status) status.textContent = "No auditorium audio is connected yet. Start the host or singer microphone and karaoke playback first.";
+      return;
+    }
     if (singerVoiceRecordContext.state === "suspended") await singerVoiceRecordContext.resume();
     if (singerVoiceRecordUrl) URL.revokeObjectURL(singerVoiceRecordUrl);
     singerVoiceRecordUrl = "";
@@ -3317,12 +3326,12 @@ async function startSingerVoiceRecording() {
       singerVoiceRecordUrl = URL.createObjectURL(blob);
       if (playback) { playback.src = singerVoiceRecordUrl; playback.style.display = "block"; }
       if (download) { download.href = singerVoiceRecordUrl; download.style.display = "inline-block"; }
-      if (status) status.textContent = "Voice test ready. Press PLAY to hear the singer voice or download it.";
+      if (status) status.textContent = "Performance recording ready. Press PLAY to hear the voices and music together, or download it.";
     };
     singerVoiceRecorder.start(250);
     if (start) start.disabled = true;
     if (stop) stop.disabled = false;
-    if (status) status.textContent = "Recording incoming singer microphone audio. Sing normally, then press STOP.";
+    if (status) status.textContent = "Recording the connected performance mix: host voice, singer voices and shared karaoke audio. Press STOP when finished.";
   } catch (error) { if (status) status.textContent = "Could not start recording: " + error.message; }
 }
 function stopSingerVoiceRecording() {
