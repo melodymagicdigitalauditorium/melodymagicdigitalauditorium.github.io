@@ -778,38 +778,77 @@ async function sendSingerKaraokeCommand(command, details={}){
 
 async function playForEveryone(){
   if(!isHost||!currentUser)return;
+
+  // YouTube requires playVideo() to run directly inside the user's click
+  // gesture. Do this BEFORE any Firebase reads/writes or other await calls.
+  if(!currentVideoId){
+    const id=getYouTubeVideoId($("youtubeInput")?.value || "");
+    if(!id){videoMessage("Paste the YouTube link, then press SEND VIDEO TO ASSIGNED SINGER first.");return;}
+    videoMessage("Send the video to the assigned performer first, then press Play.");
+    return;
+  }
+  if(!playerReady||!youtubePlayer){
+    videoMessage("YouTube player is still loading. Press SEND VIDEO TO ASSIGNED SINGER, wait for it to load, then press Play.");
+    return;
+  }
+
+  const hostVolume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
+  const hostMonitor=$("hostKaraokeMonitor")?.checked===true;
+  const position=Math.max(0,Number(youtubePlayer.getCurrentTime()||0));
+  const commandAt=Date.now()+1200;
+  const volume=Number($("karaokeVolume")?.value??100);
+
+  // Start the host's own player synchronously while the click is trusted.
+  try{
+    if(hostMonitor&&hostVolume>0){
+      youtubePlayer.setVolume(hostVolume);
+      youtubePlayer.unMute();
+    }else{
+      youtubePlayer.mute();
+      youtubePlayer.setVolume(0);
+    }
+    youtubePlayer.seekTo(position,true);
+    youtubePlayer.playVideo();
+  }catch(playError){
+    console.warn("Immediate host YouTube play request:",playError);
+  }
+
+  videoMessage("Starting video and synchronizing assigned performer...");
   try{
     const performers=await getStageSingerRecords();
-    if(!performers.length){videoMessage("Assign the host or an approved singer to the main stage first.");return;}
-    if(!currentVideoId){
-      const id=getYouTubeVideoId($("youtubeInput")?.value || "");
-      if(!id){videoMessage("Paste a YouTube video link first.");return;}
-      await loadSelectedVideo();
+    if(!performers.length){
+      youtubePlayer.pauseVideo();
+      videoMessage("No main-stage performer found. Select Host (me) or an approved singer and press Assign Main Stage first.");
+      return;
     }
-    if(!currentVideoId){videoMessage("Video is not ready yet. Try again.");return;}
-    const commandAt=Date.now()+1200;
-    const position=playerReady&&youtubePlayer?(youtubePlayer.getCurrentTime()||0):0;
-    const volume=Number($("karaokeVolume")?.value??100);
-    await sendSingerKaraokeCommand("play",{videoId:currentVideoId,position,startedAt:commandAt,volume});
-    // Keep the shared player only for audio delivery to audience devices; the
-    // assigned singer page ignores this path and uses its private player only.
+
+    const hostIsAssigned=performers.some(item=>item.isHost);
+    setHostSingerView(!hostIsAssigned);
+
+    await sendSingerKaraokeCommand("play",{
+      videoId:currentVideoId,position,startedAt:commandAt,volume
+    });
+
+    // Publish the shared auditorium playback clock after the local YouTube
+    // play request has already been made within the user's click gesture.
     await update(ref(db,"karaokePlayback/"+showId),{
       videoId:currentVideoId,state:"playing",basePosition:position,startedAt:commandAt,
       syncPosition:position,syncAt:commandAt,volume,updatedAt:Date.now(),updatedBy:currentUser.uid
     });
-    const hostIsAssigned=performers.some(item=>item.isHost);
-    setHostSingerView(performers.length>0&&!hostIsAssigned);
+
     if(hostIsAssigned){
-      await createYouTubePlayer();
-      if(youtubePlayer&&playerReady){
-        const hostVolume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
-        if($("hostKaraokeMonitor")?.checked===true&&hostVolume>0){youtubePlayer.setVolume(hostVolume);youtubePlayer.unMute();}
-        else{youtubePlayer.mute();youtubePlayer.setVolume(0);}
-        youtubePlayer.seekTo(position,true);youtubePlayer.playVideo();
-      }
+      // Keep the host player visible and audible only according to the host's
+      // local monitor setting; the audience hears the shared auditorium feed.
+      setHostSingerView(false);
     }
-    videoMessage("Play command sent only to the assigned performer. Audience members do not receive a video player.");
-  }catch(error){console.error("Assigned performer play error:",error);videoMessage("Could not start assigned performer video: "+error.message);}
+
+    videoMessage(hostIsAssigned
+      ? "Host video started. Assigned singer playback is synchronized."
+      : "Video command sent to the assigned singer. The host preview is hidden while the singer performs.");
+  }catch(error){
+    console.error("Assigned performer play error:",error);
+    videoMessage("Host preview was started, but synchronization failed: "+error.message);
+  }
 }
 
 async function getStageSingerRecords(){
