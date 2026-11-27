@@ -1390,6 +1390,23 @@ function createPanel() {
   `;
 
   target.appendChild(panel);
+
+  // Keep the performance recorder visible on the host page even before
+  // the host joins LiveKit. The microphone/effects panel is intentionally
+  // hidden until host authorization and connection are confirmed.
+  if (IS_HOST_CONTROL_PAGE) {
+    const recorderPanel = byId("mmSingerVoiceRecorder");
+    if (recorderPanel) {
+      recorderPanel.style.display = "block";
+      recorderPanel.style.gridColumn = "1 / -1";
+      recorderPanel.style.marginTop = "8px";
+      recorderPanel.style.padding = "10px";
+      recorderPanel.style.border = "1px solid #9b7628";
+      recorderPanel.style.borderRadius = "9px";
+      panel.appendChild(recorderPanel);
+    }
+  }
+
   const loadStatus = byId("livekitLoadStatus");
   if (loadStatus) loadStatus.remove();
 
