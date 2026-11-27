@@ -262,6 +262,7 @@ let currentVideoId="";
 let playbackData=null;
 let playbackTimer=null;
 let hostScheduledPlayTimer=null;
+let hostWatchingSinger=false;
 let applyingPlayback=false;
 let lastAppliedPlaybackAt=0;
 let syncInterval=null;
@@ -419,15 +420,40 @@ function setKaraokeVolume(value){
   }
 }
 
+function setHostSingerView(assigned){
+  hostWatchingSinger=!!assigned;
+  const playerBox=$("videoPlayer");
+  if(playerBox){
+    if(hostWatchingSinger){
+      playerBox.style.position="fixed";
+      playerBox.style.left="-10000px";
+      playerBox.style.top="0";
+      playerBox.style.width="220px";
+      playerBox.style.height="220px";
+    }else{
+      playerBox.style.position="";
+      playerBox.style.left="";
+      playerBox.style.top="";
+      playerBox.style.width="100%";
+      playerBox.style.height="100%";
+    }
+  }
+  applyHostLocalKaraokeAudio();
+}
+
 function applyHostLocalKaraokeAudio(){
   if(!youtubePlayer||!playerReady)return;
   const enabled=$("hostKaraokeMonitor")?.checked===true;
   const volume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
   if($("hostKaraokeVolumeValue"))$("hostKaraokeVolumeValue").textContent=volume+"%";
   try{
-    youtubePlayer.setVolume(enabled?volume:0);
-    if(enabled&&volume>0)youtubePlayer.unMute();
-    else youtubePlayer.mute();
+    if(hostWatchingSinger || !enabled || volume===0){
+      youtubePlayer.setVolume(0);
+      youtubePlayer.mute();
+    }else{
+      youtubePlayer.setVolume(volume);
+      youtubePlayer.unMute();
+    }
   }catch(error){console.warn("Host local karaoke audio:",error);}
 }
 
@@ -730,6 +756,9 @@ async function sendSingerKaraokeCommand(command, details={}){
 async function playForEveryone(){
 
   if(!isHost||!currentUser)return;
+
+  const assignedSingers = await getStageSingerRecords();
+  setHostSingerView(assignedSingers.length > 0);
 
   if(!currentVideoId){
 
@@ -1441,7 +1470,8 @@ async function sendVideoToAssignedSinger(){
     await Promise.all(singers.map(({uid,mobile})=>set(ref(db,"singerKaraoke/"+showId+"/"+uid),{
       videoId,mobile,volume:Number($("karaokeVolume")?.value ?? 100),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
     })));
-    videoMessage("Video sent to "+singers.length+" assigned singer(s). They can open it on their singer page.");
+    setHostSingerView(true);
+    videoMessage("Video sent to "+singers.length+" assigned singer(s). Only the assigned singer sees the video; the host hears the karaoke audio.");
   }catch(error){
     console.error("Send singer video error:",error);
     videoMessage("Could not send video: "+error.message);
