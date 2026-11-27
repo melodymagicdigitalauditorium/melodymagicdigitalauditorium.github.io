@@ -2528,7 +2528,7 @@ function listenToSingerKaraokeVideo() {
     const notice = byId("mmSingerSentVideo");
     const videoNotice = byId("mmSingerVideoNotice");
     if (notice) notice.textContent = "🎵 Host karaoke received. Waiting for the host to press play.";
-    if (videoNotice) videoNotice.textContent = "Karaoke is controlled by the host and will start automatically.";
+    if (videoNotice) videoNotice.textContent = "Video is ready and paused. It will play only when the host presses Play.";
 
     // Reveal the singer's karaoke panel immediately when a private video arrives.
     updateKaraokePlayerAccess();
@@ -2624,7 +2624,8 @@ function listenToSingerKaraokeVideo() {
   });
 }
 function listenToKaraokePlayback() {
-  if (!showId) return;
+  // Assigned performers use only their private singerKaraoke video and command path.
+  if (!showId || requestedMode === "singer") return;
 
   const playbackRef = ref(db, "karaokePlayback/" + showId);
 
