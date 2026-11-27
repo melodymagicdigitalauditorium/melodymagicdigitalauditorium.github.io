@@ -261,6 +261,7 @@ let playerReady=false;
 let currentVideoId="";
 let playbackData=null;
 let playbackTimer=null;
+let hostScheduledPlayTimer=null;
 let applyingPlayback=false;
 let lastAppliedPlaybackAt=0;
 let syncInterval=null;
@@ -773,12 +774,28 @@ async function playForEveryone(){
 
     await createYouTubePlayer();
 
-    youtubePlayer.setVolume(
-      Number($("karaokeVolume").value)
-    );
+    // Start the visible host player at the same scheduled time published
+    // to the singer's synchronized YouTube player.
+    clearTimeout(hostScheduledPlayTimer);
+    const hostVolume = Math.max(0, Math.min(100, Number($("hostKaraokeVolume")?.value ?? 70)));
+    const hostAudioOn = $("hostKaraokeMonitor")?.checked === true && hostVolume > 0;
+    youtubePlayer.setVolume(hostAudioOn ? hostVolume : 0);
+    if (hostAudioOn) youtubePlayer.unMute();
+    else youtubePlayer.mute();
+    youtubePlayer.cueVideoById({videoId:currentVideoId,startSeconds:0});
+    hostScheduledPlayTimer = setTimeout(() => {
+      if (!youtubePlayer || !playerReady) return;
+      try {
+        youtubePlayer.seekTo(0, true);
+        youtubePlayer.playVideo();
+        videoMessage("Host karaoke video is playing. Shared play command sent.");
+      } catch (playError) {
+        console.warn("Host visible karaoke playback:", playError);
+        videoMessage("Karaoke was sent. If the host video stays paused, tap PLAY again.");
+      }
+    }, Math.max(0, data.startedAt - Date.now()));
 
-    // The Firebase playback listener starts the host player at the same scheduled time as singers and audience.
-    videoMessage("Synchronized play command sent to everyone.");
+    videoMessage("Synchronized play command sent. Starting the host's visible karaoke video...");
 
   }catch(error){
 
