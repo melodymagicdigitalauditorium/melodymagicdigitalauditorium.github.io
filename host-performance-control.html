@@ -201,8 +201,8 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
       <input id="karaokeVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Singer karaoke volume">
       <p class="small">Adjust the karaoke playback volume on the assigned singer's page.</p>
     </div>
-    <button class="green" id="playKaraokeForEveryoneBtn" type="button">▶ PLAY KARAOKE FOR EVERYONE</button>
-    <p class="small">After pasting the YouTube link, tap this button to load and start the karaoke video for the host and connected auditorium participants.</p>
+    <button class="green" id="playKaraokeForEveryoneBtn" type="button">▶ PLAY VIDEO FOR ASSIGNED PERFORMER</button>
+    <p class="small">Send the video first. It stays paused until you press Play. Only the assigned host or approved singer sees the video; everyone else hears the live vocal and karaoke audio.</p>
     <button class="blue" id="sendVideoToSingerBtn" type="button">📨 SEND VIDEO TO ASSIGNED SINGER</button>
     <button class="blue" id="pauseVideoBtn" type="button">⏸ PAUSE SINGER VIDEO</button>
     <button class="red" id="stopVideoBtn">■ STOP SINGER VIDEO</button>
@@ -733,7 +733,7 @@ async function loadSelectedVideo(){
     $("videoMessage").style.display="none";
     $("videoPlayer").style.display="block";
 
-    videoMessage("Video loaded. Press PLAY FOR EVERYONE when ready.");
+    videoMessage("Video loaded and paused. Send it to the assigned performer, then press Play when ready.");
 
   }catch(error){
 
@@ -762,84 +762,32 @@ async function sendSingerKaraokeCommand(command, details={}){
 }
 
 async function playForEveryone(){
-
   if(!isHost||!currentUser)return;
-
-  const assignedSingers = await getStageSingerRecords();
-  setHostSingerView(assignedSingers.length > 0);
-
-  if(!currentVideoId){
-
-    const id=getYouTubeVideoId($("youtubeInput").value);
-
-    if(!id){
-      videoMessage("Load a YouTube video first.");
-      return;
-    }
-
-    await loadSelectedVideo();
-  }
-
-  if(!currentVideoId){
-    videoMessage("Video is not ready yet. Try again.");
-    return;
-  }
-
   try{
-
-    const data={
-      videoId:currentVideoId,
-      state:"playing",
-      basePosition:0,
-      startedAt:Date.now()+2000,
-      syncPosition:0,
-      syncAt:Date.now()+2000,
-      volume:Number($("karaokeVolume").value),
-      updatedAt:Date.now(),
-      updatedBy:currentUser.uid
-    };
-
-    await update(ref(db,"karaokePlayback/"+showId),data);
-    await sendSingerKaraokeCommand("play",{
-      videoId:currentVideoId,
-      position:0,
-      startedAt:data.startedAt,
-      volume:data.volume
-    });
-
-    playbackData=data;
-
-    await createYouTubePlayer();
-
-    // Start the visible host player at the same scheduled time published
-    // to the singer's synchronized YouTube player.
-    clearTimeout(hostScheduledPlayTimer);
-    const hostVolume = Math.max(0, Math.min(100, Number($("hostKaraokeVolume")?.value ?? 70)));
-    const hostAudioOn = $("hostKaraokeMonitor")?.checked === true && hostVolume > 0;
-    youtubePlayer.setVolume(hostAudioOn ? hostVolume : 0);
-    if (hostAudioOn) youtubePlayer.unMute();
-    else youtubePlayer.mute();
-    youtubePlayer.cueVideoById({videoId:currentVideoId,startSeconds:0});
-    hostScheduledPlayTimer = setTimeout(() => {
-      if (!youtubePlayer || !playerReady) return;
-      try {
-        youtubePlayer.seekTo(0, true);
-        youtubePlayer.playVideo();
-        videoMessage("Host karaoke video is playing. Shared play command sent.");
-      } catch (playError) {
-        console.warn("Host visible karaoke playback:", playError);
-        videoMessage("Karaoke was sent. If the host video stays paused, tap PLAY again.");
+    const performers=await getStageSingerRecords();
+    if(!performers.length){videoMessage("Assign the host or an approved singer to the main stage first.");return;}
+    if(!currentVideoId){
+      const id=getYouTubeVideoId($("youtubeInput")?.value || "");
+      if(!id){videoMessage("Paste a YouTube video link first.");return;}
+      await loadSelectedVideo();
+    }
+    if(!currentVideoId){videoMessage("Video is not ready yet. Try again.");return;}
+    const commandAt=Date.now()+1200;
+    const position=playerReady&&youtubePlayer?(youtubePlayer.getCurrentTime()||0):0;
+    await sendSingerKaraokeCommand("play",{videoId:currentVideoId,position,startedAt:commandAt,volume:Number($("karaokeVolume")?.value??100)});
+    const hostIsAssigned=performers.some(item=>item.isHost);
+    setHostSingerView(performers.length>0&&!hostIsAssigned);
+    if(hostIsAssigned){
+      await createYouTubePlayer();
+      if(youtubePlayer&&playerReady){
+        const hostVolume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
+        if($("hostKaraokeMonitor")?.checked===true&&hostVolume>0){youtubePlayer.setVolume(hostVolume);youtubePlayer.unMute();}
+        else{youtubePlayer.mute();youtubePlayer.setVolume(0);}
+        youtubePlayer.seekTo(position,true);youtubePlayer.playVideo();
       }
-    }, Math.max(0, data.startedAt - Date.now()));
-
-    videoMessage("Synchronized play command sent. Starting the host's visible karaoke video...");
-
-  }catch(error){
-
-    console.error("Play error:",error);
-
-    videoMessage("Could not start video: "+error.message);
-  }
+    }
+    videoMessage("Play command sent only to the assigned performer. Audience members do not receive a video player.");
+  }catch(error){console.error("Assigned performer play error:",error);videoMessage("Could not start assigned performer video: "+error.message);}
 }
 
 async function getStageSingerRecords(){
@@ -853,12 +801,13 @@ async function getStageSingerRecords(){
   const registrations = registrationsSnap.val() || {};
 
   return singerUids.map(uid => {
+    if (uid === "host-" + currentUser.uid) return { uid, mobile: "", isHost: true };
     const registration = Object.values(registrations).find(item =>
       item && item.singerUid === uid
     );
     const mobile = String(registration?.mobile || "").replace(/\D/g,"").slice(-10);
-    return { uid, mobile };
-  }).filter(item => item.mobile.length === 10);
+    return { uid, mobile, isHost: false };
+  }).filter(item => item.isHost || item.mobile.length === 10);
 }
 
 async function pauseForEveryone(){
@@ -1479,7 +1428,7 @@ async function sendVideoToAssignedSinger(){
       videoId,mobile,volume:Number($("karaokeVolume")?.value ?? 100),sentAt:Date.now(),sentBy:currentUser.uid,command:"",commandAt:0
     })));
     setHostSingerView(true);
-    videoMessage("Video sent to "+singers.length+" assigned singer(s). Only the assigned singer sees the video; the host hears the karaoke audio.");
+    videoMessage("Video sent to "+singers.length+" assigned performer(s). It is paused. Press PLAY VIDEO FOR ASSIGNED PERFORMER when ready.");
   }catch(error){
     console.error("Send singer video error:",error);
     videoMessage("Could not send video: "+error.message);
