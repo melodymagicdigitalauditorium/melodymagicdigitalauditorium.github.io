@@ -3687,8 +3687,9 @@ async function startMicrophoneEffects() {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
       echoCancellation: false,
-      noiseSuppression: true,
-      autoGainControl: true
+      noiseSuppression: false,
+      autoGainControl: false,
+      latency: 0
     },
     video: false
   });
