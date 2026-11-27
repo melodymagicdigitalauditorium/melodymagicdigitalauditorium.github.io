@@ -3360,9 +3360,11 @@ function stopSingerVoiceRecording() {
   if (status) status.textContent = "Preparing the voice test…";
 }
 
-async function attachRemoteTrack(track, participant) {
-  await createVideoTile(participant, false);
-  attachTrackToTile(track, getTileId(participant.identity) + "_media", true);
+function attachRemoteTrack(track, participant) {
+  // Build the participant tile before attaching its media, without top-level await syntax.
+  createVideoTile(participant, false)
+    .then(() => attachTrackToTile(track, getTileId(participant.identity) + "_media", true))
+    .catch(error => console.warn("Could not attach remote participant tile:", error));
 }
 
 function attachLocalTrack(track, publication) {
