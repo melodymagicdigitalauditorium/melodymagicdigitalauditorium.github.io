@@ -954,6 +954,52 @@ function createPanel() {
         margin-top:15px;
       }
 
+      /* Host-only visual arrangement; no audio/video logic is changed. */
+      #mmLiveKitPanel .mm-host-stage-layout {
+        display:grid;
+        grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);
+        gap:10px;
+        align-items:stretch;
+        grid-column:1/-1;
+      }
+      #mmLiveKitPanel .mm-host-youtube-card,
+      #mmLiveKitPanel .mm-host-stage-layout>.mm-section,
+      #mmLiveKitPanel .mm-host-singers-record,
+      #mmLiveKitPanel .mm-host-community,
+      #mmLiveKitPanel .mm-host-social-share {
+        min-width:0;
+        background:#171717;
+        border:1px solid #51401e;
+        border-radius:10px;
+        padding:9px;
+      }
+      #mmLiveKitPanel .mm-host-youtube-card h3,
+      #mmLiveKitPanel .mm-host-stage-layout h3 {margin:2px 0 6px;font-size:14px}
+      #mmLiveKitPanel .mm-host-youtube-card #videoPlayer {
+        width:100%;aspect-ratio:16/9;min-height:0;background:#000;border-radius:8px;overflow:hidden;
+      }
+      #mmLiveKitPanel .mm-host-youtube-card #videoPlayer iframe {
+        width:100%!important;height:100%!important;min-height:0!important;
+      }
+      #mmLiveKitPanel .mm-host-stage-layout #mmHostVideoGrid,
+      #mmLiveKitPanel #mmVideoGrid {
+        display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px;
+      }
+      #mmLiveKitPanel .mm-host-singers-record,
+      #mmLiveKitPanel .mm-host-community,
+      #mmLiveKitPanel .mm-host-social-share {grid-column:1/-1;margin-top:8px}
+      #mmLiveKitPanel .mm-host-singers-record>.mm-section {margin:0!important;padding:0!important;border:0!important}
+      #mmLiveKitPanel #mmSingerVoiceRecorder {margin-top:10px!important}
+      #mmLiveKitPanel .mm-host-community {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+      #mmLiveKitPanel .mm-host-community>.mm-section {margin:0!important;min-width:0}
+      #mmLiveKitPanel .mm-host-social-share button {background:#d4a52f;color:#111;font-weight:bold}
+      @media(max-width:700px){
+        #mmLiveKitPanel .mm-host-stage-layout {grid-template-columns:minmax(0,1fr)}
+        #mmLiveKitPanel .mm-host-community {grid-template-columns:minmax(0,1fr)}
+        #mmLiveKitPanel .mm-host-stage-layout #mmHostVideoGrid,
+        #mmLiveKitPanel #mmVideoGrid {grid-template-columns:repeat(2,minmax(0,1fr))}
+      }
+
       #mmLiveKitPanel .mm-video-box {
         min-height:150px;
         background:#050505;
@@ -1403,6 +1449,64 @@ function createPanel() {
   `;
 
   target.appendChild(panel);
+
+  // Host control room layout only: move existing UI nodes without replacing
+  // their IDs or event handlers, so karaoke, camera, recording and comments
+  // continue using the same existing controls.
+  if (IS_HOST_CONTROL_PAGE) {
+    const hostCameraSection = byId("mmHostVideoGrid")?.closest(".mm-section");
+    const singerCameraSection = byId("mmVideoGrid")?.closest(".mm-section");
+    const commentsSection = byId("mmCommentsList")?.closest(".mm-section");
+    const reactionsSection = byId("mmReactionSection");
+    const recorderPanel = byId("mmSingerVoiceRecorder");
+    const karaokeSection = byId("karaokeSection");
+
+    const stageLayout = document.createElement("div");
+    stageLayout.className = "mm-host-stage-layout";
+
+    const karaokeCard = document.createElement("div");
+    karaokeCard.className = "mm-host-youtube-card";
+    const karaokeHeading = karaokeSection?.querySelector("h3");
+    const karaokeDescription = karaokeHeading?.nextElementSibling;
+    [karaokeHeading, karaokeDescription, byId("videoMessage"), byId("videoPlayer")]
+      .filter(Boolean).forEach(node => karaokeCard.appendChild(node));
+
+    if (hostCameraSection) stageLayout.append(karaokeCard, hostCameraSection);
+    else stageLayout.append(karaokeCard);
+    panel.insertBefore(stageLayout, panel.children[2] || null);
+
+    const singerAndRecord = document.createElement("div");
+    singerAndRecord.className = "mm-host-singers-record";
+    if (singerCameraSection) singerAndRecord.appendChild(singerCameraSection);
+    if (recorderPanel) singerAndRecord.appendChild(recorderPanel);
+    panel.appendChild(singerAndRecord);
+
+    const socialSection = document.createElement("div");
+    socialSection.className = "mm-section mm-host-social-share";
+    socialSection.innerHTML = '<h3>🔗 Share This Auditorium</h3><p class="mm-note">Share the live show link with your audience on WhatsApp and other social apps.</p><button id="mmShareShowBtn" type="button">📲 SHARE SHOW LINK</button>';
+    const communitySection = document.createElement("div");
+    communitySection.className = "mm-host-community";
+    if (reactionsSection) communitySection.appendChild(reactionsSection);
+    if (commentsSection) communitySection.appendChild(commentsSection);
+    panel.append(communitySection, socialSection);
+
+    byId("mmShareShowBtn")?.addEventListener("click", async () => {
+      const shareUrl = new URL("live-stage.html?showId=" + encodeURIComponent(showId || ""), location.origin).href;
+      const shareData = { title: "Melody Magic Digital Auditorium", text: "Join my live auditorium show!", url: shareUrl };
+      try {
+        if (navigator.share) await navigator.share(shareData);
+        else if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+          const button = byId("mmShareShowBtn");
+          if (button) button.textContent = "✓ LINK COPIED";
+        } else {
+          window.prompt("Copy this auditorium link:", shareUrl);
+        }
+      } catch (error) {
+        if (error?.name !== "AbortError") console.warn("Show sharing was not completed:", error);
+      }
+    });
+  }
 
   // Keep the performance recorder visible on the host page even before
   // the host joins LiveKit. The microphone/effects panel is intentionally
