@@ -1490,9 +1490,23 @@ function createPanel() {
     if (event.key === "Enter") sendLiveComment();
   });
 
+  // Recorder controls are independent of the effects panel. Bind them
+  // directly on the host page so mobile hosts can record even if the
+  // effects panel is hidden or not present during initial rendering.
+  if (IS_HOST_CONTROL_PAGE) {
+    const recordButton = byId("mmRecordSingerVoiceBtn");
+    const stopRecordButton = byId("mmStopSingerVoiceRecordBtn");
+    if (recordButton && recordButton.dataset.mmRecorderBound !== "1") {
+      recordButton.dataset.mmRecorderBound = "1";
+      recordButton.addEventListener("click", startSingerVoiceRecording);
+    }
+    if (stopRecordButton && stopRecordButton.dataset.mmRecorderBound !== "1") {
+      stopRecordButton.dataset.mmRecorderBound = "1";
+      stopRecordButton.addEventListener("click", stopSingerVoiceRecording);
+    }
+  }
+
   if (IS_HOST_CONTROL_PAGE && byId("mmAudioEffects")) {
-    byId("mmRecordSingerVoiceBtn")?.addEventListener("click", startSingerVoiceRecording);
-    byId("mmStopSingerVoiceRecordBtn")?.addEventListener("click", stopSingerVoiceRecording);
     ["mmEcho", "mmDelay", "mmReverb"].forEach(id => {
       byId(id).addEventListener("input", () => {
         updateAudioControlLabels();
