@@ -303,6 +303,12 @@ class VirtualAudioEffects {
       this.context.currentTime,
       0.03
     );
+    // If the host raises Echo while the delay slider is at zero, use a
+    // natural 280 ms repeat rather than silently disabling the echo.
+    const delayMs = Math.max(0, Math.min(1000, Number(sharedAudioSettings.delay) || 0));
+    if (delayMs === 0) {
+      this.delay.delayTime.setTargetAtTime(amount > 0 ? 0.28 : 0, this.context.currentTime, 0.03);
+    }
   }
 
   setDelayTime(value) {
@@ -311,9 +317,12 @@ class VirtualAudioEffects {
     this.monitorEffectValues.delay = Number(value) || 0;
     this.updateMonitorRoute();
     const milliseconds = Math.max(0, Math.min(1000, Number(value)));
-    this.delay.delayTime.setTargetAtTime(milliseconds / 1000, this.context.currentTime, 0.03);
-    // A zero delay must never leave a feedback loop running.
-    if (milliseconds === 0) {
+    const effectiveMilliseconds = milliseconds === 0 && this.monitorEffectValues.echo > 0
+      ? 280
+      : milliseconds;
+    this.delay.delayTime.setTargetAtTime(effectiveMilliseconds / 1000, this.context.currentTime, 0.03);
+    // With Echo OFF and Delay at zero, keep the delay line completely silent.
+    if (milliseconds === 0 && this.monitorEffectValues.echo === 0) {
       this.feedback.gain.setTargetAtTime(0, this.context.currentTime, 0.01);
       this.echoGain?.gain.setTargetAtTime(0, this.context.currentTime, 0.01);
     }
@@ -3566,7 +3575,7 @@ function normalizeSharedAudioSettings(value = {}) {
   return {
     echo: Math.max(0, Math.min(100, Number(value.echo ?? 0))),
     delay: Math.max(0, Math.min(1000, Number(value.delay ?? 0))),
-    feedback: 0,
+    feedback: 18,
     reverb: Math.max(0, Math.min(100, Number(value.reverb ?? 0))),
     mix: 0,
     volume: 80
@@ -3759,25 +3768,34 @@ async function startSingerKaraokeAudio() {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Microphone access is not supported by this browser.");
     }
-    let localAudioTrack = null;
+    let singerMicStream = null;
     try {
-      localAudioTrack = await createLocalAudioTrack({
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
+      singerMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        },
+        video: false
       });
-      await room.localParticipant.publishTrack(localAudioTrack, {
-        name: "Melody Magic Singer Raw Microphone",
+      rawMicrophoneTrack = singerMicStream.getAudioTracks()[0];
+      if (!rawMicrophoneTrack) throw new Error("No singer microphone was found.");
+
+      // Apply the host's shared Echo, Delay and Reverb settings to the
+      // singer's own microphone before publishing it to the auditorium.
+      audioEffects = new VirtualAudioEffects();
+      processedMicrophoneTrack = await audioEffects.start(rawMicrophoneTrack);
+      applySharedAudioSettingsToEffects();
+      audioEffects.setMuted(false);
+      await room.localParticipant.publishTrack(processedMicrophoneTrack, {
+        name: "Melody Magic Singer Processed Microphone",
         source: Track.Source.Microphone
       });
-      rawMicrophoneTrack = localAudioTrack.mediaStreamTrack;
-      startSingerDirectMonitor(localAudioTrack.mediaStreamTrack);
-      processedMicrophoneTrack = null;
-      publishedMicrophoneTrack = localAudioTrack;
-      singerKaraokeCaptureStream = new MediaStream([localAudioTrack.mediaStreamTrack]);
+      startSingerDirectMonitor(rawMicrophoneTrack);
+      publishedMicrophoneTrack = processedMicrophoneTrack;
+      singerKaraokeCaptureStream = new MediaStream([rawMicrophoneTrack]);
       singerKaraokeAudioContext = null;
-      singerKaraokeMixTrack = localAudioTrack.mediaStreamTrack;
-      audioEffects = null;
+      singerKaraokeMixTrack = processedMicrophoneTrack;
       localMicEnabled = true;
       recoverSingerMicAfterReconnect = false;
       // Starting the microphone must not collapse the assigned singer's
@@ -3797,10 +3815,14 @@ async function startSingerKaraokeAudio() {
       );
       return;
     } catch (error) {
-      if (localAudioTrack) {
-        try { await room.localParticipant.unpublishTrack(localAudioTrack, true); } catch (e) {}
-        try { localAudioTrack.stop(); } catch (e) {}
+      if (processedMicrophoneTrack) {
+        try { await room.localParticipant.unpublishTrack(processedMicrophoneTrack, true); } catch (e) {}
       }
+      if (audioEffects) { audioEffects.stop(); audioEffects = null; }
+      processedMicrophoneTrack = null;
+      publishedMicrophoneTrack = null;
+      if (singerMicStream) singerMicStream.getTracks().forEach(track => { try { track.stop(); } catch (e) {} });
+      rawMicrophoneTrack = null;
       throw new Error("Singer microphone could not connect: " + (error?.message || error));
     }
   }
@@ -3954,8 +3976,6 @@ async function startMicrophoneEffects() {
   if (publishedMicrophoneTrack) return;
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("Microphone access is not supported.");
 
-  // Publish the browser microphone track directly: no app-added echo, reverb,
-  // delay, or Web Audio effects graph is placed in the voice path.
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
       echoCancellation: false,
@@ -3971,24 +3991,34 @@ async function startMicrophoneEffects() {
     throw new Error("No microphone was found.");
   }
 
-  await room.localParticipant.publishTrack(rawMicrophoneTrack, {
-    name: currentRole === "host"
-      ? "Melody Magic Host Raw Microphone"
-      : "Melody Magic Singer Raw Microphone",
-    source: Track.Source.Microphone
-  });
+  // Route the host microphone through the same low-latency effects graph
+  // used by assigned singers. All effects remain at zero unless the host
+  // moves the existing controls.
+  audioEffects = new VirtualAudioEffects();
+  try {
+    processedMicrophoneTrack = await audioEffects.start(rawMicrophoneTrack);
+    applySharedAudioSettingsToEffects();
+    audioEffects.setMuted(false);
+    await room.localParticipant.publishTrack(processedMicrophoneTrack, {
+      name: "Melody Magic Host Processed Microphone",
+      source: Track.Source.Microphone
+    });
+  } catch (error) {
+    audioEffects.stop();
+    audioEffects = null;
+    processedMicrophoneTrack = null;
+    stream.getTracks().forEach(track => track.stop());
+    rawMicrophoneTrack = null;
+    throw error;
+  }
 
-  publishedMicrophoneTrack = rawMicrophoneTrack;
-  // Keep the raw capture enabled after publish; host ON/OFF is controlled
-  // through the native MediaStreamTrack.enabled property.
+  publishedMicrophoneTrack = processedMicrophoneTrack;
   rawMicrophoneTrack.enabled = true;
-  if (currentRole === "host") setupHostDirectMonitor(rawMicrophoneTrack);
-  processedMicrophoneTrack = null;
-  audioEffects = null;
+  setupHostDirectMonitor(rawMicrophoneTrack);
   localMicEnabled = true;
   if (byId("mmEffectsStatus")) {
     byId("mmEffectsStatus").textContent =
-      "Raw microphone is live. Echo, reverb and delay are disabled.";
+      "Host microphone is live. Echo, delay and reverb are controlled by the sliders above.";
   }
   updateControlButtons();
 }
@@ -4205,8 +4235,8 @@ async function toggleMicrophone() {
       const liveTrack = publishedMicrophoneTrack &&
         (publishedMicrophoneTrack.readyState || publishedMicrophoneTrack.mediaStreamTrack?.readyState) === "live";
       if (liveTrack) {
-        // startMicrophoneEffects publishes a raw MediaStreamTrack, not a
-        // LiveKit LocalTrack wrapper. Toggle the native track's enabled flag.
+        // startMicrophoneEffects publishes the processed MediaStreamTrack.
+        // Toggle that published track without tearing down the audio graph.
         const mediaTrack = publishedMicrophoneTrack.mediaStreamTrack || publishedMicrophoneTrack;
         mediaTrack.enabled = !localMicEnabled;
         localMicEnabled = mediaTrack.enabled;
