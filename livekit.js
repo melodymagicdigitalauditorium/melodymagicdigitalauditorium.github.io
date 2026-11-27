@@ -1975,14 +1975,44 @@ function isCurrentSingerAssignedToStage() {
 }
 
 function updateKaraokePlayerAccess() {
-  const card = byId("mmYoutubePlayer")?.closest(".card, .mm-card");
-  const canView = isHost || isCurrentSingerAssignedToStage();
-  if (card) card.style.display = canView ? "" : "none";
-  if (!canView && youtubePlayer) {
+  const container = byId("mmYoutubePlayer");
+  const card = container?.closest(".card, .mm-card");
+  const assignedSinger = isCurrentSingerAssignedToStage();
+  const isAudience = currentRole === "audience";
+  const canReceiveAudio = isHost || assignedSinger || isAudience;
+  const canSeeVideo = currentRole === "singer" && assignedSinger;
+
+  if (card) card.style.display = canReceiveAudio ? "" : "none";
+
+  // Only the assigned singer sees the video. Host and audience keep the
+  // YouTube iframe running off-screen so its audio remains available.
+  if (container) {
+    if (canSeeVideo) {
+      container.style.position = "";
+      container.style.left = "";
+      container.style.top = "";
+      container.style.width = "";
+      container.style.height = "";
+      container.style.minHeight = "240px";
+      container.style.opacity = "";
+      container.style.pointerEvents = "";
+    } else if (canReceiveAudio) {
+      container.style.position = "fixed";
+      container.style.left = "-10000px";
+      container.style.top = "0";
+      container.style.width = "220px";
+      container.style.height = "220px";
+      container.style.minHeight = "220px";
+      container.style.opacity = "1";
+      container.style.pointerEvents = "none";
+    }
+  }
+
+  if (!canReceiveAudio && youtubePlayer) {
     try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {}
-  } else if (canView && youtubePlayer && currentRole === "host") {
+  } else if (canReceiveAudio && youtubePlayer && currentRole === "host") {
     try {
-      if (byId("mmHostKaraokeMonitor")?.checked) {
+      if (stageSingerUids.length > 0 && byId("mmHostKaraokeMonitor")?.checked) {
         youtubePlayer.unMute();
         youtubePlayer.setVolume(100);
       } else {
@@ -1990,8 +2020,9 @@ function updateKaraokePlayerAccess() {
       }
     } catch (error) {}
   }
+
   const button = byId("mmSingerKaraokeAudioBtn");
-  const singerCanPerform = isCurrentSingerAssignedToStage() && microphoneAllowed;
+  const singerCanPerform = assignedSinger && microphoneAllowed;
   if (button) button.hidden = !singerCanPerform;
   const monitorWrap = byId("mmSingerMonitorWrap");
   if (monitorWrap) monitorWrap.hidden = !singerCanPerform;
@@ -2233,10 +2264,17 @@ async function createYouTubePlayer(initialVideoId = "") {
               if (status) status.textContent = "Karaoke player connected. Waiting for host playback...";
               const enableButton = byId("mmEnableKaraokeSound");
               if (enableButton) {
-                enableButton.hidden = true;
+                enableButton.hidden = currentRole !== "audience";
+                if (currentRole === "audience") enableButton.textContent = "🔊 TAP TO ENABLE KARAOKE AUDIO";
                 enableButton.onclick = () => {
-                  try { event.target.unMute(); event.target.playVideo(); enableButton.hidden = true; }
-                  catch (error) { if (status) status.textContent = "Tap the karaoke player to enable sound."; }
+                  try {
+                    event.target.unMute();
+                    event.target.setVolume(100);
+                    event.target.playVideo();
+                    enableButton.hidden = true;
+                  } catch (error) {
+                    if (status) status.textContent = "Tap the karaoke audio button again to enable sound.";
+                  }
                 };
               }
               resolve(event.target);
@@ -2307,11 +2345,14 @@ async function applyPlayback(data) {
   const videoId = safeText(data.videoId).trim();
   const state = safeText(data.state).toLowerCase();
 
-  const canView = isHost || (requestedMode === "singer" && !!currentUser && stageSingerUids.includes(getSingerParticipantUid()));
-  if (!canView) {
+  const canReceiveAudio = isHost ||
+    (requestedMode === "singer" && !!currentUser && stageSingerUids.includes(getSingerParticipantUid())) ||
+    currentRole === "audience";
+  if (!canReceiveAudio) {
     updateKaraokePlayerAccess();
     return;
   }
+  updateKaraokePlayerAccess();
 
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     if (statusElement) {
@@ -2337,10 +2378,11 @@ async function applyPlayback(data) {
       const hostMonitorOn = byId("mmHostKaraokeMonitor")
         ? byId("mmHostKaraokeMonitor").checked
         : true;
-      if (hostMonitorOn) {
+      if (stageSingerUids.length > 0 && hostMonitorOn) {
         player.setVolume(100);
         player.unMute();
       } else {
+        // Host-solo audio comes from the visible Host Karaoke Stage player.
         player.setVolume(0);
         player.mute();
       }
