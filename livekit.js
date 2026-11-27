@@ -2747,6 +2747,11 @@ async function joinAuditorium() {
     registerRoomEvents();
     await room.connect(tokenData.url || LIVEKIT_URL, tokenData.token);
     isJoined = true;
+    // Re-subscribe after the role is known so late-joining audience devices
+    // immediately receive the current karaoke state, not only future changes.
+    if (currentRole === "audience" || (currentRole === "host" && isHost)) {
+      listenToKaraokePlayback();
+    }
     roomRetryCount = 0;
     // The singer's CONTINUE / ENTER action is the page interaction that
     // authorizes audible playback on mobile browsers. Ask LiveKit to start
