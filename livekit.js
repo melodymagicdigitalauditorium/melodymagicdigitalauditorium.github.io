@@ -2458,6 +2458,7 @@ function listenToSingerKaraokeVideo() {
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
   let lastSingerVideoId = "";
+  let singerPlaybackStartTimer = null;
 
   singerKaraokeListener = snapshot => {
     const data = snapshot.val() || {};
@@ -2488,8 +2489,10 @@ function listenToSingerKaraokeVideo() {
         else player.unMute();
 
         if (isNewVideo) {
+          // Cue rather than immediately play: all singer phones wait for the
+          // host's shared start timestamp, avoiding Firebase-delivery-time drift.
           if (command === "play") {
-            player.loadVideoById({ videoId, startSeconds: position });
+            player.cueVideoById({ videoId, startSeconds: position });
           } else {
             player.cueVideoById({ videoId, startSeconds: position });
           }
@@ -2499,15 +2502,34 @@ function listenToSingerKaraokeVideo() {
           lastSingerCommandAt = commandAt;
           if (command === "play") {
             singerKaraokePlaybackRequested = true;
-            if (!isNewVideo) player.seekTo(position, true);
-            player.playVideo();
-            if (status) status.textContent = "Host is playing your karaoke track.";
-            if (notice) notice.textContent = "🎵 Karaoke is playing — controlled by the host.";
+            clearTimeout(singerPlaybackStartTimer);
+            const startedAt = Number(data.startedAt || 0);
+            const waitMs = Math.max(0, startedAt - Date.now());
+            singerPlaybackStartTimer = setTimeout(() => {
+              if (!youtubePlayer || lastSingerVideoId !== videoId) return;
+              const elapsedAfterStart = startedAt > 0
+                ? Math.max(0, (Date.now() - startedAt) / 1000)
+                : 0;
+              const targetPosition = position + elapsedAfterStart;
+              try {
+                const current = youtubePlayer.getCurrentTime?.() || 0;
+                if (Math.abs(current - targetPosition) > 0.6) {
+                  youtubePlayer.seekTo(targetPosition, true);
+                }
+                youtubePlayer.playVideo();
+              } catch (playError) {
+                console.warn("[Melody Magic] Scheduled YouTube start failed:", playError);
+              }
+            }, waitMs);
+            if (status) status.textContent = "Karaoke synchronized. Starting at the host's scheduled time.";
+            if (notice) notice.textContent = "🎵 Karaoke is synchronized with the host.";
           } else if (command === "pause") {
+            clearTimeout(singerPlaybackStartTimer);
             singerKaraokePlaybackRequested = false;
             player.pauseVideo();
             if (status) status.textContent = "The host paused your karaoke track.";
           } else if (command === "stop") {
+            clearTimeout(singerPlaybackStartTimer);
             singerKaraokePlaybackRequested = false;
             player.stopVideo();
             if (status) status.textContent = "The host stopped your karaoke track.";
