@@ -428,6 +428,21 @@ function setKaraokeVolume(value){
   }
 }
 
+function listenToHostStageView(){
+  if(!showId||!currentUser)return;
+  const stop=onValue(ref(db,"liveStage/"+showId),snap=>{
+    const stage=snap.val()||{};
+    const raw=stage.singerUids||[];
+    const uids=(Array.isArray(raw)?raw:Object.values(raw)).map(String);
+    const hostUid="host-"+currentUser.uid;
+    setHostSingerView(!uids.includes(hostUid));
+  },error=>{
+    console.warn("Host stage visibility listener:",error);
+    setHostSingerView(true);
+  });
+  listeners.push(stop);
+}
+
 function setHostSingerView(assigned){
   hostWatchingSinger=!!assigned;
   const playerBox=$("videoPlayer");
@@ -1531,6 +1546,10 @@ async function initializeForUser(user){
       $("loginStatus").textContent=
         "Approved host with active subscription.";
 
+      // Keep the host-side video hidden unless the host is actually assigned
+      // to the main stage. The liveStage listener below updates this live.
+      setHostSingerView(true);
+      listenToHostStageView();
       startQueueListener();
 
       videoMessage(
