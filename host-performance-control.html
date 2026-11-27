@@ -135,18 +135,20 @@ body.mm-active-performer #mmYoutubePlayer iframe{width:100%!important;aspect-rat
 body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYoutubePlayer .mm-card{width:100%!important;max-width:none!important}
 @media(max-width:700px){body.mm-active-performer #karaokeSection{order:2!important}body.mm-active-performer #livekitArea{order:3!important}}
 
-/* Final host dashboard order: live auditorium first, show controls last. */
-#livekitArea{grid-column:1/-1!important;grid-row:2!important}
-#queueSection{grid-column:1!important;grid-row:3!important}
-#karaokeSection{grid-column:2!important;grid-row:3!important}
-#currentPerformer{grid-column:1/-1!important;grid-row:4!important}
-#hostControls{grid-column:1/-1!important;grid-row:5!important}
+/* Final host dashboard order: auditorium above queue, host controls at bottom. */
+#showSummary{grid-column:1/-1!important;grid-row:2!important}
+#livekitArea{grid-column:1/-1!important;grid-row:3!important}
+#queueSection{grid-column:1!important;grid-row:4!important}
+#karaokeSection{grid-column:2!important;grid-row:4!important}
+#currentPerformerSection{grid-column:1/-1!important;grid-row:5!important}
+#hostControls{grid-column:1/-1!important;grid-row:6!important}
 @media(max-width:700px){
-  #livekitArea{order:1!important}
-  #queueSection{order:2!important}
-  #karaokeSection{order:3!important}
-  #currentPerformer{order:4!important}
-  #hostControls{order:5!important}
+  #showSummary{order:1!important}
+  #livekitArea{order:2!important}
+  #queueSection{order:3!important}
+  #karaokeSection{order:4!important}
+  #currentPerformerSection{order:5!important}
+  #hostControls{order:6!important}
 }
 </style>
 </head>
@@ -156,7 +158,7 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
 
 <h2>🎤 Melody Magic Digital Auditorium</h2>
 
-<section class="card">
+<section class="card" id="showSummary">
   <h3 id="showTitle">Loading Auditorium...</h3>
   <p id="showStatus" class="small">Connecting...</p>
   <p id="loginStatus" class="small"></p>
@@ -222,7 +224,7 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
   </div>
 </section>
 
-<section class="card">
+<section class="card" id="currentPerformerSection">
   <h3>🎙️ Current Performer</h3>
   <div id="currentPerformer" class="center">
     Waiting for the host to start the performance.
