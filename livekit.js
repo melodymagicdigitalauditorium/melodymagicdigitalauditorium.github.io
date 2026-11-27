@@ -1240,8 +1240,8 @@ function createPanel() {
     <div class="mm-section" id="mmAudioEffects" hidden>
       <h3>🎙️ Main-stage Microphone Effects</h3>
       <p class="mm-note">Echo, delay and reverb are shared live and applied to every main-stage singer microphone, including duet singers.</p>
-      <button id="mmHostMicToggle" type="button" disabled>🎙️ HOST MIC: OFF — RETRY / TURN ON</button>
-      <p id="mmHostMicStatus" class="mm-note">Host microphone is starting…</p>
+      <button id="mmHostMicToggle" type="button" disabled>🎙️ HOST MIC: CONNECTING…</button>
+      <p id="mmHostMicStatus" class="mm-note">Host microphone starts automatically when the host connects. Use this button to mute or unmute without disconnecting.</p>
       <div class="mm-effect-control">
         <label>Echo: <strong id="mmEchoValue">0%</strong></label>
         <input id="mmEcho" type="range" min="0" max="100" value="0">
@@ -1267,7 +1267,7 @@ function createPanel() {
         <div id="mmHostMicLevel" role="meter" aria-label="Host microphone input level" style="height:12px;background:#333;border-radius:8px;overflow:hidden;margin:8px 0"><div id="mmHostMicLevelBar" style="height:100%;width:0%;background:#d7ad4c;transition:width .08s"></div></div>
         <p class="mm-note">When ON, your own live microphone is played into your headphones and the level meter moves. Use wired headphones and keep the phone volume low to avoid feedback. Phone/browser monitoring can have a small delay; turn OFF if you hear echo.</p>
       </div>
-      <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
+      <div class="mm-note">HOST MIC stays connected whether or not the host is assigned to the main stage. To sing and see the karaoke video, select “Host (me)” as Performer 1 and press Assign Main Stage. Use the HOST MIC button above to mute or unmute at any time; this does not remove the host from the stage or disconnect LiveKit.</div>
       <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
     </div>
 
