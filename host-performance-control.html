@@ -204,8 +204,8 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
     <button class="green" id="playKaraokeForEveryoneBtn" type="button">▶ PLAY VIDEO FOR ASSIGNED PERFORMER</button>
     <p class="small">Send the video first. It stays paused until you press Play. Only the assigned host or approved singer sees the video; everyone else hears the live vocal and karaoke audio.</p>
     <button class="blue" id="sendVideoToSingerBtn" type="button">📨 SEND VIDEO TO ASSIGNED SINGER</button>
-    <button class="blue" id="pauseVideoBtn" type="button">⏸ PAUSE SINGER VIDEO</button>
-    <button class="red" id="stopVideoBtn">■ STOP SINGER VIDEO</button>
+    <button class="blue" id="pauseVideoBtn" type="button">⏸ PAUSE ASSIGNED VIDEO</button>
+    <button class="red" id="stopVideoBtn">■ STOP ASSIGNED VIDEO</button>
 
     <p id="videoStatus" class="small">Host video controls are ready.</p>
   </div>
@@ -821,7 +821,7 @@ async function pauseForEveryone(){
   if(!isHost||!currentUser)return;
   try{
     const singers=await getStageSingerRecords();
-    if(!singers.length){videoMessage("Assign an approved singer with a registered mobile number to the main stage first.");return;}
+    if(!singers.length){videoMessage("Assign the host or an approved singer to the main stage first.");return;}
     const commandAt=Date.now();
     const position=playerReady&&youtubePlayer
       ? (youtubePlayer.getCurrentTime()||0)
