@@ -865,6 +865,7 @@ function createPanel() {
   if (!IS_HOST_CONTROL_PAGE) {
     byId("mmAudioEffects")?.remove();
     byId("mmHostControls")?.remove();
+    byId("mmRecordingPanel")?.remove();
   }
 
   if (byId("mmLiveKitPanel")) return;
@@ -1259,7 +1260,6 @@ function createPanel() {
       </div>
       <div class="mm-note">Host can sing solo with HOST MIC, or sing a duet while an assigned singer is on stage. The host microphone is sent to the auditorium.</div>
       <div id="mmEffectsStatus" class="mm-note">Test the sound with your host microphone. These master effects automatically apply to the host and all assigned singers.</div>
-    </div>
     </div>
 
 
