@@ -2245,7 +2245,9 @@ async function createYouTubePlayer(initialVideoId = "") {
           height: playerHeight,
           videoId: initialVideoId,
           playerVars: {
-            autoplay: 1,
+            // Loading or assigning a singer's video must never start playback.
+            // The host's explicit Firebase "play" command starts it later.
+            autoplay: 0,
             controls: 0,
             disablekb: 1,
             playsinline: 1,
