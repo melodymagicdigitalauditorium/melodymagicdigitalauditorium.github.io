@@ -3360,7 +3360,7 @@ function stopSingerVoiceRecording() {
   if (status) status.textContent = "Preparing the voice test…";
 }
 
-function attachRemoteTrack(track, participant) {
+async function attachRemoteTrack(track, participant) {
   await createVideoTile(participant, false);
   attachTrackToTile(track, getTileId(participant.identity) + "_media", true);
 }
