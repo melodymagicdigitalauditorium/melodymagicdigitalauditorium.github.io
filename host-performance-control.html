@@ -91,6 +91,13 @@ body{padding:6px}
 #mmLiveKitPanel .mm-video-box.mm-main-stage video{min-height:180px!important;max-height:42vh!important}
 #mmLiveKitPanel .mm-video-name{padding:5px!important;font-size:11px!important}
 #performerQueue{max-height:230px;overflow:auto}
+.performer{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:6px 8px;margin:4px 0;border-radius:7px}
+.queue-member{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+.queue-member strong{font-size:13px}
+.queue-member .badge{font-size:10px;padding:3px 6px;margin:0}
+.queue-actions{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.queue-actions button{font-size:10px;padding:5px 7px;margin:0}
+.queue-actions .queue-move{min-width:27px;padding:5px}
 #karaokeSection h3{font-size:14px;margin:3px 0 6px}
 #karaokeSection .volume-box{margin:5px 0;padding:7px}
 #karaokeSection button{padding:8px 9px;font-size:12px}
@@ -158,6 +165,7 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
 <section class="card" id="queueSection">
   <h3>🎤 Singing Queue</h3>
   <div id="performerQueue">Loading performers...</div>
+  <div class="small" style="margin-top:8px">Approved singer link: <a id="singerJoinLink" href="#" target="_blank" rel="noopener" style="color:#f5c542;word-break:break-all">Loading…</a> <button type="button" class="gray" id="copySingerJoinLink">COPY</button></div>
 </section>
 
 <section class="card" id="hostControls" style="display:none">
@@ -256,6 +264,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const showId=new URLSearchParams(location.search).get("showId");
+const singerJoinUrl=new URL("live-stage.html?showId="+encodeURIComponent(showId||""),location.href).href;
+const singerJoinLink=document.getElementById("singerJoinLink");
+if(singerJoinLink){singerJoinLink.href=singerJoinUrl;singerJoinLink.textContent=singerJoinUrl;}
+document.getElementById("copySingerJoinLink")?.addEventListener("click",async()=>{
+  try{await navigator.clipboard.writeText(singerJoinUrl);document.getElementById("copySingerJoinLink").textContent="COPIED";}
+  catch(e){window.prompt("Copy approved singer link:",singerJoinUrl);}
+});
 
 const $=id=>document.getElementById(id);
 
@@ -1065,9 +1080,13 @@ function sortedQueue(){
 
   return Object.entries(queueData)
     .filter(([,person])=>person)
-    .sort((a,b)=>
-      Number(a[1].createdAt||0)-Number(b[1].createdAt||0)
-    );
+    .sort((a,b)=>{
+      const ao=Number(a[1].queueOrder), bo=Number(b[1].queueOrder);
+      if(Number.isFinite(ao)&&Number.isFinite(bo)&&ao!==bo)return ao-bo;
+      if(Number.isFinite(ao)&&!Number.isFinite(bo))return -1;
+      if(!Number.isFinite(ao)&&Number.isFinite(bo))return 1;
+      return Number(a[1].createdAt||0)-Number(b[1].createdAt||0);
+    });
 }
 
 function approvedWaiting(){
@@ -1084,75 +1103,40 @@ function findPlaying(){
   )||null;
 }
 
+async function moveQueueSinger(id,direction){
+  if(!isHost||actionRunning)return;
+  const waiting=sortedQueue().filter(([,p])=>["Queued","Approved"].includes(p.status));
+  const index=waiting.findIndex(([key])=>key===id), target=index+direction;
+  if(index<0||target<0||target>=waiting.length)return;
+  const reordered=[...waiting];
+  [reordered[index],reordered[target]]=[reordered[target],reordered[index]];
+  const updates={}; reordered.forEach(([key],i)=>{updates[key+"/queueOrder"]=i;});
+  try{await update(ref(db,"performanceQueue/"+showId),updates);}
+  catch(error){message("Could not move singer: "+error.message);}
+}
+
 function renderQueue(){
-
-  const entries=sortedQueue();
-  const waiting=approvedWaiting();
-  const playing=findPlaying();
-
-  const container=$("performerQueue");
-
-  container.innerHTML="";
-
-  const visible=entries.filter(([,person])=>
-    ["Queued","Approved","Playing"].includes(person.status)
-  );
-
-  if(!visible.length){
-
-    container.innerHTML=
-      '<p class="small">No approved performers are waiting.</p>';
-  }
-
+  const entries=sortedQueue(), waiting=approvedWaiting(), playing=findPlaying();
+  const container=$("performerQueue"); container.innerHTML="";
+  const visible=entries.filter(([,p])=>["Queued","Approved","Playing"].includes(p.status));
+  if(!visible.length)container.innerHTML='<p class="small">Queue is empty.</p>';
   visible.forEach(([id,person])=>{
-
-    const card=document.createElement("div");
-
-    card.className="performer";
-
-    card.innerHTML=`
-      <h3>${escapeHTML(person.name||person.singerName||"Performer")}</h3>
-      <span class="badge">${escapeHTML(person.status||"Waiting")}</span>
-      <p class="small">
-        Language: ${escapeHTML(person.language||"Not specified")}<br>
-        Solo songs: ${Number(person.soloCount||0)}<br>
-        Duet songs: ${Number(person.duetCount||0)}
-      </p>
-    `;
-
-    const actions=document.createElement("div");
-    actions.style.display="flex";
-    actions.style.flexWrap="wrap";
-    actions.style.gap="6px";
-    actions.style.marginTop="8px";
-
-    const removeButton=document.createElement("button");
-    removeButton.className="gray";
-    removeButton.textContent="REMOVE FROM QUEUE";
-    removeButton.addEventListener("click",()=>removeQueueSinger(id,person));
-    actions.appendChild(removeButton);
-
-    const blockButton=document.createElement("button");
-    blockButton.className="red";
-    blockButton.textContent="BLOCK SINGER";
-    blockButton.addEventListener("click",()=>blockQueueSinger(id,person));
-    actions.appendChild(blockButton);
-
-    card.appendChild(actions);
-    container.appendChild(card);
+    const card=document.createElement("div"); card.className="performer";
+    const member=document.createElement("div"); member.className="queue-member";
+    const name=document.createElement("strong"); name.textContent=person.name||person.singerName||"Performer";
+    const badge=document.createElement("span"); badge.className="badge"; badge.textContent=person.status||"Waiting";
+    member.append(name,badge); card.appendChild(member);
+    const actions=document.createElement("div"); actions.className="queue-actions";
+    const position=waiting.findIndex(([key])=>key===id);
+    if(position>=0){
+      const up=document.createElement("button"); up.className="gray queue-move"; up.textContent="↑"; up.title="Move up"; up.disabled=position===0; up.addEventListener("click",()=>moveQueueSinger(id,-1)); actions.appendChild(up);
+      const down=document.createElement("button"); down.className="gray queue-move"; down.textContent="↓"; down.title="Move down"; down.disabled=position===waiting.length-1; down.addEventListener("click",()=>moveQueueSinger(id,1)); actions.appendChild(down);
+    }
+    const remove=document.createElement("button"); remove.className="gray"; remove.textContent="REMOVE"; remove.addEventListener("click",()=>removeQueueSinger(id,person)); actions.appendChild(remove);
+    const block=document.createElement("button"); block.className="red"; block.textContent="BLOCK"; block.addEventListener("click",()=>blockQueueSinger(id,person)); actions.appendChild(block);
+    card.appendChild(actions); container.appendChild(card);
   });
-
-  if(isHost){
-
-    $("startBtn").disabled=
-      actionRunning||!!playing||waiting.length===0;
-
-    $("nextBtn").disabled=
-      actionRunning||!playing;
-
-    $("finishBtn").disabled=
-      actionRunning||!playing;
-  }
+  if(isHost){$("startBtn").disabled=actionRunning||!!playing||waiting.length===0;$("nextBtn").disabled=actionRunning||!playing;$("finishBtn").disabled=actionRunning||!playing;}
 }
 
 function startQueueListener(){
