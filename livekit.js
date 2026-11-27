@@ -1471,8 +1471,13 @@ function createPanel() {
     [karaokeHeading, karaokeDescription, byId("videoMessage"), byId("videoPlayer")]
       .filter(Boolean).forEach(node => karaokeCard.appendChild(node));
 
-    if (hostCameraSection) stageLayout.append(karaokeCard, hostCameraSection);
-    else stageLayout.append(karaokeCard);
+    if (hostCameraSection) {
+      stageLayout.append(karaokeCard, hostCameraSection);
+      const hostStageControls = byId("mmHostControls");
+      if (hostStageControls) hostCameraSection.appendChild(hostStageControls);
+    } else {
+      stageLayout.append(karaokeCard);
+    }
     panel.insertBefore(stageLayout, panel.children[2] || null);
 
     const singerAndRecord = document.createElement("div");
