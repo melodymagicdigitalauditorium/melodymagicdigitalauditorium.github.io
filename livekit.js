@@ -3387,8 +3387,11 @@ function updateParticipantGalleryVisibility() {
     const grid = byId(id);
     if (!grid) return;
     const section = grid.closest(".mm-section, .card");
-    const hasCamera = !!grid.querySelector(".mm-video-box video");
-    if (section) section.hidden = !hasCamera;
+    // Keep a participant's video tile visible while LiveKit attaches or
+    // refreshes its camera track. Starting a microphone must not hide the
+    // whole performer gallery during a brief video-track transition.
+    const hasParticipantTile = !!grid.querySelector(".mm-video-box");
+    if (section) section.hidden = !hasParticipantTile;
   });
 }
 
@@ -3617,6 +3620,9 @@ async function startSingerKaraokeAudio() {
       audioEffects = null;
       localMicEnabled = true;
       recoverSingerMicAfterReconnect = false;
+      // Starting the microphone must not collapse the assigned singer's
+      // karaoke video. Re-apply visibility using the main-stage assignment.
+      updateKaraokePlayerAccess();
 
       // Start the synchronized YouTube accompaniment locally after this tap.
       // On phones, the host must separately share the tab audio to broadcast
