@@ -2360,10 +2360,8 @@ async function applyPlayback(data) {
 
     if (signature === lastPlaybackSignature) return;
 
-    // Host karaoke tab audio is captured and transmitted separately from the host mic.
-    // Advance the host's karaoke playback by a small 120 ms calibration to compensate
-    // for the residual mic-to-karaoke path latency reported during live testing.
-    const position = Math.max(0, playbackPosition(data) + ((currentRole === "host" || isHost) ? 0.12 : 0));
+    // Keep playback position neutral until microphone and karaoke paths are measured.
+    const position = playbackPosition(data);
     const isNewVideo = videoId !== lastYoutubeVideoId;
 
     if (isNewVideo) lastYoutubeVideoId = videoId;
