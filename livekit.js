@@ -3280,7 +3280,6 @@ async function createVideoTile(participant, isLocal) {
   }
 }
 
-async 
 /* HOST PERFORMANCE TEST RECORDING — host mic + remote stage voices + shared karaoke audio. */
 function addSingerVoiceRecordTrack(track, participant) {
   if (!track?.mediaStreamTrack || singerVoiceRecordSources.has(track.sid)) return;
