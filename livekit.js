@@ -4164,13 +4164,14 @@ function updateControlButtons() {
 
   const stageButton = byId("mmSetStageBtn");
   if (stageButton) {
-    stageButton.disabled = !isJoined || !isHost || !IS_HOST_CONTROL_PAGE;
+    // Host can assign performers before or during LiveKit connection.
+    stageButton.disabled = !isHost || !IS_HOST_CONTROL_PAGE || !currentUser;
   }
   const stageStatus = byId("mmStageAssignmentStatus");
   if (stageStatus && IS_HOST_CONTROL_PAGE && isHost) {
     stageStatus.textContent = isJoined
-      ? "Connected. Select an approved singer and assign the main stage."
-      : "Host verified. Connecting to the auditorium... Stage assignment will unlock when connected.";
+      ? "Auditorium connected. You can assign the main stage at any time."
+      : "Host verified. You can assign the main stage while the auditorium connects.";
   }
 
   if (hostMic) {
@@ -4619,7 +4620,9 @@ async function changeSingerPermission(singerUid, microphone, camera) {
 ========================================= */
 
 async function selectMainSingers() {
-  if (!isHost || !IS_HOST_CONTROL_PAGE || !isJoined || !currentUser) {
+  // Stage assignment is a Firebase show-control action, not a LiveKit
+  // microphone action. Do not lock the main stage while LiveKit is connecting.
+  if (!isHost || !IS_HOST_CONTROL_PAGE || !currentUser) {
     showMessage("Only the verified host can assign the main stage.", "error");
     return;
   }
@@ -4702,21 +4705,27 @@ async function selectMainSingers() {
       stageData
     );
 
-    // Automatically grant the selected main-stage performer microphone permission.
-    // The singer still taps START MIC on their phone (browser gesture required).
-    // Unselected singers remain mic-disabled; camera permission remains available.
-    await Promise.all(approved.map(item => workerRequest({
-      action: "syncPermissions",
-      uid: item.singerUid,
-      microphoneAllowed: selectedUids.includes(item.singerUid),
-      cameraAllowed: true
-    })));
+    // Assignment is complete as soon as liveStage is saved. Microphone
+    // permission syncing is a separate best-effort step and must never undo
+    // or block the stage assignment when a singer is offline or the worker fails.
+    const selectedSingerRecords = selected.filter(item => !item.isHost);
+    selectedSingerRecords.forEach(item => {
+      workerRequest({
+        action: "syncPermissions",
+        uid: item.singerUid,
+        microphoneAllowed: true,
+        cameraAllowed: true
+      }).catch(error => {
+        console.warn("Stage assigned, but microphone permission sync is pending for " +
+          (item.singerName || item.name || item.singerUid) + ":", error);
+      });
+    });
 
     const hostIsOnStage = selectedUids.includes(hostParticipantUid);
     showMessage(
       hostIsOnStage
-        ? (mode.toUpperCase() + " stage assigned with you on stage. Your host microphone is already live; turn on your camera if you want to appear on video. Grant microphone permission to the other singer for a duet.")
-        : (mode.toUpperCase() + " stage assigned. Grant microphone permission separately."),
+        ? (mode.toUpperCase() + " stage assigned. Host is on stage; the other singer can connect and tap START MIC when ready.")
+        : (mode.toUpperCase() + " stage assigned. The selected singer(s) can connect and start their microphone when ready."),
       "success"
     );
 
