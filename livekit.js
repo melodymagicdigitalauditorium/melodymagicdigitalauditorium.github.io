@@ -153,7 +153,8 @@ let singerPlaybackClockData = null;
 let remoteAudioUnlockListenerInstalled = false;
 
 let liveComments = [];
-let animatedLiveCommentIds = new Set();
+let seenLiveCommentIds = new Set();
+let newLiveCommentIds = new Set();
 let liveCommentsFirstSnapshot = true;
 let commentExpiryTimer = null;
 let liveQueue = [];
@@ -1943,10 +1944,15 @@ function listenToLiveComments() {
       .slice(-80);
 
     if (liveCommentsFirstSnapshot) {
-      incomingComments.forEach(item => animatedLiveCommentIds.add(item.id));
+      incomingComments.forEach(item => seenLiveCommentIds.add(item.id));
       liveCommentsFirstSnapshot = false;
     } else {
-      incomingComments.forEach(item => animatedLiveCommentIds.add(item.id));
+      incomingComments.forEach(item => {
+        if (!seenLiveCommentIds.has(item.id)) {
+          seenLiveCommentIds.add(item.id);
+          newLiveCommentIds.add(item.id);
+        }
+      });
     }
     liveComments = incomingComments;
 
@@ -2006,7 +2012,7 @@ function renderLiveComments() {
 
     visibleComments.forEach(comment => {
       const item = document.createElement("div");
-      item.className = "mm-comment" + (animatedLiveCommentIds.has(comment.id) && !liveCommentsFirstSnapshot ? " mm-comment-arrive" : "");
+      item.className = "mm-comment" + (newLiveCommentIds.has(comment.id) ? " mm-comment-arrive" : "");
       const name = document.createElement("strong");
       name.textContent = safeText(comment.name).slice(0, 60);
       const message = document.createElement("div");
@@ -2020,6 +2026,7 @@ function renderLiveComments() {
     });
     container.scrollTop = container.scrollHeight;
   });
+  newLiveCommentIds.clear();
 }
 
 async function sendLiveComment(inputElement = null, buttonElement = null) {
