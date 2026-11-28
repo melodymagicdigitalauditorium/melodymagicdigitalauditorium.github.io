@@ -1775,12 +1775,18 @@ async function getAccessToken() {
    REACTIONS
 ========================================= */
 
+function isPublicInteractionConnected() {
+  return !!room && (isJoined || room.state === "connected");
+}
+
 function updateReactionButtons() {
+  const connected = isPublicInteractionConnected();
   document.querySelectorAll("#mmReactionButtons [data-reaction]").forEach(button => {
-    button.disabled = !isJoined || !room;
+    button.disabled = !connected;
+    button.setAttribute("aria-disabled", String(!connected));
   });
   document.querySelectorAll("#mmReactionHint").forEach(hint => {
-    hint.textContent = isJoined
+    hint.textContent = connected
       ? "You are connected. Reactions are visible to everyone."
       : "Enter the auditorium to send and receive reactions.";
   });
@@ -1839,8 +1845,8 @@ function canSendReactionNow() {
 }
 
 async function sendReaction(emoji) {
-  if (!room || !isJoined) {
-    showMessage("Enter the auditorium before sending a reaction.", "warning");
+  if (!isPublicInteractionConnected()) {
+    showMessage("The auditorium connection is not active yet. Wait until LIVE appears.", "warning");
     return;
   }
 
@@ -1982,8 +1988,8 @@ async function sendLiveComment(inputElement = null, buttonElement = null) {
     [...document.querySelectorAll("#mmSendCommentBtn")]
       .find(element => element.isConnected && element.getClientRects().length);
 
-  if (!currentUser || !isJoined || !room) {
-    showMessage("Enter the auditorium before commenting.", "warning");
+  if (!currentUser || !isPublicInteractionConnected()) {
+    showMessage("The auditorium connection is not active yet. Wait until LIVE appears.", "warning");
     return;
   }
 
@@ -2034,11 +2040,13 @@ window.MelodyMagicSendComment = function(button) {
 };
 
 function updateCommentControls() {
+  const connected = isPublicInteractionConnected();
   document.querySelectorAll("#mmSendCommentBtn").forEach(button => {
-    button.disabled = !isJoined || !currentUser;
+    button.disabled = !connected || !currentUser;
+    button.setAttribute("aria-disabled", String(!connected || !currentUser));
   });
   document.querySelectorAll("#mmCommentHint").forEach(hint => {
-    hint.textContent = isJoined
+    hint.textContent = connected
       ? "Your comment is visible to everyone in this show."
       : "Enter the auditorium to post a comment.";
   });
