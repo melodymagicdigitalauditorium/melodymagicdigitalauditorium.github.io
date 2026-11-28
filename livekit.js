@@ -1561,13 +1561,9 @@ function createPanel() {
   }
 
   if (IS_HOST_CONTROL_PAGE && byId("mmAudioEffects")) {
-    ["mmEcho", "mmDelay", "mmReverb"].forEach(id => {
-      byId(id).addEventListener("input", () => {
-        updateAudioControlLabels();
-        applySharedAudioSettingsToEffects();
-        scheduleSharedAudioSettingsSave();
-      });
-    });
+    // The individual effect sliders were removed. Apply the fixed professional
+    // auditorium preset once; keep the host monitoring controls independent.
+    applySharedAudioSettingsToEffects();
     byId("mmHostSingerMonitor")?.addEventListener("change", event => {
       setHostSingerMonitor(event.target.checked);
       if (event.target.checked) unlockHostRemoteAudio();
