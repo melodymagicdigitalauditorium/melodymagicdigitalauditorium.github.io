@@ -49,6 +49,8 @@ footer{text-align:center;color:#888;font-size:12px;margin:22px 0 5px}
 
 <div id="showDetails" class="feeBox"></div>
 
+<a id="hostMessageButton" class="btn whatsapp" href="#" target="_blank" rel="noopener">MESSAGE HOST DIRECTLY ON WHATSAPP</a>
+
 <form id="registrationForm">
 
 <h2>Performer Details</h2>
@@ -298,6 +300,9 @@ $("showDetails").innerHTML=
 "<strong>Show:</strong> "+escapeHTML(name)+"<br>"+
 "<strong>Date:</strong> "+escapeHTML(date)+"<br>"+
 "<strong>Time:</strong> "+escapeHTML(formatShowTime(time));
+
+const message="Hello host, I am interested in registering for "+name+". Please guide me about this show.";
+$("hostMessageButton").href="https://wa.me/"+hostWhatsApp+"?text="+encodeURIComponent(message);
 }
 
 function setSection(section){
