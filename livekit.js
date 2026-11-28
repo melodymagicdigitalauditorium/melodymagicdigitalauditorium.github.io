@@ -1972,52 +1972,50 @@ function renderLiveComments() {
   });
 }
 
-async function sendLiveComment() {
-  const input = byId("mmCommentInput");
-  const button = byId("mmSendCommentBtn");
+async function sendLiveComment(inputElement = null, buttonElement = null) {
+  // The singer page and shared LiveKit panel both contain these controls.
+  // Always use the exact control the participant interacted with.
+  const input = inputElement || [...document.querySelectorAll("#mmCommentInput")]
+    .find(element => element.isConnected && element.getClientRects().length);
+  const button = buttonElement || input?.closest("#mmCommentsSection, .mm-section")
+    ?.querySelector("#mmSendCommentBtn") ||
+    [...document.querySelectorAll("#mmSendCommentBtn")]
+      .find(element => element.isConnected && element.getClientRects().length);
 
   if (!currentUser || !isJoined || !room) {
     showMessage("Enter the auditorium before commenting.", "warning");
-        return;
-  }
-
-  const message = safeText(input?.value).trim();
-
-  if (!message) {
-    showMessage("Please type a comment first.", "warning");
     return;
   }
 
+  const message = safeText(input?.value).trim();
+  if (!message) {
+    showMessage("Please type a comment first.", "warning");
+    input?.focus();
+    return;
+  }
   if (message.length > 300) {
     showMessage("Comments must be 300 characters or fewer.", "warning");
     return;
   }
 
-  button.disabled = true;
-
+  if (button) button.disabled = true;
   try {
-    const commentsRef = ref(db, "liveComments/" + showId);
-
-    await push(commentsRef, {
+    await push(ref(db, "liveComments/" + showId), {
       uid: currentUser.uid,
       name: displayName(),
       message,
       createdAt: Date.now()
     });
-
-    input.value = "";
+    if (input) input.value = "";
     showMessage("Comment sent.", "success");
-
   } catch (error) {
     console.error("Comment error:", error);
-
     showMessage(
       "Could not post comment. Check that the liveComments Firebase rules have been published.",
       "error"
     );
-
   } finally {
-    button.disabled = !isJoined;
+    if (button) button.disabled = !isJoined || !currentUser;
   }
 }
 
@@ -5072,7 +5070,9 @@ function wirePublicInteractionControls() {
     document.addEventListener("click", event => {
       const send = event.target.closest("#mmSendCommentBtn");
       if (send && !send.disabled) {
-        sendLiveComment();
+        const section = send.closest("#mmCommentsSection, .mm-section");
+        const input = section?.querySelector("#mmCommentInput");
+        sendLiveComment(input, send);
         return;
       }
       const reaction = event.target.closest("#mmReactionButtons [data-reaction]");
@@ -5081,7 +5081,9 @@ function wirePublicInteractionControls() {
     document.addEventListener("keydown", event => {
       if (event.key === "Enter" && event.target.matches("#mmCommentInput")) {
         event.preventDefault();
-        sendLiveComment();
+        const input = event.target;
+        const section = input.closest("#mmCommentsSection, .mm-section");
+        sendLiveComment(input, section?.querySelector("#mmSendCommentBtn"));
       }
     });
   }
