@@ -193,11 +193,6 @@ body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYout
   <h3>🎵 Host Karaoke Stage</h3>
   <div id="videoMessage">Choose a YouTube karaoke video to begin.</div>
   <div id="videoPlayer"></div>
-  <div class="volume-box">
-    <label class="small"><input id="hostKaraokeMonitor" type="checkbox" checked> 🔊 Hear karaoke on this host device</label>
-    <div class="volume-label"><strong>Host's local karaoke volume</strong><span id="hostKaraokeVolumeValue">70%</span></div>
-    <input id="hostKaraokeVolume" type="range" min="0" max="100" step="1" value="70" aria-label="Host local karaoke volume">
-  </div>
   <hr>
   <h3>🎵 Send Karaoke Video to Singer</h3>
 
@@ -485,7 +480,7 @@ function setHostSingerView(assigned){
 
 function applyHostLocalKaraokeAudio(){
   if(!youtubePlayer||!playerReady)return;
-  const enabled=$("hostKaraokeMonitor")?.checked===true;
+  const enabled=$("hostKaraokeMonitor")?.checked??true;
   const volume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
   if($("hostKaraokeVolumeValue"))$("hostKaraokeVolumeValue").textContent=volume+"%";
   try{
@@ -812,7 +807,7 @@ async function playForEveryone(){
   }
 
   const hostVolume=Math.max(0,Math.min(100,Number($("hostKaraokeVolume")?.value??70)));
-  const hostMonitor=$("hostKaraokeMonitor")?.checked===true;
+  const hostMonitor=$("hostKaraokeMonitor")?.checked??true;
   const position=Math.max(0,Number(youtubePlayer.getCurrentTime()||0));
   const commandAt=Date.now()+1200;
   const volume=Number($("karaokeVolume")?.value??100);
@@ -1493,16 +1488,6 @@ $("karaokeVolume").addEventListener("input",()=>{
 });
 $("karaokeVolume").addEventListener("change",()=>{
   publishKaraokeVolume();
-});
-$("hostKaraokeMonitor").addEventListener("change",()=>{
-  applyHostLocalKaraokeAudio();
-  if($("hostKaraokeMonitor").checked && playerReady){
-    try{youtubePlayer.playVideo();}catch(error){}
-  }
-});
-$("hostKaraokeVolume").addEventListener("input",()=>{
-  $("hostKaraokeVolumeValue").textContent=$("hostKaraokeVolume").value+"%";
-  applyHostLocalKaraokeAudio();
 });
 $("playKaraokeForEveryoneBtn").addEventListener("click",playForEveryone);
 $("sendVideoToSingerBtn").addEventListener("click",sendVideoToAssignedSinger);
