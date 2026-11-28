@@ -16,7 +16,10 @@ body.mm-active-performer #mmYoutubePlayer video{width:100%!important;height:100%
 @media(max-width:600px){
  body.mm-active-performer .card:has(#mmYoutubePlayer){position:relative;right:auto;bottom:auto;width:100%;margin:13px 0;padding:12px}
  body.mm-active-performer #mmYoutubePlayer video{min-height:210px!important;max-height:60vh!important}
-}</style>
+}
+/* Recording is host-only; singers must not see recorder controls. */
+#mmRecordingPanel{display:none!important}
+</style>
 </head><body><div class="container">
 <header><h1>🎤 Melody Magic Digital Auditorium</h1><p>SINGER LIVE STAGE</p></header>
 <section class="card" id="mmSingerMobileEntry">
