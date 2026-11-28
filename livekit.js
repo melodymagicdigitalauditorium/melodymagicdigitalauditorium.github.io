@@ -3826,12 +3826,12 @@ function startSingerDirectMonitor(track) {
     singerDirectMonitorSource.connect(singerDirectMonitorGain);
     singerDirectMonitorGain.connect(singerDirectMonitorContext.destination);
     if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
-    setSingerDirectMonitor(false);
     const singerMonitorControl = byId("mmSingerMonitor");
     if (singerMonitorControl) {
       singerMonitorControl.checked = false;
-      singerMonitorControl.disabled = true;
+      singerMonitorControl.disabled = false;
     }
+    setSingerDirectMonitor(Boolean(singerMonitorControl?.checked));
   } catch (error) {
     console.warn("Singer direct microphone monitor:", error);
     stopSingerDirectMonitor();
@@ -3841,9 +3841,7 @@ function startSingerDirectMonitor(track) {
 function setSingerDirectMonitor(enabled) {
   if (!singerDirectMonitorContext || !singerDirectMonitorGain) return;
   if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
-  // Always keep local singer microphone playback muted, even if stale UI state
-  // or a prior checkbox event attempts to enable it.
-  singerDirectMonitorGain.gain.setTargetAtTime(0, singerDirectMonitorContext.currentTime, 0.01);
+  singerDirectMonitorGain.gain.setTargetAtTime(enabled ? 0.22 : 0, singerDirectMonitorContext.currentTime, 0.03);
 }
 
 function stopSingerDirectMonitor() {
@@ -5201,10 +5199,8 @@ function wireSingerKaraokeAudioButton() {
     monitor.dataset.mmWired = "true";
     monitor.addEventListener("change", () => {
       if (currentRole === "singer") {
-        monitor.checked = false;
-        monitor.disabled = true;
-        if (audioEffects) audioEffects.setMonitor(false, 0);
-        setSingerDirectMonitor(false);
+        if (audioEffects) audioEffects.setMonitor(monitor.checked, 100);
+        setSingerDirectMonitor(monitor.checked);
       }
     });
   }
