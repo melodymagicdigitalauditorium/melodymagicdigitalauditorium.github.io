@@ -1408,14 +1408,9 @@ function createPanel() {
       </div>
 
       <div class="mm-comment-compose">
-        <select id="mmCommentLanguage" aria-label="Comment spelling language" class="mm-input" style="max-width:125px">
-          <option value="en">English</option>
-          <option value="hi">हिन्दी</option>
-        </select>
         <input id="mmCommentInput" class="mm-input" type="text" maxlength="300" lang="en" spellcheck="true" placeholder="Write a comment...">
         <button id="mmSendCommentBtn" disabled>Send Comment</button>
       </div>
-      <div class="mm-note" id="mmSpellcheckHint">Choose English or हिन्दी. Right-click underlined words to see spelling suggestions (if supported by your browser).</div>
 
       <div class="mm-note" id="mmCommentHint">
         Enter the auditorium to post a comment.
@@ -1970,25 +1965,8 @@ function ensureLiveCommentStyle() {
   document.head.appendChild(style);
 }
 
-function wireCommentLanguageControls() {
-  document.querySelectorAll("#mmCommentLanguage").forEach(select => {
-    if (select.dataset.mmLanguageWired === "true") return;
-    select.dataset.mmLanguageWired = "true";
-    const input = select.closest("#mmCommentsSection, .mm-section")?.querySelector("#mmCommentInput")
-      || document.querySelector("#mmCommentInput");
-    const apply = () => {
-      if (!input) return;
-      input.lang = select.value === "hi" ? "hi" : "en";
-      input.spellcheck = true;
-    };
-    select.addEventListener("change", apply);
-    apply();
-  });
-}
-
 function renderLiveComments() {
   ensureLiveCommentStyle();
-  wireCommentLanguageControls();
   const containers = document.querySelectorAll("#mmCommentsList");
   if (!containers.length) return;
   const now = Date.now();
