@@ -1631,16 +1631,18 @@ async function loadShow() {
 
   currentShow = snapshot.val();
 
-  const showTitle =
+  const showTitle = String(
     currentShow.name ||
     currentShow.showName ||
     currentShow.title ||
-    "Melody Magic Digital Auditorium";
+    "Melody Magic Digital Auditorium"
+  ).trim();
 
-  const performersHeading = byId("mmPerformersHeading");
-  if (performersHeading) {
-    performersHeading.textContent = "🎤 " + showTitle + " — PERFORMERS";
-  }
+  // The page has a static stage heading and createPanel() adds a second
+  // heading with the same ID. Update every copy so neither shows placeholder text.
+  document.querySelectorAll("#mmPerformersHeading").forEach((heading) => {
+    heading.textContent = "🎤 " + showTitle + " — PERFORMERS";
+  });
 
   const status = safeText(currentShow.status).toLowerCase();
 
