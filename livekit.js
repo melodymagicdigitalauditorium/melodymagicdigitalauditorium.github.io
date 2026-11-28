@@ -3653,11 +3653,13 @@ function normalizeSharedAudioSettings(value = {}) {
   // Fixed subtle auditorium vocal preset: short echo and warm room reverb.
   // A low wet mix keeps the vocal clear; old per-effect slider values are ignored.
   return {
-    echo: 5,
-    delay: 240,
-    feedback: 12,
-    reverb: 12,
-    mix: 16,
+    // A modest, audible vocal-space preset: short repeat, restrained feedback,
+    // warm room tail and enough dry signal to keep words clear.
+    echo: 22,
+    delay: 260,
+    feedback: 16,
+    reverb: 18,
+    mix: 28,
     volume: 80
   };
 }
@@ -4072,8 +4074,7 @@ async function startMicrophoneEffects() {
   }
 
   // Route the host microphone through the same low-latency effects graph
-  // used by assigned singers. All effects remain at zero unless the host
-  // moves the existing controls.
+  // used by assigned singers. The fixed professional auditorium preset is applied automatically.
   audioEffects = new VirtualAudioEffects();
   try {
     processedMicrophoneTrack = await audioEffects.start(rawMicrophoneTrack);
@@ -4098,7 +4099,7 @@ async function startMicrophoneEffects() {
   localMicEnabled = true;
   if (byId("mmEffectsStatus")) {
     byId("mmEffectsStatus").textContent =
-      "Host microphone is live. Echo, delay and reverb are controlled by the sliders above.";
+      "Host microphone is live with the balanced professional auditorium vocal preset.";
   }
   updateControlButtons();
 }
