@@ -1379,12 +1379,7 @@ function createPanel() {
         Microphone access is controlled separately.
       </div>
 
-      <div class="mm-section">
-        <h3>🎙️ Singer Microphone Permissions</h3>
-        <div id="mmSingerPermissions">
-          No approved singers found.
-        </div>
-      </div>
+
 
     </div>
 
@@ -4694,7 +4689,7 @@ async function loadHostRegistrations() {
   registrationListener = snapshot => {
     registrations = snapshot.val() || {};
     populateSingerSelectors();
-    renderSingerPermissionControls();
+    // Singer mic/camera permission UI removed; queue manages singer actions.
     if (room) {
       for (const participant of room.remoteParticipants.values()) {
         createVideoTile(participant, false);
@@ -4779,123 +4774,10 @@ function listenToParticipantControls() {
 
   controlsListener = snapshot => {
     participantPermissions = snapshot.val() || {};
-    renderSingerPermissionControls();
+    // Singer mic/camera permission UI removed; queue manages singer actions.
   };
 
   onValue(controlsRef, controlsListener);
-}
-
-
-/* =========================================
-   HOST: RENDER SINGER PERMISSIONS
-========================================= */
-
-function renderSingerPermissionControls() {
-  if (!IS_HOST_CONTROL_PAGE || !isHost) return;
-
-  const container = byId("mmSingerPermissions");
-  if (!container) return;
-
-  const approved = getApprovedRegistrations();
-
-  if (!approved.length) {
-    container.textContent =
-      "No approved singers with linked accounts were found.";
-    return;
-  }
-
-  container.innerHTML = "";
-
-  approved.forEach(item => {
-    const controls =
-      participantPermissions[item.singerUid] || {};
-
-    const micOn = controls.microphoneAllowed === true;
-    const cameraOn = controls.cameraAllowed !== false;
-    const blocked = controls.blocked === true;
-    const selected = stageSingerUids.includes(item.singerUid);
-
-    const card = document.createElement("div");
-    card.className = "mm-singer-control";
-
-    const name = document.createElement("strong");
-    name.textContent =
-      item.singerName || item.name || "Singer";
-
-    const status = document.createElement("div");
-    status.className = "mm-permission-status";
-
-    status.textContent =
-      (blocked ? "BLOCKED" : (selected ? "On main stage" : "Waiting in queue")) +
-      " | Microphone: " + (micOn ? "ON" : "OFF") +
-      " | Camera: " + (cameraOn ? "ON" : "OFF");
-
-    const micButton = document.createElement("button");
-
-    micButton.textContent = micOn ? "Mute Mic" : "Unmute Mic";
-    micButton.disabled = blocked || !selected;
-    micButton.addEventListener("click", () => {
-      changeSingerPermission(item.singerUid, !micOn, cameraOn);
-    });
-
-    const cameraButton = document.createElement("button");
-    cameraButton.textContent = cameraOn ? "Turn Camera OFF" : "Turn Camera ON";
-    cameraButton.disabled = blocked;
-    cameraButton.addEventListener("click", () => {
-      changeSingerPermission(item.singerUid, micOn, !cameraOn);
-    });
-
-    const joinLink = new URL("./live-performance.html", location.href);
-    joinLink.searchParams.set("showId", showId);
-    joinLink.searchParams.set("mode", "singer");
-    joinLink.searchParams.set("registrationId", item.id);
-
-    const whatsappButton = document.createElement("button");
-    whatsappButton.textContent = "SEND JOIN LINK ON WHATSAPP";
-    whatsappButton.disabled = blocked;
-    whatsappButton.addEventListener("click", () => {
-      const messageText = "Your singer registration is approved for " +
-        (currentShow?.name || currentShow?.showName || currentShow?.title || "Melody Magic Digital Auditorium") +
-        ". Open your personal joining link: " + joinLink.href;
-      window.open("https://wa.me/?text=" + encodeURIComponent(messageText), "_blank", "noopener");
-    });
-
-    const copyLinkButton = document.createElement("button");
-    copyLinkButton.textContent = "COPY JOIN LINK";
-    copyLinkButton.disabled = blocked;
-    copyLinkButton.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(joinLink.href);
-        showMessage("Personal joining link copied for " +
-          (item.singerName || item.name || "singer") + ".", "success");
-      } catch (error) {
-        showMessage("Could not copy the link. Use the WhatsApp button instead.", "error");
-      }
-    });
-
-    const blockButton = document.createElement("button");
-    blockButton.textContent = blocked ? "Blocked" : "Block Singer";
-    blockButton.disabled = blocked;
-    blockButton.addEventListener("click", async () => {
-      if (!confirm("Block this singer from the show?")) return;
-      try {
-        await workerRequest({
-          action: "syncPermissions",
-          uid: item.singerUid,
-          microphoneAllowed: false,
-          cameraAllowed: false,
-          blocked: true
-        });
-        showMessage("Singer blocked from this show.", "success");
-      } catch (error) {
-        console.error("Block singer error:", error);
-        showMessage("Could not block singer: " + error.message, "error");
-      }
-    });
-
-    card.append(name, status, micButton, cameraButton, whatsappButton, copyLinkButton, blockButton);
-    container.appendChild(card);
-  });
 }
 
 
