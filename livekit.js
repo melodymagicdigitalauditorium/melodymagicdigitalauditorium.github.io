@@ -153,6 +153,8 @@ let singerPlaybackClockData = null;
 let remoteAudioUnlockListenerInstalled = false;
 
 let liveComments = [];
+let animatedLiveCommentIds = new Set();
+let liveCommentsFirstSnapshot = true;
 let commentExpiryTimer = null;
 let liveQueue = [];
 let activePerformanceData = {};
@@ -1928,7 +1930,7 @@ function listenToLiveComments() {
   commentsListener = snapshot => {
     const data = snapshot.val() || {};
 
-    liveComments = Object.entries(data)
+    const incomingComments = Object.entries(data)
       .map(([id, item]) => ({ id, ...item }))
       .filter(item =>
         item &&
@@ -1940,6 +1942,14 @@ function listenToLiveComments() {
       )
       .slice(-80);
 
+    if (liveCommentsFirstSnapshot) {
+      incomingComments.forEach(item => animatedLiveCommentIds.add(item.id));
+      liveCommentsFirstSnapshot = false;
+    } else {
+      incomingComments.forEach(item => animatedLiveCommentIds.add(item.id));
+    }
+    liveComments = incomingComments;
+
     renderLiveComments();
   };
 
@@ -1950,7 +1960,7 @@ function ensureLiveCommentStyle() {
   if (document.getElementById("mmLiveCommentAnimationStyle")) return;
   const style = document.createElement("style");
   style.id = "mmLiveCommentAnimationStyle";
-  style.textContent = '.mm-comment{position:relative;padding:11px 14px;margin:10px 2px;border:1px solid rgba(211,170,76,.48);border-radius:18px;background:radial-gradient(ellipse at 20% 0%,rgba(255,220,145,.13),transparent 60%),linear-gradient(120deg,#241d11,#171717 68%,#211b10);box-shadow:0 4px 16px rgba(215,173,76,.14);overflow-wrap:anywhere;transform-origin:center bottom}.mm-comment-arrive{animation:mmCommentBubblePop 1s cubic-bezier(.18,.85,.28,1.25) both,mmCommentBubbleFloat 3.2s ease-in-out 1s 2;will-change:transform,opacity,box-shadow}@keyframes mmCommentBubblePop{0%{opacity:0;transform:translateY(28px) scale(.72);border-radius:28px;filter:brightness(.75);box-shadow:0 0 0 rgba(255,205,100,0)}42%{opacity:1;transform:translateY(-8px) scale(1.07);filter:brightness(1.35);box-shadow:0 0 28px rgba(255,195,75,.55),inset 0 0 18px rgba(255,220,145,.18)}65%{transform:translateY(3px) scale(.96);filter:brightness(1.12)}82%{transform:translateY(-3px) scale(1.025)}100%{opacity:1;transform:translateY(0) scale(1);filter:brightness(1);box-shadow:0 4px 16px rgba(215,173,76,.14)}}@keyframes mmCommentBubbleFloat{0%,100%{transform:translateY(0) scale(1);box-shadow:0 4px 16px rgba(215,173,76,.14)}50%{transform:translateY(-5px) scale(1.012);box-shadow:0 7px 23px rgba(255,195,75,.27)}}#mmCommentsList strong{color:#f6d47f;text-shadow:0 0 8px rgba(255,205,100,.32)}#mmCommentsList .mm-comment-time{color:#b6a57c;font-size:11px;margin-top:4px}@media(prefers-reduced-motion:reduce){.mm-comment-arrive{animation:none;will-change:auto}}';
+  style.textContent = '.mm-comment{position:relative;padding:11px 14px;margin:10px 2px;border:1px solid rgba(211,170,76,.48);border-radius:18px;background:radial-gradient(ellipse at 20% 0%,rgba(255,220,145,.13),transparent 60%),linear-gradient(120deg,#241d11,#171717 68%,#211b10);box-shadow:0 4px 16px rgba(215,173,76,.14);overflow-wrap:anywhere;transform-origin:center bottom}.mm-comment-arrive{animation:mmCommentBubblePop 1s cubic-bezier(.18,.85,.28,1.25) both,mmCommentBubbleFloat 3.2s ease-in-out 1s 2;will-change:transform,opacity,box-shadow}@keyframes mmCommentBubblePop{0%{opacity:0;transform:translateY(28px) scale(.72);border-radius:28px;filter:brightness(.75);box-shadow:0 0 0 rgba(255,205,100,0)}42%{opacity:1;transform:translateY(-8px) scale(1.07);filter:brightness(1.35);box-shadow:0 0 28px rgba(255,195,75,.55),inset 0 0 18px rgba(255,220,145,.18)}65%{transform:translateY(3px) scale(.96);filter:brightness(1.12)}82%{transform:translateY(-3px) scale(1.025)}100%{opacity:1;transform:translateY(0) scale(1);filter:brightness(1);box-shadow:0 4px 16px rgba(215,173,76,.14)}}@keyframes mmCommentBubbleFloat{0%,100%{transform:translateY(0) scale(1);box-shadow:0 4px 16px rgba(215,173,76,.14)}50%{transform:translateY(-5px) scale(1.012);box-shadow:0 7px 23px rgba(255,195,75,.27)}}#mmCommentsList strong{color:#f6d47f;text-shadow:0 0 8px rgba(255,205,100,.32)}#mmCommentsList .mm-comment-time{color:#b6a57c;font-size:11px;margin-top:4px}';
   document.head.appendChild(style);
 }
 
@@ -1996,7 +2006,7 @@ function renderLiveComments() {
 
     visibleComments.forEach(comment => {
       const item = document.createElement("div");
-      item.className = "mm-comment mm-comment-arrive";
+      item.className = "mm-comment" + (animatedLiveCommentIds.has(comment.id) && !liveCommentsFirstSnapshot ? " mm-comment-arrive" : "");
       const name = document.createElement("strong");
       name.textContent = safeText(comment.name).slice(0, 60);
       const message = document.createElement("div");
