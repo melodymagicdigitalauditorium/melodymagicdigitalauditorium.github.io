@@ -658,5 +658,39 @@ updateFees();
 loadPage();
 
 </script>
+<script type="module">
+import {db} from "./firebase.js";
+import {ref,get} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+(async()=>{
+ const showId=new URLSearchParams(location.search).get("showId");
+ if(!showId)return;
+ try{
+  const snap=await get(ref(db,"shows/"+showId));
+  if(!snap.exists())return;
+  const s=snap.val()||{};
+  const date=String(s.showDate||s.date||"").trim();
+  const time=String(s.showTime||s.time||"00:00").trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+  const tm=/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(time);
+  if(!tm)return;
+  const start=new Date(date+"T"+tm[1].padStart(2,"0")+":"+tm[2]+":"+(tm[3]||"00"));
+  if(!Number.isFinite(start.getTime())||Date.now()<start.getTime())return;
+  document.title="Show Finished | Melody Magic Digital Auditorium";
+  document.body.innerHTML="";
+  const style=document.createElement("style");
+  style.textContent="*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#090909;color:#fff;font:16px Arial,sans-serif}.finished{max-width:560px;width:100%;padding:32px 24px;text-align:center;background:#171717;border:1px solid #b58b35;border-radius:16px;box-shadow:0 15px 45px #0008}.brand{color:#e8c36c;font-weight:800;letter-spacing:2px;font-size:20px}.tag{display:inline-block;margin:22px 0 8px;padding:7px 13px;border:1px solid #b58b35;border-radius:30px;color:#e8c36c;font-size:12px;letter-spacing:1px}.finished h1{color:#f2d58e;font-size:27px;margin:8px 0 12px}.finished p{color:#d1ccc2;line-height:1.7}.finished a{display:inline-block;margin-top:16px;padding:13px 22px;border-radius:8px;background:linear-gradient(135deg,#f3d78c,#bd8c36);color:#171006;text-decoration:none;font-weight:bold}.thanks{margin-top:24px!important;color:#e8c36c!important;font-size:14px}";
+  document.head.appendChild(style);
+  const card=document.createElement("main");card.className="finished";
+  const brand=document.createElement("div");brand.className="brand";brand.textContent="MELODY MAGIC DIGITAL AUDITORIUM";
+  const tag=document.createElement("div");tag.className="tag";tag.textContent="SHOW FINISHED";
+  const h=document.createElement("h1");h.textContent=s.showName||s.name||s.title||"This show";
+  const p=document.createElement("p");p.textContent="This show has finished. Thank you for being part of Melody Magic Digital Auditorium.";
+  const p2=document.createElement("p");p2.textContent="Explore our other upcoming shows and join us again.";
+  const link=document.createElement("a");link.href="./index.html#shows";link.textContent="VIEW OTHER SHOWS";
+  const thanks=document.createElement("p");thanks.className="thanks";thanks.textContent="🎵 Thank you for attending. See you at our next show! ❤️";
+  card.append(brand,tag,h,p,p2,link,thanks);document.body.appendChild(card);
+ }catch(error){console.error("Show expiry check:",error);}
+})();
+</script>
 </body>
 </html>

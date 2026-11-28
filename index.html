@@ -447,8 +447,16 @@ function renderShows(){
 showsContainer.replaceChildren();
 
 const shows=Object.entries(publishedShows)
-.filter(([id,show])=>show&&
-(show.status==="Published"||show.status==="Live"))
+.filter(([id,show])=>{
+if(!show||!(show.status==="Published"||show.status==="Live"))return false;
+const date=String(show.showDate||show.date||"").trim();
+const time=String(show.showTime||show.time||"00:00").trim();
+if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return true;
+const match=/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?$/.exec(time);
+if(!match)return true;
+const start=new Date(date+"T"+match[1].padStart(2,"0")+":"+match[2]+":"+(match[3]||"00"));
+return !Number.isFinite(start.getTime())||Date.now()<start.getTime();
+})
 .map(([id,show])=>({id,...show}));
 
 shows.sort((a,b)=>{
@@ -468,7 +476,7 @@ return dateA-dateB;
 if(shows.length===0){
 const empty=document.createElement("div");
 empty.className="show-message";
-empty.textContent="No published shows yet. Please check again soon.";
+empty.textContent="No upcoming shows at the moment. Please check again soon.";
 showsContainer.appendChild(empty);
 return;
 }
