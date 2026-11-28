@@ -1475,7 +1475,9 @@ function createPanel() {
     if (commentsSection) communitySection.appendChild(commentsSection);
     panel.append(communitySection);
 
-;
+    // Keep microphone effects at the very bottom of the host control page.
+    const effectsSection = byId("mmAudioEffects");
+    if (effectsSection) panel.appendChild(effectsSection);
   }
 
   // Keep the performance recorder visible on the host page even before
