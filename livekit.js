@@ -153,6 +153,7 @@ let singerPlaybackClockData = null;
 let remoteAudioUnlockListenerInstalled = false;
 
 let liveComments = [];
+let commentExpiryTimer = null;
 let liveQueue = [];
 let activePerformanceData = {};
 
@@ -1404,15 +1405,14 @@ function createPanel() {
       </div>
 
       <div class="mm-comment-compose">
-        <input
-          id="mmCommentInput"
-          class="mm-input"
-          type="text"
-          maxlength="300"
-          placeholder="Write a comment (maximum 300 characters)"
-        >
+        <select id="mmCommentLanguage" aria-label="Comment spelling language" class="mm-input" style="max-width:125px">
+          <option value="en">English</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+        <input id="mmCommentInput" class="mm-input" type="text" maxlength="300" lang="en" spellcheck="true" placeholder="Write a comment...">
         <button id="mmSendCommentBtn" disabled>Send Comment</button>
       </div>
+      <div class="mm-note" id="mmSpellcheckHint">Choose English or हिन्दी. Right-click underlined words to see spelling suggestions (if supported by your browser).</div>
 
       <div class="mm-note" id="mmCommentHint">
         Enter the auditorium to post a comment.
@@ -1946,13 +1946,47 @@ function listenToLiveComments() {
   onValue(commentsRef, commentsListener);
 }
 
+function ensureLiveCommentStyle() {
+  if (document.getElementById("mmLiveCommentAnimationStyle")) return;
+  const style = document.createElement("style");
+  style.id = "mmLiveCommentAnimationStyle";
+  style.textContent = '.mm-comment{padding:10px 12px;margin:7px 0;border:1px solid rgba(211,170,76,.35);border-radius:10px;background:linear-gradient(110deg,#211b10,#171717 65%,#211b10);box-shadow:0 0 12px rgba(215,173,76,.10);overflow-wrap:anywhere}.mm-comment-arrive{animation:mmCommentGlowIn .55s ease both}@keyframes mmCommentGlowIn{0%{opacity:0;transform:translateY(12px) scale(.985);box-shadow:0 0 0 rgba(230,190,90,0)}65%{opacity:1;transform:translateY(-2px) scale(1.005);box-shadow:0 0 20px rgba(230,190,90,.32)}100%{opacity:1;transform:translateY(0) scale(1);box-shadow:0 0 12px rgba(215,173,76,.10)}}#mmCommentsList strong{color:#f0cc73}#mmCommentsList .mm-comment-time{color:#b6a57c;font-size:11px;margin-top:4px}@media(prefers-reduced-motion:reduce){.mm-comment-arrive{animation:none}}';
+  document.head.appendChild(style);
+}
+
+function wireCommentLanguageControls() {
+  document.querySelectorAll("#mmCommentLanguage").forEach(select => {
+    if (select.dataset.mmLanguageWired === "true") return;
+    select.dataset.mmLanguageWired = "true";
+    const input = select.closest("#mmCommentsSection, .mm-section")?.querySelector("#mmCommentInput")
+      || document.querySelector("#mmCommentInput");
+    const apply = () => {
+      if (!input) return;
+      input.lang = select.value === "hi" ? "hi" : "en";
+      input.spellcheck = true;
+    };
+    select.addEventListener("change", apply);
+    apply();
+  });
+}
+
 function renderLiveComments() {
+  ensureLiveCommentStyle();
+  wireCommentLanguageControls();
   const containers = document.querySelectorAll("#mmCommentsList");
   if (!containers.length) return;
+  const now = Date.now();
+  const visibleComments = liveComments.filter(comment =>
+    Number(comment.createdAt) > 0 && now - Number(comment.createdAt) < 120000
+  );
+  if (commentExpiryTimer) clearTimeout(commentExpiryTimer);
+  const nextExpiry = liveComments.map(comment => Number(comment.createdAt) + 120000)
+    .filter(expiry => expiry > now).sort((x,y) => x-y)[0];
+  if (nextExpiry) commentExpiryTimer = setTimeout(renderLiveComments, Math.max(100, nextExpiry-now+80));
 
   containers.forEach(container => {
     container.innerHTML = "";
-    if (!liveComments.length) {
+    if (!visibleComments.length) {
       const empty = document.createElement("span");
       empty.className = "mm-note";
       empty.textContent = "Be the first to comment.";
@@ -1960,9 +1994,9 @@ function renderLiveComments() {
       return;
     }
 
-    liveComments.forEach(comment => {
+    visibleComments.forEach(comment => {
       const item = document.createElement("div");
-      item.className = "mm-comment";
+      item.className = "mm-comment mm-comment-arrive";
       const name = document.createElement("strong");
       name.textContent = safeText(comment.name).slice(0, 60);
       const message = document.createElement("div");
@@ -1970,7 +2004,7 @@ function renderLiveComments() {
       const time = document.createElement("div");
       time.className = "mm-comment-time";
       const date = new Date(Number(comment.createdAt || 0));
-      time.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString();
+      time.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString() + " • disappears after 2 min";
       item.append(name, message, time);
       container.appendChild(item);
     });
