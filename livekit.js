@@ -99,6 +99,7 @@ let singerAutoJoinStarted = false;
 let roomRetryTimer = null;
 let roomRetryCount = 0;
 let recoverSingerMicAfterReconnect = false;
+let singerMicStarting = false;
 
 let lastReactionTimes = [];
 
@@ -3857,139 +3858,68 @@ async function startSingerKaraokeAudio() {
   if (!room || !isJoined) throw new Error("Not connected to the auditorium yet. Wait for Singer: Connected.");
   if (!isCurrentSingerAssignedToStage()) throw new Error("The host must assign you to the main stage.");
   if (!microphoneAllowed) throw new Error("The host must turn your microphone permission ON.");
-  if (publishedMicrophoneTrack &&
-      (publishedMicrophoneTrack.readyState || publishedMicrophoneTrack.mediaStreamTrack?.readyState) === "live") return;
-  if (publishedMicrophoneTrack) publishedMicrophoneTrack = null;
 
-  // Mobile singer: use LiveKit's LocalAudioTrack API rather than publishing
-  // a raw browser MediaStreamTrack. This keeps publication/unpublication and
-  // reconnect handling under LiveKit's track lifecycle.
-  const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isMobileBrowser || !navigator.mediaDevices?.getDisplayMedia) {
+  const existingTrack = publishedMicrophoneTrack &&
+    (publishedMicrophoneTrack.readyState || publishedMicrophoneTrack.mediaStreamTrack?.readyState);
+  if (existingTrack === "live") return;
+  if (singerMicStarting) return;
+  singerMicStarting = true;
+
+  let singerMicStream = null;
+  try {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Microphone access is not supported by this browser.");
     }
-    let singerMicStream = null;
-    try {
-      singerMicStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: false
-        },
-        video: false
-      });
-      rawMicrophoneTrack = singerMicStream.getAudioTracks()[0];
-      if (!rawMicrophoneTrack) throw new Error("No singer microphone was found.");
 
-      // Apply the host's shared Echo, Delay and Reverb settings to the
-      // singer's own microphone before publishing it to the auditorium.
-      audioEffects = new VirtualAudioEffects();
-      processedMicrophoneTrack = await audioEffects.start(rawMicrophoneTrack);
-      applySharedAudioSettingsToEffects();
-      audioEffects.setMuted(false);
-      await room.localParticipant.publishTrack(processedMicrophoneTrack, {
-        name: "Melody Magic Singer Processed Microphone",
-        source: Track.Source.Microphone
-      });
-      startSingerDirectMonitor(rawMicrophoneTrack);
-      publishedMicrophoneTrack = processedMicrophoneTrack;
-      singerKaraokeCaptureStream = new MediaStream([rawMicrophoneTrack]);
-      singerKaraokeAudioContext = null;
-      singerKaraokeMixTrack = processedMicrophoneTrack;
-      localMicEnabled = true;
-      recoverSingerMicAfterReconnect = false;
-      // Starting the microphone must not collapse the assigned singer's
-      // karaoke video. Re-apply visibility using the main-stage assignment.
-      updateKaraokePlayerAccess();
-
-      // Microphone activation must never start or restart the YouTube
-      // player locally. Only the host's scheduled play command may start it.
-      // This prevents the backing track from drifting when the singer taps
-      // the mic button at a different time from the host.
-      updateControlButtons();
-      const button = byId("mmSingerKaraokeAudioBtn");
-      if (button) button.textContent = "■ STOP MIC + KARAOKE AUDIO";
-      showMessage(
-        "Singer microphone is LIVE. Karaoke playback remains under host control.",
-        "success"
-      );
-      return;
-    } catch (error) {
-      if (processedMicrophoneTrack) {
-        try { await room.localParticipant.unpublishTrack(processedMicrophoneTrack, true); } catch (e) {}
-      }
-      if (audioEffects) { audioEffects.stop(); audioEffects = null; }
-      processedMicrophoneTrack = null;
-      publishedMicrophoneTrack = null;
-      if (singerMicStream) singerMicStream.getTracks().forEach(track => { try { track.stop(); } catch (e) {} });
-      rawMicrophoneTrack = null;
-      throw new Error("Singer microphone could not connect: " + (error?.message || error));
-    }
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error("Microphone access is not supported by this browser.");
-  }
-  let displayStream = null;
-  let micStream = null;
-  let mixContext = null;
-  try {
-    displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-    const tabAudio = displayStream.getAudioTracks()[0];
-    if (!tabAudio) throw new Error("No tab audio was shared. Select This Tab and tick Share tab audio.");
-    displayStream.getVideoTracks().forEach(track => track.stop());
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true },
+    // Keep microphone capture independent from screen/tab sharing. A karaoke
+    // tab ending or a browser share prompt can no longer tear down the singer mic.
+    singerMicStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false
+      },
       video: false
     });
-    const micTrack = micStream.getAudioTracks()[0];
-    if (!micTrack) throw new Error("No microphone was found.");
+    rawMicrophoneTrack = singerMicStream.getAudioTracks()[0];
+    if (!rawMicrophoneTrack) throw new Error("No singer microphone was found.");
 
     audioEffects = new VirtualAudioEffects();
-    const processedMicTrack = await audioEffects.start(micTrack);
+    processedMicrophoneTrack = await audioEffects.start(rawMicrophoneTrack);
     applySharedAudioSettingsToEffects();
-    audioEffects.setMonitor(Boolean(byId("mmSingerMonitor")?.checked), 160);
-    // Enable the processed audio track before mixing/publishing; effects start muted by default.
     audioEffects.setMuted(false);
 
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser.");
-    mixContext = new AudioContextClass();
-    await mixContext.resume();
-    const destination = mixContext.createMediaStreamDestination();
-    const karaokeSource = mixContext.createMediaStreamSource(new MediaStream([tabAudio]));
-    const micSource = mixContext.createMediaStreamSource(new MediaStream([processedMicTrack]));
-    const karaokeGain = mixContext.createGain();
-    const micGain = mixContext.createGain();
-    karaokeGain.gain.value = 0.85;
-    micGain.gain.value = 1;
-    karaokeSource.connect(karaokeGain).connect(destination);
-    micSource.connect(micGain).connect(destination);
-    const mixedTrack = destination.stream.getAudioTracks()[0];
-    await room.localParticipant.publishTrack(mixedTrack, {
-      name: "Melody Magic Singer Microphone + Karaoke Mix",
+    await room.localParticipant.publishTrack(processedMicrophoneTrack, {
+      name: "Melody Magic Singer Processed Microphone",
       source: Track.Source.Microphone
     });
-    singerKaraokeCaptureStream = new MediaStream([tabAudio, micTrack]);
-    singerKaraokeAudioContext = mixContext;
-    singerKaraokeMixTrack = mixedTrack;
-    rawMicrophoneTrack = micTrack;
-    processedMicrophoneTrack = processedMicTrack;
-    publishedMicrophoneTrack = mixedTrack;
+
+    startSingerDirectMonitor(rawMicrophoneTrack);
+    publishedMicrophoneTrack = processedMicrophoneTrack;
+    singerKaraokeCaptureStream = new MediaStream([rawMicrophoneTrack]);
+    singerKaraokeAudioContext = null;
+    singerKaraokeMixTrack = processedMicrophoneTrack;
     localMicEnabled = true;
-    tabAudio.addEventListener("ended", () => {
-      if (localMicEnabled && currentRole === "singer") stopMicrophoneEffects();
-    }, { once: true });
+    recoverSingerMicAfterReconnect = false;
+
+    updateKaraokePlayerAccess();
     updateControlButtons();
     const button = byId("mmSingerKaraokeAudioBtn");
-    if (button) button.textContent = "■ Stop microphone + karaoke audio";
-    showMessage("Your microphone and karaoke audio are live with the host's shared effects.", "success");
+    if (button) button.textContent = "■ STOP MIC + KARAOKE AUDIO";
+    showMessage("Singer microphone is LIVE. Karaoke playback remains under host control.", "success");
   } catch (error) {
-    if (mixContext) { try { await mixContext.close(); } catch (e) {} }
+    if (processedMicrophoneTrack && room?.localParticipant) {
+      try { await room.localParticipant.unpublishTrack(processedMicrophoneTrack, true); } catch (e) {}
+    }
     if (audioEffects) { audioEffects.stop(); audioEffects = null; }
-    if (displayStream) displayStream.getTracks().forEach(track => track.stop());
-    if (micStream) micStream.getTracks().forEach(track => track.stop());
-    throw error;
+    processedMicrophoneTrack = null;
+    publishedMicrophoneTrack = null;
+    if (singerMicStream) singerMicStream.getTracks().forEach(track => { try { track.stop(); } catch (e) {} });
+    rawMicrophoneTrack = null;
+    localMicEnabled = false;
+    throw new Error("Singer microphone could not connect: " + (error?.message || error));
+  } finally {
+    singerMicStarting = false;
   }
 }
 
