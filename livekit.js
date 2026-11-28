@@ -1304,10 +1304,6 @@ function createPanel() {
         
       </div>
       <div class="mm-effect-control">
-        <label><input id="mmHostKaraokeMonitor" type="checkbox" checked> 🎵 Host: hear YouTube karaoke on this device</label>
-        
-      </div>
-      <div class="mm-effect-control">
         <label><input id="mmHostSelfMonitor" type="checkbox"> 🎤 Hear my own voice (headphones)</label>
         <div id="mmHostMicLevel" role="meter" aria-label="Host microphone input level" style="height:12px;background:#333;border-radius:8px;overflow:hidden;margin:8px 0"><div id="mmHostMicLevelBar" style="height:100%;width:0%;background:#d7ad4c;transition:width .08s"></div></div>
         
@@ -1606,27 +1602,7 @@ function createPanel() {
     byId("mmHostSelfMonitor")?.addEventListener("change", event => {
       setHostDirectMonitor(event.target.checked);
     });
-    byId("mmHostKaraokeMonitor")?.addEventListener("change", event => {
-      const player = youtubePlayer;
-      if (!player) {
-        showMessage("Load the YouTube karaoke video first.", "warning");
-        event.target.checked = false;
-        return;
-      }
-      try {
-        if (event.target.checked) {
-          player.unMute();
-          player.setVolume(100);
-          player.playVideo();
-          showMessage("YouTube karaoke audio is ON for the host device.", "success");
-        } else {
-          player.mute();
-          showMessage("YouTube karaoke audio is muted on the host device.", "success");
-        }
-      } catch (error) {
-        showMessage("Could not change host karaoke audio: " + error.message, "error");
-      }
-    });
+
   }
 
   // Wire the host's actual tab-audio sharing control after the panel exists.
@@ -2165,7 +2141,7 @@ function updateKaraokePlayerAccess() {
     try { youtubePlayer.mute(); youtubePlayer.pauseVideo(); } catch (error) {}
   } else if (canReceiveAudio && youtubePlayer && currentRole === "host") {
     try {
-      if (stageSingerUids.length > 0 && byId("mmHostKaraokeMonitor")?.checked) {
+      if (stageSingerUids.length > 0) {
         youtubePlayer.unMute();
         youtubePlayer.setVolume(100);
       } else {
@@ -2530,10 +2506,7 @@ async function applyPlayback(data) {
     // Keep the host player audible when its monitor checkbox is ON; this is also
     // the tab audio captured by Share Karaoke With Everyone.
     if (currentRole === "host" || isHost) {
-      const hostMonitorOn = byId("mmHostKaraokeMonitor")
-        ? byId("mmHostKaraokeMonitor").checked
-        : true;
-      if (stageSingerUids.length > 0 && hostMonitorOn) {
+      if (stageSingerUids.length > 0) {
         player.setVolume(100);
         player.unMute();
       } else {
@@ -3565,7 +3538,7 @@ function armRemoteAudioUnlock() {
     }
     if (youtubePlayer) {
       const hostKaraokeOn = currentRole === "host"
-        ? Boolean(byId("mmHostKaraokeMonitor")?.checked)
+        ? stageSingerUids.length > 0
         : singerKaraokePlaybackRequested;
       if (hostKaraokeOn || singerKaraokePlaybackRequested) {
         try {
