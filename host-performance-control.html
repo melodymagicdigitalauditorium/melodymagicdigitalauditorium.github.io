@@ -1061,20 +1061,64 @@ function renderCurrentPerformer(data){
 
 function startPerformanceListener(){
 
-  const stop=onValue(
+  const performanceStop=onValue(
     ref(db,"livePerformance/"+showId),
-
     snap=>{
       currentPerformance=snap.val()||{};
       renderCurrentPerformer(currentPerformance);
     },
-
-    error=>{
-      console.error("Performance listener:",error);
-    }
+    error=>console.error("Performance listener:",error)
   );
+  listeners.push(performanceStop);
 
-  listeners.push(stop);
+  // The live stage assignment is authoritative for who is physically on
+  // stage. Refresh the performer panel immediately when the host assigns
+  // themselves or an approved singer, even before livePerformance updates.
+  let stageRenderToken=0;
+  const stageStop=onValue(
+    ref(db,"liveStage/"+showId),
+    async snap=>{
+      const token=++stageRenderToken;
+      const stage=snap.val()||{};
+      const raw=stage.singerUids||[];
+      const uids=(Array.isArray(raw)?raw:Object.values(raw)).map(String).filter(Boolean);
+      if(!uids.length){
+        renderCurrentPerformer(currentPerformance);
+        return;
+      }
+
+      const registrationsSnap=await get(ref(db,"showRegistrations/"+showId));
+      if(token!==stageRenderToken)return;
+      const registrations=registrationsSnap.val()||{};
+      const names=(Array.isArray(stage.singerNames)?stage.singerNames:Object.values(stage.singerNames||{}));
+      const assigned=uids.map((uid,index)=>{
+        if(currentUser&&uid==="host-"+currentUser.uid){
+          return {name:"Host (me)",isHost:true};
+        }
+        const registration=Object.values(registrations).find(item=>item&&String(item.singerUid||item.uid||"")===uid);
+        return {
+          name:registration?.singerName||registration?.name||names[index]||"Approved singer",
+          language:registration?.language||"",
+          soloCount:Number(registration?.soloCount||0),
+          duetCount:Number(registration?.duetCount||0),
+          isHost:false
+        };
+      });
+      if(token!==stageRenderToken)return;
+      renderCurrentPerformer({
+        name:assigned.map(person=>person.name).join(" + "),
+        currentPerformerName:assigned.map(person=>person.name).join(" + "),
+        language:assigned.map(person=>person.language).filter(Boolean).join(", "),
+        soloCount:assigned.reduce((sum,person)=>sum+person.soloCount,0),
+        duetCount:assigned.reduce((sum,person)=>sum+person.duetCount,0),
+        status:"Performing",
+        performanceStatus:"Performing",
+        isHost:assigned.some(person=>person.isHost)
+      });
+    },
+    error=>console.error("Main-stage assignment listener:",error)
+  );
+  listeners.push(stageStop);
 }
 
 function sortedQueue(){
