@@ -134,18 +134,18 @@ body.mm-active-performer #mmYoutubePlayer iframe{width:100%!important;aspect-rat
 body.mm-active-performer #mmYoutubePlayer .card,body.mm-active-performer #mmYoutubePlayer .mm-card{width:100%!important;max-width:none!important}
 @media(max-width:700px){body.mm-active-performer #karaokeSection{order:2!important}body.mm-active-performer #livekitArea{order:3!important}}
 
-/* Final host dashboard order: auditorium above queue, host controls at bottom. */
-#showSummary{grid-column:1/-1!important;grid-row:2!important}
-#livekitArea{grid-column:1/-1!important;grid-row:3!important}
-#queueSection{grid-column:1!important;grid-row:4!important}
-#karaokeSection{grid-column:2!important;grid-row:4!important}
-#currentPerformerSection{grid-column:1/-1!important;grid-row:5!important}
-#hostControls{grid-column:1/-1!important;grid-row:6!important}
+/* Final host dashboard order: YouTube player at the top; host controls at the bottom. */
+#karaokeSection{grid-column:1/-1!important;grid-row:2!important}
+#showSummary{grid-column:1/-1!important;grid-row:3!important}
+#livekitArea{grid-column:1/-1!important;grid-row:4!important}
+#queueSection{grid-column:1!important;grid-row:5!important}
+#currentPerformerSection{grid-column:1/-1!important;grid-row:6!important}
+#hostControls{grid-column:1/-1!important;grid-row:7!important}
 @media(max-width:700px){
-  #showSummary{order:1!important}
-  #livekitArea{order:2!important}
-  #queueSection{order:3!important}
-  #karaokeSection{order:4!important}
+  #karaokeSection{order:1!important}
+  #showSummary{order:2!important}
+  #livekitArea{order:3!important}
+  #queueSection{order:4!important}
   #currentPerformerSection{order:5!important}
   #hostControls{order:6!important}
 }
