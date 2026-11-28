@@ -1632,10 +1632,10 @@ async function loadShow() {
   currentShow = snapshot.val();
 
   const showTitle =
+    currentShow.name ||
     currentShow.showName ||
     currentShow.title ||
-    currentShow.name ||
-    "SHOW NAME";
+    "Melody Magic Digital Auditorium";
 
   const performersHeading = byId("mmPerformersHeading");
   if (performersHeading) {
