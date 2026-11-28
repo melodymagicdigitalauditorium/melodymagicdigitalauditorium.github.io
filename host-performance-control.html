@@ -458,22 +458,17 @@ function listenToHostStageView(){
 }
 
 function setHostSingerView(assigned){
+  // Keep the host's YouTube player visible at the top at all times.
+  // Only local karaoke audio behavior changes when the host is not performing.
   hostWatchingSinger=!!assigned;
   const playerBox=$("videoPlayer");
   if(playerBox){
-    if(hostWatchingSinger){
-      playerBox.style.position="fixed";
-      playerBox.style.left="-10000px";
-      playerBox.style.top="0";
-      playerBox.style.width="220px";
-      playerBox.style.height="220px";
-    }else{
-      playerBox.style.position="";
-      playerBox.style.left="";
-      playerBox.style.top="";
-      playerBox.style.width="100%";
-      playerBox.style.height="100%";
-    }
+    playerBox.style.position="relative";
+    playerBox.style.left="0";
+    playerBox.style.top="0";
+    playerBox.style.width="100%";
+    playerBox.style.height="auto";
+    playerBox.style.display="block";
   }
   applyHostLocalKaraokeAudio();
 }
