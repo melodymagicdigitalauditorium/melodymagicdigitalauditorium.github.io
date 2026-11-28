@@ -1782,8 +1782,8 @@ function isPublicInteractionConnected() {
 function updateReactionButtons() {
   const connected = isPublicInteractionConnected();
   document.querySelectorAll("#mmReactionButtons [data-reaction]").forEach(button => {
-    button.disabled = !connected;
-    button.setAttribute("aria-disabled", String(!connected));
+    button.disabled = false;
+    button.setAttribute("aria-disabled", "false");
   });
   document.querySelectorAll("#mmReactionHint").forEach(hint => {
     hint.textContent = connected
@@ -2021,7 +2021,7 @@ async function sendLiveComment(inputElement = null, buttonElement = null) {
       "error"
     );
   } finally {
-    if (button) button.disabled = !isJoined || !currentUser;
+    if (button) button.disabled = false;
   }
 }
 
@@ -2042,8 +2042,8 @@ window.MelodyMagicSendComment = function(button) {
 function updateCommentControls() {
   const connected = isPublicInteractionConnected();
   document.querySelectorAll("#mmSendCommentBtn").forEach(button => {
-    button.disabled = !connected || !currentUser;
-    button.setAttribute("aria-disabled", String(!connected || !currentUser));
+    button.disabled = false;
+    button.setAttribute("aria-disabled", "false");
   });
   document.querySelectorAll("#mmCommentHint").forEach(hint => {
     hint.textContent = connected
