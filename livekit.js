@@ -3820,11 +3820,18 @@ function startSingerDirectMonitor(track) {
     singerDirectMonitorContext = new AudioContextClass({ latencyHint: "interactive" });
     singerDirectMonitorSource = singerDirectMonitorContext.createMediaStreamSource(new MediaStream([track]));
     singerDirectMonitorGain = singerDirectMonitorContext.createGain();
+    // Singer self-monitor is deliberately disabled: it can feed the singer's
+    // own microphone back through speakers/headphones and create a delayed echo.
     singerDirectMonitorGain.gain.value = 0;
     singerDirectMonitorSource.connect(singerDirectMonitorGain);
     singerDirectMonitorGain.connect(singerDirectMonitorContext.destination);
     if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
-    setSingerDirectMonitor(Boolean(byId("mmSingerMonitor")?.checked));
+    setSingerDirectMonitor(false);
+    const singerMonitorControl = byId("mmSingerMonitor");
+    if (singerMonitorControl) {
+      singerMonitorControl.checked = false;
+      singerMonitorControl.disabled = true;
+    }
   } catch (error) {
     console.warn("Singer direct microphone monitor:", error);
     stopSingerDirectMonitor();
@@ -3834,7 +3841,9 @@ function startSingerDirectMonitor(track) {
 function setSingerDirectMonitor(enabled) {
   if (!singerDirectMonitorContext || !singerDirectMonitorGain) return;
   if (singerDirectMonitorContext.state === "suspended") singerDirectMonitorContext.resume().catch(error => console.warn("Singer monitor resume:", error));
-  singerDirectMonitorGain.gain.setTargetAtTime(enabled ? 0.25 : 0, singerDirectMonitorContext.currentTime, 0.03);
+  // Always keep local singer microphone playback muted, even if stale UI state
+  // or a prior checkbox event attempts to enable it.
+  singerDirectMonitorGain.gain.setTargetAtTime(0, singerDirectMonitorContext.currentTime, 0.01);
 }
 
 function stopSingerDirectMonitor() {
@@ -3866,8 +3875,8 @@ async function startSingerKaraokeAudio() {
     try {
       singerMicStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
+          echoCancellation: true,
+          noiseSuppression: true,
           autoGainControl: false
         },
         video: false
@@ -5191,8 +5200,12 @@ function wireSingerKaraokeAudioButton() {
   if (monitor && monitor.dataset.mmWired !== "true") {
     monitor.dataset.mmWired = "true";
     monitor.addEventListener("change", () => {
-      if (audioEffects && currentRole === "singer") audioEffects.setMonitor(monitor.checked, 160);
-      if (currentRole === "singer") setSingerDirectMonitor(monitor.checked);
+      if (currentRole === "singer") {
+        monitor.checked = false;
+        monitor.disabled = true;
+        if (audioEffects) audioEffects.setMonitor(false, 0);
+        setSingerDirectMonitor(false);
+      }
     });
   }
   const button = byId("mmSingerKaraokeAudioBtn");
