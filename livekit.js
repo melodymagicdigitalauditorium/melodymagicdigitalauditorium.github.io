@@ -2019,6 +2019,20 @@ async function sendLiveComment(inputElement = null, buttonElement = null) {
   }
 }
 
+ 
+// Stable public handlers for the singer page's static controls.
+// These bypass dynamic panel/delegated event binding entirely.
+window.MelodyMagicSendReaction = function(emoji) {
+  const status = byId("mmLiveStatus");
+  if (status) status.textContent = "Sending reaction " + emoji + "...";
+  return sendReaction(emoji);
+};
+window.MelodyMagicSendComment = function(button) {
+  const section = button?.closest("#mmCommentsSection");
+  const input = section?.querySelector("#mmCommentInput");
+  return sendLiveComment(input, button);
+};
+
 function updateCommentControls() {
   document.querySelectorAll("#mmSendCommentBtn").forEach(button => {
     button.disabled = !isJoined || !currentUser;
