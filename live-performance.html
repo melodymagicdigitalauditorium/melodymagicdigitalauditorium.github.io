@@ -69,6 +69,9 @@ import {ref,get} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-datab
   const snap=await get(ref(db,"shows/"+showId));
   if(!snap.exists())return;
   const s=snap.val()||{};
+  const showHeading=document.getElementById("mmPerformersHeading");
+  const actualShowName=String(s.name||s.showName||s.title||"").trim();
+  if(showHeading)showHeading.textContent="🎤 "+(actualShowName||"Melody Magic Digital Auditorium")+" — PERFORMERS";
   const date=String(s.showDate||s.date||"").trim();
   const time=String(s.showTime||s.time||"00:00").trim();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
