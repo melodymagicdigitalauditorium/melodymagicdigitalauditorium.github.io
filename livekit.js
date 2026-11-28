@@ -181,6 +181,7 @@ class VirtualAudioEffects {
     this.reverbGain = null;
     this.outputGain = null;
     this.monitorGain = null;
+    this.compressor = null;
 
     this.monitorEnabled = false;
     this.monitorUsesProcessed = false;
@@ -246,12 +247,22 @@ class VirtualAudioEffects {
     this.reverbGain.connect(this.wetGain);
 
     this.outputGain = this.context.createGain();
-    this.outputGain.gain.value = 0.8;
+    // Leave headroom before the live vocal is encoded by the browser/LiveKit.
+    this.outputGain.gain.value = 0.68;
 
     this.dryGain.connect(this.outputGain);
     this.wetGain.connect(this.outputGain);
 
-    this.outputGain.connect(this.destination);
+    // Gentle peak control reduces clipping on loud notes without adding
+    // intentional delay to the karaoke player or its synchronization clock.
+    this.compressor = this.context.createDynamicsCompressor();
+    this.compressor.threshold.value = -18;
+    this.compressor.knee.value = 18;
+    this.compressor.ratio.value = 2.5;
+    this.compressor.attack.value = 0.004;
+    this.compressor.release.value = 0.18;
+    this.outputGain.connect(this.compressor);
+    this.compressor.connect(this.destination);
 
     this.monitorGain = this.context.createGain();
     this.monitorGain.gain.value = 0;
@@ -460,6 +471,7 @@ class VirtualAudioEffects {
     this.reverbGain = null;
     this.outputGain = null;
     this.monitorGain = null;
+    this.compressor = null;
   }
 }
 
@@ -1293,7 +1305,7 @@ function createPanel() {
       <p id="mmHostMicStatus" class="mm-note">Host mic status.</p>
       <div class="mm-effect-control" style="grid-column:1/-1;padding:9px 10px;background:#211b10;border:1px solid #705523;border-radius:8px">
         <strong style="color:#e9bd57">✨ Professional Auditorium Vocal Space</strong>
-        <div class="mm-note" style="margin-top:4px">Balanced short echo + warm room reverb. Automatically tuned for a clear, natural live vocal — no manual sliders.</div>
+        <div class="mm-note" style="margin-top:4px">Clean vocal first, with a very light auditorium echo and room ambience.</div>
       </div>
       <div class="mm-effect-control">
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
@@ -3655,12 +3667,12 @@ function normalizeSharedAudioSettings(value = {}) {
   return {
     // A modest, audible vocal-space preset: short repeat, restrained feedback,
     // warm room tail and enough dry signal to keep words clear.
-    echo: 22,
-    delay: 260,
-    feedback: 16,
-    reverb: 18,
-    mix: 28,
-    volume: 80
+    echo: 6,
+    delay: 220,
+    feedback: 5,
+    reverb: 9,
+    mix: 12,
+    volume: 72
   };
 }
 
@@ -4099,7 +4111,7 @@ async function startMicrophoneEffects() {
   localMicEnabled = true;
   if (byId("mmEffectsStatus")) {
     byId("mmEffectsStatus").textContent =
-      "Host microphone is live with the balanced professional auditorium vocal preset.";
+      "Host microphone is live with a clean, lightly compressed vocal preset.";
   }
   updateControlButtons();
 }
