@@ -3619,6 +3619,16 @@ function attachTrackToTile(track, targetId, isRemote = false) {
   }
 
   if (!target) return;
+
+  // LiveKit may report the same camera track through initial participant
+  // sync and TrackSubscribed. Never create a second video element for it.
+  if (track.kind === Track.Kind.Video) {
+    const trackKey = track.sid || track.mediaStreamTrack?.id || "";
+    const alreadyAttached = Array.from(target.querySelectorAll("video[data-mm-livekit-track]"))
+      .some(video => video.dataset.mmLivekitTrack === trackKey);
+    if (alreadyAttached) return;
+  }
+
   const attached = track.attach();
   const elements = Array.isArray(attached) ? attached : [attached];
   elements.forEach(element => {
@@ -3628,6 +3638,7 @@ function attachTrackToTile(track, targetId, isRemote = false) {
       element.style.maxHeight = "360px";
       element.autoplay = true;
       element.playsInline = true;
+      element.dataset.mmLivekitTrack = track.sid || track.mediaStreamTrack?.id || "";
     }
     if (!target.contains(element)) target.appendChild(element);
     updateParticipantGalleryVisibility();
