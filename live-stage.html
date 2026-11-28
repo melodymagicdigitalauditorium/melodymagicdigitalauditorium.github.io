@@ -42,9 +42,12 @@ main{max-width:1100px;padding:7px;grid-template-columns:minmax(0,1fr);gap:7px}
 #livekitArea{margin:0!important}
 #mmLiveKitPanel{padding:5px!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:5px!important}
 #mmLiveStatus,#mmRoleInfo,#mmJoinBtn,#mmLeaveBtn{grid-column:1/-1!important}
-#mmVideoGrid{grid-column:1/-1!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;align-items:stretch!important}
-#mmVideoGrid .mm-video-box,#mmVideoGrid .mm-main-stage,#mmVideoGrid .mm-waiting-stage{grid-column:auto!important;min-height:0!important;opacity:1!important}
-#mmVideoGrid video,#mmVideoGrid .mm-main-stage video,#mmVideoGrid .mm-waiting-stage video{width:100%!important;min-height:0!important;height:auto!important;max-height:32vh!important;aspect-ratio:4/3!important;object-fit:cover!important}
+#mmVideoGrid{grid-column:1/-1!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:6px!important;align-items:start!important}
+#mmVideoGrid .mm-video-box{grid-column:auto!important;min-height:0!important;opacity:1!important}
+#mmVideoGrid .mm-main-stage{grid-column:1/-1!important;min-height:0!important;border:2px solid var(--gold)!important}
+#mmVideoGrid .mm-main-stage video{width:100%!important;min-height:220px!important;height:auto!important;max-height:62vh!important;aspect-ratio:16/9!important;object-fit:contain!important}
+#mmVideoGrid .mm-waiting-stage{grid-column:span 1!important;min-height:0!important;opacity:.92!important}
+#mmVideoGrid .mm-waiting-stage video{width:100%!important;min-height:90px!important;height:auto!important;max-height:180px!important;aspect-ratio:4/3!important;object-fit:cover!important}
 #mmVideoGrid .mm-video-name{font-size:11px!important;padding:4px!important}
 #mmCommentsList,#mmCommentInput,#mmSendCommentBtn,#mmCommentHint,#mmReactionSection{grid-column:1/-1!important}
 #mmCommentsList{max-height:22vh!important}
@@ -69,8 +72,10 @@ footer{padding:5px;font-size:11px}
  main{padding:5px;gap:5px}
  .sidebar{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
  .card{padding:7px;margin-bottom:5px}
- #mmVideoGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
- #mmVideoGrid video,#mmVideoGrid .mm-main-stage video,#mmVideoGrid .mm-waiting-stage video{min-height:0!important;max-height:30vh!important;aspect-ratio:4/3!important}
+ #mmVideoGrid{grid-template-columns:minmax(0,1fr)!important}
+ #mmVideoGrid .mm-main-stage{grid-column:1/-1!important}
+ #mmVideoGrid .mm-main-stage video{min-height:190px!important;max-height:50vh!important;aspect-ratio:16/9!important}
+ #mmVideoGrid .mm-waiting-stage video{min-height:90px!important;max-height:145px!important;aspect-ratio:4/3!important}
  #mmCommentsList{max-height:20vh!important}
  #mmYoutubePlayer{max-width:100%!important}
  body[data-mode="host"] #mmYoutubePlayer,body[data-mode="singer"] #mmYoutubePlayer{max-width:100%!important;min-height:0!important}

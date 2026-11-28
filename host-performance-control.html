@@ -260,7 +260,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
 const showId=new URLSearchParams(location.search).get("showId");
-const singerJoinUrl=new URL("live-stage.html?showId="+encodeURIComponent(showId||""),location.href).href;
+const singerJoinUrl=new URL("live-stage.html?showId="+encodeURIComponent(showId||"")+"&mode=singer",location.href).href;
 const singerJoinLink=document.getElementById("singerJoinLink");
 if(singerJoinLink){singerJoinLink.href=singerJoinUrl;singerJoinLink.textContent=singerJoinUrl;}
 document.getElementById("copySingerJoinLink")?.addEventListener("click",async()=>{
