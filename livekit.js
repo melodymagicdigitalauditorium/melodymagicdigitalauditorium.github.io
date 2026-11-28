@@ -1551,19 +1551,8 @@ function createPanel() {
     selectMainSingers
   );
 
-  byId("mmReactionButtons").addEventListener("click", event => {
-    const button = event.target.closest("[data-reaction]");
-    if (button) sendReaction(button.dataset.reaction);
-  });
-
-  byId("mmSendCommentBtn").addEventListener(
-    "click",
-    sendLiveComment
-  );
-
-  byId("mmCommentInput").addEventListener("keydown", event => {
-    if (event.key === "Enter") sendLiveComment();
-  });
+  // Comment and reaction clicks are handled once by the shared delegated
+  // listeners in wirePublicInteractionControls().
 
   // Recorder controls are independent of the effects panel. Bind them
   // directly on the host page so mobile hosts can record even if the
