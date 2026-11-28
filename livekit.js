@@ -1291,17 +1291,9 @@ function createPanel() {
       <h3>🎙️ Main-stage Microphone Effects</h3>
       <button id="mmHostMicToggle" type="button" disabled>🎙️ HOST MIC: CONNECTING…</button>
       <p id="mmHostMicStatus" class="mm-note">Host mic status.</p>
-      <div class="mm-effect-control">
-        <label>Echo: <strong id="mmEchoValue">0%</strong></label>
-        <input id="mmEcho" type="range" min="0" max="100" value="0">
-      </div>
-      <div class="mm-effect-control">
-        <label>Echo delay: <strong id="mmDelayValue">0 ms</strong></label>
-        <input id="mmDelay" type="range" min="0" max="1000" value="0">
-      </div>
-      <div class="mm-effect-control">
-        <label>Reverb: <strong id="mmReverbValue">0%</strong></label>
-        <input id="mmReverb" type="range" min="0" max="100" value="0">
+      <div class="mm-effect-control" style="grid-column:1/-1;padding:9px 10px;background:#211b10;border:1px solid #705523;border-radius:8px">
+        <strong style="color:#e9bd57">✨ Professional Auditorium Vocal Space</strong>
+        <div class="mm-note" style="margin-top:4px">Balanced short echo + warm room reverb. Automatically tuned for a clear, natural live vocal — no manual sliders.</div>
       </div>
       <div class="mm-effect-control">
         <label><input id="mmHostSingerMonitor" type="checkbox" checked> 🎧 Hear singer's voice on this device</label>
@@ -3662,12 +3654,14 @@ function updateParticipantGalleryVisibility() {
 ========================================= */
 
 function normalizeSharedAudioSettings(value = {}) {
+  // Fixed subtle auditorium vocal preset: short echo and warm room reverb.
+  // A low wet mix keeps the vocal clear; old per-effect slider values are ignored.
   return {
-    echo: Math.max(0, Math.min(100, Number(value.echo ?? 0))),
-    delay: Math.max(0, Math.min(1000, Number(value.delay ?? 0))),
-    feedback: 18,
-    reverb: Math.max(0, Math.min(100, Number(value.reverb ?? 0))),
-    mix: 0,
+    echo: 5,
+    delay: 240,
+    feedback: 12,
+    reverb: 12,
+    mix: 16,
     volume: 80
   };
 }
