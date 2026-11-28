@@ -474,8 +474,8 @@ function listenToHostStageView(){
 }
 
 function setHostSingerView(assigned){
-  // Keep the host's YouTube player visible at the top at all times.
-  // Only local karaoke audio behavior changes when the host is not performing.
+  // A singer's private karaoke video belongs only on that singer's page.
+  // Show the host player only while the host is assigned to the main stage.
   hostWatchingSinger=!!assigned;
   const playerBox=$("videoPlayer");
   if(playerBox){
@@ -484,7 +484,10 @@ function setHostSingerView(assigned){
     playerBox.style.top="0";
     playerBox.style.width="100%";
     playerBox.style.height="auto";
-    playerBox.style.display="block";
+    playerBox.style.display=hostWatchingSinger?"none":"block";
+  }
+  if(hostWatchingSinger && youtubePlayer && playerReady){
+    try{youtubePlayer.pauseVideo();youtubePlayer.mute();}catch(error){}
   }
   applyHostLocalKaraokeAudio();
 }
@@ -559,7 +562,7 @@ function startDriftCorrection(){
   if(syncInterval)return;
 
   syncInterval=setInterval(async()=>{
-    if(!playbackData||playbackData.state!=="playing"||!playerReady||!youtubePlayer)return;
+    if(hostWatchingSinger||!playbackData||playbackData.state!=="playing"||!playerReady||!youtubePlayer)return;
 
     try{
       const now=Date.now();
@@ -586,6 +589,9 @@ function startDriftCorrection(){
 }
 async function applyPlayback(data){
 
+  // Do not load or display the global karaoke video while another singer is
+  // on stage. Their assigned video is private to their singer page.
+  if(hostWatchingSinger)return;
   if(!data||!data.videoId)return;
 
   playbackData=data;
