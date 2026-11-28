@@ -442,34 +442,38 @@ card.append(image,info);
 return card;
 }
 
+function getShowStartDate(show){
+const date=String(show.showDate||show.date||"").trim();
+const time=String(show.showTime||show.time||"00:00").trim();
+if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return null;
+const match=/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(time);
+if(!match)return null;
+const start=new Date(date+"T"+match[1].padStart(2,"0")+":"+match[2]+":"+(match[3]||"00"));
+return Number.isFinite(start.getTime())?start:null;
+}
+
 function renderShows(){
 
 showsContainer.replaceChildren();
 
+const THREE_DAYS_MS=3*24*60*60*1000;
+const now=Date.now();
+
 const shows=Object.entries(publishedShows)
 .filter(([id,show])=>{
 if(!show||!(show.status==="Published"||show.status==="Live"))return false;
-const date=String(show.showDate||show.date||"").trim();
-const time=String(show.showTime||show.time||"00:00").trim();
-if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return true;
-const match=/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?$/.exec(time);
-if(!match)return true;
-const start=new Date(date+"T"+match[1].padStart(2,"0")+":"+match[2]+":"+(match[3]||"00"));
-return !Number.isFinite(start.getTime())||Date.now()<start.getTime();
+const start=getShowStartDate(show);
+// Keep records with missing/invalid dates visible rather than accidentally hiding them.
+if(!start)return true;
+// Keep the show poster on the homepage for 3 days after its scheduled date/time,
+// then hide it from the homepage only. Firebase show and poster records are untouched.
+return now<start.getTime()+THREE_DAYS_MS;
 })
 .map(([id,show])=>({id,...show}));
 
 shows.sort((a,b)=>{
-const dateA=new Date(
-(a.showDate||a.date||"")+"T"+
-(a.showTime||a.time||"00:00")
-);
-
-const dateB=new Date(
-(b.showDate||b.date||"")+"T"+
-(b.showTime||b.time||"00:00")
-);
-
+const dateA=getShowStartDate(a)||new Date(8640000000000000);
+const dateB=getShowStartDate(b)||new Date(8640000000000000);
 return dateA-dateB;
 });
 
