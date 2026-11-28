@@ -1398,13 +1398,6 @@ function createPanel() {
     </div>
 
     <div class="mm-section">
-      <h3>📋 Upcoming Performers</h3>
-      <div id="mmQueueList" class="mm-card mm-list">
-        <span class="mm-note">Waiting for the performer queue.</span>
-      </div>
-    </div>
-
-    <div class="mm-section">
       <h3>💬 Live Auditorium Comments</h3>
       <div id="mmCommentsList" class="mm-card mm-list">
         <span class="mm-note">Comments will appear here.</span>
@@ -1531,8 +1524,7 @@ function createPanel() {
     makeServiceDropdown("💬 Reactions & Live Comments", [reactions, comments]);
 
     const showStats = panel.querySelector(".mm-two-column");
-    const upcoming = byId("mmQueueList")?.closest(".mm-section");
-    makeServiceDropdown("📋 Show Information & Singer Queue", [showStats, upcoming]);
+    makeServiceDropdown("📋 Show Information", [showStats]);
 
     const hostCamera = byId("mmHostVideoGrid")?.closest(".mm-section");
     makeServiceDropdown("🎥 Host Camera", [hostCamera]);
