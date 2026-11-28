@@ -2635,41 +2635,10 @@ function applySingerKaraokeAudioRouting() {
   }
 }
 
-function startSingerPlaybackClockSync() {
-  if (!showId || requestedMode !== "singer") return;
-  if (singerPlaybackClockStop) singerPlaybackClockStop();
-  if (singerPlaybackClockTimer) clearInterval(singerPlaybackClockTimer);
-  const clockRef = ref(db, "karaokePlayback/" + showId);
-  singerPlaybackClockStop = onValue(clockRef, snapshot => {
-    singerPlaybackClockData = snapshot.val() || null;
-  }, error => {
-    console.warn("[Melody Magic] Singer playback clock unavailable:", error);
-  });
-
-  // The host page publishes a fresh playback-position heartbeat every few
-  // seconds. Use it only to correct the singer's existing private player;
-  // this listener never creates a player or starts playback.
-  singerPlaybackClockTimer = setInterval(() => {
-    const data = singerPlaybackClockData;
-    if (!data || data.state !== "playing" || !singerKaraokePlaybackRequested) return;
-    if (!youtubePlayer || !lastYoutubeVideoId || data.videoId !== lastYoutubeVideoId) return;
-    try {
-      if (typeof youtubePlayer.getPlayerState === "function" && youtubePlayer.getPlayerState() !== 1) return;
-      const anchorAt = Number(data.syncAt || data.startedAt || 0);
-      const anchorPosition = Number(data.syncPosition ?? data.basePosition ?? 0);
-      if (!anchorAt) return;
-      const target = anchorPosition + Math.max(0, Date.now() - anchorAt) / 1000;
-      const current = Number(youtubePlayer.getCurrentTime?.() || 0);
-      // Avoid constant seeking for tiny differences; a larger correction is
-      // useful after mobile buffering or a YouTube advertisement interruption.
-      if (Math.abs(target - current) > 1.25) {
-        youtubePlayer.seekTo(target, true);
-      }
-    } catch (error) {
-      console.warn("[Melody Magic] Singer video sync correction:", error);
-    }
-  }, 1200);
-}
+// Singer-assigned karaoke uses only singerKaraoke/{showId}/{singerUid}
+// command timestamps. Do not apply the show's general karaokePlayback clock
+// here: it belongs to the host/audience player and can seek a singer's private
+// track forward when the two playback anchors differ.
 
 function listenToSingerKaraokeVideo() {
   if (!showId || !currentUser || requestedMode !== "singer" || !singerMobile) return;
@@ -2678,7 +2647,6 @@ function listenToSingerKaraokeVideo() {
   const singerUid = getSingerParticipantUid();
   if (!singerUid) return;
   const singerVideoRef = ref(db, "singerKaraoke/" + showId + "/" + singerUid);
-  startSingerPlaybackClockSync();
   if (singerKaraokeListener) off(singerVideoRef, "value", singerKaraokeListener);
   let lastSingerCommandAt = 0;
   let lastSingerVideoId = "";
