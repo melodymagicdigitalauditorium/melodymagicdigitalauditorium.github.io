@@ -1787,58 +1787,50 @@ async function getAccessToken() {
 ========================================= */
 
 function updateReactionButtons() {
-  document.querySelectorAll(
-    "#mmReactionButtons [data-reaction]"
-  ).forEach(button => {
+  document.querySelectorAll("#mmReactionButtons [data-reaction]").forEach(button => {
     button.disabled = !isJoined || !room;
   });
-
-  const hint = byId("mmReactionHint");
-
-  if (hint) {
+  document.querySelectorAll("#mmReactionHint").forEach(hint => {
     hint.textContent = isJoined
       ? "You are connected. Reactions are visible to everyone."
       : "Enter the auditorium to send and receive reactions.";
-  }
+  });
 }
 
 function showReaction(emoji, senderName) {
   if (!ALLOWED_REACTIONS.includes(emoji)) return;
 
-  const overlay = byId("mmReactionOverlay");
-  if (!overlay) return;
+  const overlays = document.querySelectorAll("#mmReactionOverlay");
+  if (!overlays.length) return;
 
-  const empty = overlay.querySelector(".mm-note");
-  if (empty) empty.remove();
+  overlays.forEach(overlay => {
+    const empty = overlay.querySelector(".mm-note");
+    if (empty) empty.remove();
 
-  const item = document.createElement("span");
-  item.className = "mm-reaction-item";
+    const item = document.createElement("span");
+    item.className = "mm-reaction-item";
 
-  const emojiSpan = document.createElement("span");
-  emojiSpan.className = "mm-reaction-emoji";
-  emojiSpan.textContent = emoji;
+    const emojiSpan = document.createElement("span");
+    emojiSpan.className = "mm-reaction-emoji";
+    emojiSpan.textContent = emoji;
 
-  const nameSpan = document.createElement("span");
-  nameSpan.textContent =
-    safeText(senderName || "Participant").slice(0, 60);
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = safeText(senderName || "Participant").slice(0, 60);
 
-  item.append(emojiSpan, nameSpan);
-  overlay.appendChild(item);
+    item.append(emojiSpan, nameSpan);
+    overlay.appendChild(item);
+    while (overlay.children.length > 18) overlay.firstElementChild.remove();
 
-  while (overlay.children.length > 18) {
-    overlay.firstElementChild.remove();
-  }
-
-  setTimeout(() => {
-    if (item.isConnected) item.remove();
-
-    if (!overlay.children.length) {
-      const message = document.createElement("span");
-      message.className = "mm-note";
-      message.textContent = "Live reactions will appear here.";
-      overlay.appendChild(message);
-    }
-  }, 12000);
+    setTimeout(() => {
+      if (item.isConnected) item.remove();
+      if (!overlay.children.length) {
+        const message = document.createElement("span");
+        message.className = "mm-note";
+        message.textContent = "Live reactions will appear here.";
+        overlay.appendChild(message);
+      }
+    }, 12000);
+  });
 }
 
 function canSendReactionNow() {
@@ -1960,42 +1952,35 @@ function listenToLiveComments() {
 }
 
 function renderLiveComments() {
-  const container = byId("mmCommentsList");
-  if (!container) return;
+  const containers = document.querySelectorAll("#mmCommentsList");
+  if (!containers.length) return;
 
-  container.innerHTML = "";
+  containers.forEach(container => {
+    container.innerHTML = "";
+    if (!liveComments.length) {
+      const empty = document.createElement("span");
+      empty.className = "mm-note";
+      empty.textContent = "Be the first to comment.";
+      container.appendChild(empty);
+      return;
+    }
 
-  if (!liveComments.length) {
-    const empty = document.createElement("span");
-    empty.className = "mm-note";
-    empty.textContent = "Be the first to comment.";
-    container.appendChild(empty);
-    return;
-  }
-
-  liveComments.forEach(comment => {
-    const item = document.createElement("div");
-    item.className = "mm-comment";
-
-    const name = document.createElement("strong");
-    name.textContent = safeText(comment.name).slice(0, 60);
-
-    const message = document.createElement("div");
-    message.textContent = safeText(comment.message).slice(0, 300);
-
-    const time = document.createElement("div");
-    time.className = "mm-comment-time";
-
-    const date = new Date(Number(comment.createdAt || 0));
-    time.textContent = Number.isNaN(date.getTime())
-      ? ""
-      : date.toLocaleTimeString();
-
-    item.append(name, message, time);
-    container.appendChild(item);
+    liveComments.forEach(comment => {
+      const item = document.createElement("div");
+      item.className = "mm-comment";
+      const name = document.createElement("strong");
+      name.textContent = safeText(comment.name).slice(0, 60);
+      const message = document.createElement("div");
+      message.textContent = safeText(comment.message).slice(0, 300);
+      const time = document.createElement("div");
+      time.className = "mm-comment-time";
+      const date = new Date(Number(comment.createdAt || 0));
+      time.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString();
+      item.append(name, message, time);
+      container.appendChild(item);
+    });
+    container.scrollTop = container.scrollHeight;
   });
-
-  container.scrollTop = container.scrollHeight;
 }
 
 async function sendLiveComment() {
@@ -2048,16 +2033,14 @@ async function sendLiveComment() {
 }
 
 function updateCommentControls() {
-  const button = byId("mmSendCommentBtn");
-  const hint = byId("mmCommentHint");
-
-  if (button) button.disabled = !isJoined || !currentUser;
-
-  if (hint) {
+  document.querySelectorAll("#mmSendCommentBtn").forEach(button => {
+    button.disabled = !isJoined || !currentUser;
+  });
+  document.querySelectorAll("#mmCommentHint").forEach(hint => {
     hint.textContent = isJoined
       ? "Your comment is visible to everyone in this show."
       : "Enter the auditorium to post a comment.";
-  }
+  });
 }
 
 
@@ -5093,35 +5076,26 @@ function resetButtons() {
 ========================================= */
 
 function wirePublicInteractionControls() {
-  // The singer page has its own visible controls outside the hidden
-  // LiveKit panel. Rebind those visible elements explicitly.
-  const sendButton = byId("mmSendCommentBtn");
-  if (sendButton) {
-    const freshButton = sendButton.cloneNode(true);
-    freshButton.disabled = !isJoined || !currentUser;
-    sendButton.replaceWith(freshButton);
-    freshButton.addEventListener("click", sendLiveComment);
-  }
-
-  const commentInput = byId("mmCommentInput");
-  if (commentInput) {
-    const freshInput = commentInput.cloneNode(true);
-    commentInput.replaceWith(freshInput);
-    freshInput.addEventListener("keydown", event => {
-      if (event.key === "Enter") sendLiveComment();
+  // Use delegated handlers so controls work on host, singer and audience
+  // layouts, including duplicate visible controls generated by the shared panel.
+  if (!document.documentElement.dataset.mmPublicInteractionsWired) {
+    document.documentElement.dataset.mmPublicInteractionsWired = "1";
+    document.addEventListener("click", event => {
+      const send = event.target.closest("#mmSendCommentBtn");
+      if (send && !send.disabled) {
+        sendLiveComment();
+        return;
+      }
+      const reaction = event.target.closest("#mmReactionButtons [data-reaction]");
+      if (reaction && !reaction.disabled) sendReaction(reaction.dataset.reaction);
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Enter" && event.target.matches("#mmCommentInput")) {
+        event.preventDefault();
+        sendLiveComment();
+      }
     });
   }
-
-  const reactionButtons = byId("mmReactionButtons");
-  if (reactionButtons) {
-    const freshReactions = reactionButtons.cloneNode(true);
-    reactionButtons.replaceWith(freshReactions);
-    freshReactions.addEventListener("click", event => {
-      const button = event.target.closest("[data-reaction]");
-      if (button && !button.disabled) sendReaction(button.dataset.reaction);
-    });
-  }
-
   updateCommentControls();
   updateReactionButtons();
 }
